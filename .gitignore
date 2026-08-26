@@ -11,6 +11,7 @@ node_modules
 dist
 dist-ssr
 *.local
+refactor_*.diff
 .env
 .env.*
 !.env.example

@@ -1,1 +1,0 @@
-https://developers.google.com/maps/documentation/embed/get-started?hl=zh-tw

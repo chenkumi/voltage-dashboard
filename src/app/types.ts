@@ -15,12 +15,6 @@ export type ModelOutputSchema = {
 
 export type ModelToolResult = object;
 
-export type AgentLoadedDocument = {
-    skillName: string,
-    path: string,
-    content: string,
-};
-
 export type AgentSegmentState = {
     id: string,
     threadId: string,
@@ -28,10 +22,6 @@ export type AgentSegmentState = {
     segmentId: string,
     status: "running" | "final",
     activeSkill?: { name: string, path: string, inlineId: string },
-    skillDocumentPaths: string[],
-    loadedDocuments: AgentLoadedDocument[],
-    lastLoadedDocumentPath?: string | null,
-    loadedToolNames?: string[],
     createdAt: number,
     updatedAt: number,
     finalizedAt?: number,

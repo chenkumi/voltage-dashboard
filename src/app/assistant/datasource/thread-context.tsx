@@ -32,19 +32,6 @@ export const AssistantThreadProvider = ({
     </AssistantThreadContext.Provider>;
 };
 
-export const useAssistantThreadList = () => {
-    const context = useContext(AssistantThreadContext);
-    if (context) {
-        const threads = context.threads;
-        if (threads == null) {
-            return [];
-        }
-
-        return threads;
-    }
-    return undefined;
-};
-
 export const useAssistantThread = () => {
     const context = useContext(AssistantThreadContext);
     if (context) {

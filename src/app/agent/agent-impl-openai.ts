@@ -4,7 +4,7 @@ import { ChatCompletionContentPart } from "openai/resources/chat/completions.mjs
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { ModelContent, ModelMessageContentView, ModelResult, ModelRole, ModelThreadMessage, ModelTool, ModelToolResult, ProcessingModelContent } from "../types";
-import { AgentCommon, AgentContext, AgentGenerateOptions, AgentHookContext, AgentProps, AgentTool, createUntilResponseDeveloperMessage, createUntilResponseUserMessage, pruneUntilResponseRecords } from "./agent-common";
+import { AgentCommon, AgentContext, AgentGenerateOptions, AgentHookContext, AgentProps, createUntilResponseDeveloperMessage, createUntilResponseUserMessage, pruneUntilResponseRecords } from "./agent-common";
 import { AgentRuntimeEvents } from "./agent-runtime-events";
 import { generateLM, GenerateProps } from './llm-api-openai';
 import { escapeText, readText } from './utils';
@@ -12,11 +12,6 @@ import { escapeText, readText } from './utils';
 const model = import.meta.env.VITE_APP_LLM_MODEL;
 const baseURL = import.meta.env.VITE_APP_LLM_BASE_URL;
 const authToken = import.meta.env.VITE_APP_AUTH_KEY;
-
-const findKnownTool = async (name: string): Promise<AgentTool | undefined> => {
-    const { DynamicTools, PrimaryTools } = await import("@/app/tools");
-    return [...PrimaryTools, ...DynamicTools].find(tool => tool.name === name);
-};
 
 export const modelMessageToOpenAI = async (m: { role: ModelRole, content: ModelContent }): Promise<OpenAI.Chat.ChatCompletionMessageParam> => {
     return (await modelMessagesToOpenAI(m))[0];
@@ -240,7 +235,7 @@ export class Agent extends AgentCommon {
     public async genProps(context?: AgentContext) {
         const systemInstruction = await this.systemInstruction(context);
         console.log("systemInstruction:", systemInstruction);
-        const firstPrompt = await this.firstPrompt(context) + "\n\n" + await this.activeSkillPrompt(context);
+        const firstPrompt = await this.firstPrompt(context);
 
         const tools = await this.tools(context);
 
@@ -293,10 +288,6 @@ export class Agent extends AgentCommon {
 
         const resultBuilder: ModelResult = {
             msgId
-        }
-
-        if (inputMessage.content.text) {
-            this.logLlmMessageText(agent, threadId, 'user', inputMessage.content.text);
         }
 
         let finalContent: ModelContent | undefined = undefined;
@@ -457,10 +448,6 @@ export class Agent extends AgentCommon {
                 return { ...c, content: filtedContent };
             });
 
-            if (currentOutputContent.text) {
-                this.logLlmMessageText(agent, threadId, 'assistant', currentOutputContent.text);
-            }
-
             const stop_reason: any = normalizedStopReason ?? "";
 
             if (stop_reason === 'end_turn') {
@@ -547,38 +534,17 @@ export class Agent extends AgentCommon {
                     const tools = await this.tools(agentContext);
                     for (const tc of tool_calls) {
                         const { id, name, input } = tc;
-                        let mt = tools.find(ft => ft.name === name);
+                        const mt = tools.find(ft => ft.name === name);
                         let output: ModelToolResult;
 
                         console.log("tool " + name + " input:", input);
 
-                        if (mt && mt.executor) {
+                        if (mt?.executor) {
                             try {
                                 output = await mt.executor({ ...props, context, args: input });
 
                             } catch (e: any) {
                                 output = { status: "EXCEPTION", message: `RuntimeError: ${e.message}` };
-                            }
-                        } else if (this.allowKnownToolFallback) {
-
-                            mt = await findKnownTool(name);
-
-                            if (mt) {
-                                const validation = mt.inputSchema.safeParse(input)
-
-                                if (validation.success) {
-                                    try {
-                                        output = await mt.executor({ ...props, context, args: input });
-                                    } catch (e: any) {
-                                        output = { status: "EXCEPTION", message: `RuntimeError: ${e.message}` };
-                                    }
-                                }
-                                else {
-                                    output = { status: "ARGUMENT_ERROR", message: `tool(${name}) is unloaded. Use loadTools({toolNames:['${name}']}) to load the tool first.` };
-                                }
-                            }
-                            else {
-                                output = { status: "ARGUMENT_ERROR", message: `tool(${name}) does not exist.` };
                             }
                         } else {
                             output = { status: "ARGUMENT_ERROR", message: `tool(${name}) is not available from the embedded WebMCP page.` };
@@ -588,51 +554,30 @@ export class Agent extends AgentCommon {
 
                         tool_results.push({ id, name, input, output: output });
 
-                        this.logLlmMessageTool(agent, threadId, 'assistant', name, id, input, output);
-
-                        const retention = await this.retentionOfTools(tool_results);;
-
-                        if (this.anyToolResult) {
-                            currentOutputContent = { ...currentOutputContent, tools: tool_results, retention };
-                            syncCurrentOutputContent();
-                            finalContent = currentOutputContent;
-                            break;
-                        }
                     }
                 }
 
                 if (tool_results.length > 0) {
-                    const retention = await this.retentionOfTools(tool_results);
-                    currentOutputContent = { ...currentOutputContent, tools: tool_results, retention };
+                    currentOutputContent = { ...currentOutputContent, tools: tool_results };
                     syncCurrentOutputContent();
                     if (hook?.saveOutputMessage) {
                         await hook.saveOutputMessage(outputMsg, hookContext);
                     }
                 }
 
-                if (this._mode === 'tool-router') {
-                    currentOutputContent = { ...currentOutputContent, tools: tool_results };
-                    syncCurrentOutputContent();
-                    finalContent = currentOutputContent;
-                    resultBuilder.safetyReject = true;
-                    break;
-                }
-                else {
-                    const stepId = AgentCommon.genId();
-                    console.log("tool normalizedReasoning:" + normalizedReasoning);
-                    const toolResultMsg: ModelMessageContentView = {
-                        msgId,
-                        id: stepId,
-                        role: 'tool',
-                        content: {
-                            id: partId,
-                            tools: tool_results,
-                            reasoning: normalizedReasoning
-                        }
-                    };
+                const stepId = AgentCommon.genId();
+                const toolResultMsg: ModelMessageContentView = {
+                    msgId,
+                    id: stepId,
+                    role: 'tool',
+                    content: {
+                        id: partId,
+                        tools: tool_results,
+                        reasoning: normalizedReasoning
+                    }
+                };
 
-                    conversationMessages = [...conversationMessages, toolResultMsg];
-                }
+                conversationMessages = [...conversationMessages, toolResultMsg];
 
                 if (resultText.length === 0 && tool_results.length === 0) {
                     await dropCurrentOutputContent(hookContext);
@@ -682,13 +627,5 @@ export class Agent extends AgentCommon {
         }
 
         return finalResult;
-    }
-}
-
-export class ToolAgent extends Agent {
-    constructor(name = "tool-agent") {
-        super(name);
-        this.setThinking(false);
-        this.setToolChoice("none");
     }
 }

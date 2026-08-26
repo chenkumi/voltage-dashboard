@@ -1,7 +1,7 @@
 import { createContext, ReactNode, useCallback, useContext } from "react";
 import { Agent } from "../agent/agent-impl-openai";
 import { ModelContent, ModelThreadMessage } from "../types";
-import { AssistantMessageContext, useAssistantDatasource } from "./datasource";
+import { AssistantMessageContext } from "./datasource";
 import { runAssistantMessage, SendMessageResult } from "./runtime/message-runner";
 
 type AssistantRuntimeContextValue = {
@@ -19,7 +19,6 @@ export const useAssistantRuntime = () => {
 
 export const AssistantRuntime = ({ children, agent }: { children: ReactNode, agent: Agent }) => {
     const context = useContext(AssistantMessageContext);
-    const datasource = useAssistantDatasource();
     const sendMessage = useCallback(async (threadId: string, input: ModelContent, abortController?: AbortController, options?: { historyMessages?: ModelThreadMessage[] | null }) => {
         if (!context) {
             return { ok: false, status: "error" } satisfies SendMessageResult;
@@ -41,14 +40,13 @@ export const AssistantRuntime = ({ children, agent }: { children: ReactNode, age
                 saveOutputMessage,
                 removeMessage,
                 commitMessage,
-                rejectLatestAssistantOutput: datasource.rejectLatestAssistantOutput,
             },
             threadId,
             input,
             abortController,
             historyMessages: options?.historyMessages,
         });
-    }, [context, agent, datasource]);
+    }, [context, agent]);
 
     return <AssistantRuntimeContext.Provider value={{ sendMessage }}>
         {children}

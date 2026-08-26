@@ -1,4 +1,3 @@
-import { Agent } from "@/app/agent/agent-impl-openai";
 import { chatDb } from "@/app/db";
 import { AssistantDatasource } from "./assistant-datasource";
 
@@ -9,10 +8,6 @@ export const dexieAssistantDatasource: AssistantDatasource = {
 
     listMessages: async (threadId) => {
         return await chatDb.messages.filter(message => message.threadId === threadId).toArray();
-    },
-
-    listLogs: async (threadId) => {
-        return await chatDb.contentLogs.where("threadId").equals(threadId).toArray();
     },
 
     createThread: async (input) => {
@@ -74,35 +69,4 @@ export const dexieAssistantDatasource: AssistantDatasource = {
         });
     },
 
-    rejectLatestAssistantOutput: async (threadId, msgId, reason) => {
-        const messages = await chatDb.messages
-            .where("[threadId+msgId]")
-            .equals([threadId, msgId])
-            .filter(message => message.role === "assistant")
-            .toArray();
-
-        messages.sort((a, b) => b.createdAt - a.createdAt);
-        const latest = messages[0];
-        if (!latest) {
-            return;
-        }
-
-        const latestContent = latest.content[latest.content.length - 1] ?? { id: Agent.genId() };
-
-        await chatDb.messages.put({
-            ...latest,
-            content: [
-                ...latest.content.slice(0, -1),
-                {
-                    ...latestContent,
-                    text: `輸出已否決：${reason}`,
-                    metadata: {
-                        ...latestContent.metadata,
-                        formatError: true,
-                        reviewRejected: true,
-                    },
-                },
-            ],
-        });
-    },
 };

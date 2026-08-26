@@ -5,8 +5,6 @@ import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import remarkGfm from 'remark-gfm'
 import { CodeBlock } from 'react-code-block';
-// import rehypeRaw from 'rehype-raw';
-// import rehypeSanitize from 'rehype-sanitize'
 interface HeaderRange {
     min_header_level: number | null;
     max_header_level: number | null;

@@ -14,7 +14,6 @@ export {
     AssistantThreadContext,
     AssistantThreadProvider,
     useAssistantThread,
-    useAssistantThreadList,
 } from "./datasource/thread-context";
 export type { AssistantThreadMessageValue } from "./datasource/message-context";
 export {
@@ -32,4 +31,3 @@ export {
     AssistantViewStateProvider,
     useAssistantViewState,
 } from "./datasource/view-state-context";
-export { useAssistantThreadLogs } from "./datasource/log-hooks";

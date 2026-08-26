@@ -34,5 +34,4 @@ ${webMcpBridge.specialPrompt()}
 `)
 
 webMcpAgent.setTools(() => webMcpBridge.agentTools())
-webMcpAgent.setKnownToolFallback(false)
 webMcpAgent.setUserInputPreparation(() => webMcpBridge.prepareForUserInput())

@@ -3,12 +3,7 @@ import { Agent } from "@/app/agent/agent-impl-openai";
 import { AgentStateRepository } from "@/app/agent/state-repository";
 import { ModelContent, ModelMessageContentView, ModelThreadMessage } from "@/app/types";
 import { convertToHistory } from "../utils/converter";
-import { detectUnsupportedToolClaims } from "./claim-validator";
-import { buildConversationLog } from "./conversation-log";
 import { createOutputAggregator } from "./output-aggregator";
-
-const CONVERSATION_LOG_CONTEXT_KEY = "conversationLog";
-const ROUND_TOOL_LOG_CONTEXT_KEY = "roundToolLog";
 
 export type SendMessageResult = {
     ok: boolean;
@@ -22,7 +17,6 @@ export type AssistantMessageRunnerAdapter = {
     saveOutputMessage: (message: ModelThreadMessage) => Promise<void>;
     removeMessage: (id: string) => Promise<void>;
     commitMessage: (threadId: string, msgId: string) => Promise<void>;
-    rejectLatestAssistantOutput: (threadId: string, msgId: string, reason: string) => Promise<void>;
 };
 
 export type RunAssistantMessageOptions = {
@@ -57,7 +51,6 @@ export const runAssistantMessage = async ({
         saveOutputMessage,
         removeMessage,
         commitMessage,
-        rejectLatestAssistantOutput,
     } = adapter;
     let msgId: string | null = null;
 
@@ -102,16 +95,13 @@ export const runAssistantMessage = async ({
             removeOutputMessage: outputAggregator.removeOutputMessage,
         };
 
-        let currentInputMsg = inputMsg;
+        const currentInputMsg = inputMsg;
         const maxAutoContinueRounds = 3;
 
         for (let autoContinueRound = 0; autoContinueRound <= maxAutoContinueRounds; autoContinueRound++) {
             if (abortController?.signal.aborted) {
                 throw abortController.signal.reason ?? new DOMException("The operation was aborted.", "AbortError");
             }
-
-            runtimeContext.set(ROUND_TOOL_LOG_CONTEXT_KEY, []);
-            runtimeContext.set(CONVERSATION_LOG_CONTEXT_KEY, buildConversationLog(modelHistory));
 
             const result = await agent.generate({
                 threadId,
@@ -139,14 +129,6 @@ export const runAssistantMessage = async ({
 
                 modelHistory.push(outputMsg);
 
-                const roundToolLog = runtimeContext.get(ROUND_TOOL_LOG_CONTEXT_KEY);
-                const roundToolLogList = Array.isArray(roundToolLog) ? roundToolLog : [];
-                const unsupportedClaimCheck = detectUnsupportedToolClaims(currentInputMsg, result.content, roundToolLogList);
-
-                if (unsupportedClaimCheck.status === "rejected") {
-                    await rejectLatestAssistantOutput(threadId, msgId, unsupportedClaimCheck.reason || "最終回覆與工具執行紀錄不一致。");
-                    break;
-                }
             }
             break;
         }
