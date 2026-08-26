@@ -1,9 +1,11 @@
 import { RefreshCw, ShieldCheck, Sparkles, Wrench } from "lucide-react"
-import { useCallback, useSyncExternalStore } from "react"
+import { useCallback, useEffect, useSyncExternalStore } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { webMcpBridge } from "./bridge"
+import { getWebMcpSite, webMcpSites } from "./sites"
+import type { WebMcpSite } from "./types"
 
 const statusLabel = {
   idle: "Waiting for iframe",
@@ -13,8 +15,20 @@ const statusLabel = {
   error: "Connection error",
 } as const
 
-export const WebMcpWorkspace = () => {
+export const WebMcpWorkspace = ({
+  site,
+  onSiteChange,
+  disabled = false,
+}: {
+  site: WebMcpSite
+  onSiteChange: (site: WebMcpSite) => void
+  disabled?: boolean
+}) => {
   const state = useSyncExternalStore(webMcpBridge.subscribe, webMcpBridge.getSnapshot, webMcpBridge.getSnapshot)
+
+  useEffect(() => {
+    void webMcpBridge.attach(null)
+  }, [site.id])
 
   const handleFrameLoad = useCallback((event: React.SyntheticEvent<HTMLIFrameElement>) => {
     void webMcpBridge.attach(event.currentTarget.contentWindow)
@@ -34,6 +48,19 @@ export const WebMcpWorkspace = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <label className="sr-only" htmlFor="webmcp-site">Embedded website</label>
+          <select
+            id="webmcp-site"
+            value={site.id}
+            disabled={disabled}
+            onChange={(event) => {
+              const nextSite = getWebMcpSite(event.target.value)
+              if (nextSite) onSiteChange(nextSite)
+            }}
+            className="max-w-40 rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs text-slate-200 outline-none focus-visible:border-amber-300 disabled:cursor-wait disabled:opacity-60"
+          >
+            {webMcpSites.map((item) => <option key={item.id} value={item.id} className="bg-[#151b1f]">{item.name}</option>)}
+          </select>
           <Badge variant="outline" className="gap-2 border-white/15 bg-white/5 px-3 py-1.5 text-slate-200">
             <span className={cn("size-2 rounded-full", state.status === "ready" ? "bg-emerald-400" : "bg-amber-300")} />
             {statusLabel[state.status]}
@@ -47,8 +74,9 @@ export const WebMcpWorkspace = () => {
       <div className="flex min-h-0 flex-1 flex-col gap-4 p-4 lg:p-6">
         <div className="flex min-h-0 flex-1 overflow-hidden rounded-2xl border border-white/10 bg-[#0b0e10] shadow-2xl shadow-black/30">
           <iframe
+            key={site.id}
             title="WebMCP demo website"
-            src="/webmcp-demo"
+            src={site.url}
             className="h-full min-h-[420px] w-full border-0 bg-white"
             onLoad={handleFrameLoad}
           />

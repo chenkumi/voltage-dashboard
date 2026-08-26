@@ -7,9 +7,10 @@ import { Spinner } from "@/components/ui/spinner"
 import { Toaster } from "@/components/ui/sonner"
 import { WebMcpWorkspace } from "../webmcp/workspace"
 import { WebMcpChatTransport } from "../webmcp/transport"
-import { defaultWebMcpSite } from "../webmcp/sites"
+import { defaultWebMcpSite, getWebMcpSite } from "../webmcp/sites"
+import type { WebMcpSite } from "../webmcp/types"
 import type { ChatThread } from "../types"
-import { createChatThread, getChatThread, listChatMessages, saveChatMessages } from "./chat-store"
+import { createChatThread, getChatThread, getLastChatThread, listChatMessages, saveChatMessages, touchSiteLastThread } from "./chat-store"
 import { AssistantChatHeader } from "./components/chat-header"
 import { AssistantChatInput } from "./components/chat-input"
 import { AssistantChatWindow } from "./components/chat-window"
@@ -18,18 +19,35 @@ const createId = monotonicFactory()
 
 const Loading = () => <div className="flex h-full items-center justify-center"><Spinner className="size-10" /></div>
 
-const createEmptyThread = (): ChatThread => {
+const createEmptyThread = (site: WebMcpSite): ChatThread => {
   const timestamp = Date.now()
-  return { id: createId(), siteId: defaultWebMcpSite.id, url: defaultWebMcpSite.url, title: "New Chat", createdAt: timestamp, updatedAt: timestamp }
+  return { id: createId(), siteId: site.id, url: site.url, title: "New Chat", createdAt: timestamp, updatedAt: timestamp }
+}
+
+const createOrOpenSiteThread = async (site: WebMcpSite) => {
+  const lastThread = await getLastChatThread(site.id)
+  if (lastThread) {
+    await touchSiteLastThread(lastThread)
+    return lastThread
+  }
+
+  const thread = createEmptyThread(site)
+  await createChatThread(thread)
+  return thread
 }
 
 const InvalidThread = () => {
   const navigate = useNavigate()
-  useEffect(() => { navigate("/chat", { replace: true }) }, [navigate])
+  useEffect(() => { void navigate("/chat", { replace: true }) }, [navigate])
   return <Loading />
 }
 
-const ChatSession = ({ thread, records }: { thread: ChatThread; records: Awaited<ReturnType<typeof listChatMessages>> }) => {
+const ChatSession = ({ thread, site, records }: {
+  thread: ChatThread
+  site: WebMcpSite
+  records: Awaited<ReturnType<typeof listChatMessages>>
+}) => {
+  const navigate = useNavigate()
   const transport = useMemo(() => new WebMcpChatTransport(), [])
   const generateId = useMemo(() => monotonicFactory(), [])
   const initialMessages = useMemo(() => records.map((record) => record.message), [records])
@@ -41,13 +59,28 @@ const ChatSession = ({ thread, records }: { thread: ChatThread; records: Awaited
     transport,
     onFinish: ({ messages }) => { void saveChatMessages(thread.id, messages) },
   })
+  const busy = status === "submitted" || status === "streaming"
+
+  const createNewThread = async () => {
+    stop()
+    const nextThread = createEmptyThread(site)
+    await createChatThread(nextThread)
+    await navigate(`/chat/${nextThread.id}`)
+  }
+
+  const switchSite = async (nextSite: WebMcpSite) => {
+    if (nextSite.id === site.id) return
+    stop()
+    const nextThread = await createOrOpenSiteThread(nextSite)
+    await navigate(`/chat/${nextThread.id}`)
+  }
 
   return (
     <div className="flex h-full w-full min-w-0 overflow-hidden bg-[#101417]">
-      <WebMcpWorkspace />
+      <WebMcpWorkspace site={site} onSiteChange={(nextSite) => { void switchSite(nextSite) }} disabled={busy} />
       <section className="flex h-full min-w-[320px] basis-[30%] flex-col overflow-hidden border-l border-white/10 bg-background">
         <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 py-3">
-          <AssistantChatHeader title={thread.customTitle ?? thread.title} onNewThread={() => { window.location.assign("/chat") }} />
+          <AssistantChatHeader title={thread.customTitle ?? thread.title} onNewThread={() => { void createNewThread() }} />
           <section className="min-h-0 flex-1 overflow-hidden" aria-label="Chat history">
             <AssistantChatWindow messages={messages} messageDates={messageDates} />
           </section>
@@ -66,8 +99,9 @@ const ChatPage = ({ threadId }: { threadId: string }) => {
   }), [threadId])
 
   if (!data) return <Loading />
-  if (!data.thread) return <InvalidThread />
-  return <ChatSession key={threadId} thread={data.thread} records={data.records} />
+  const site = data.thread ? getWebMcpSite(data.thread.siteId) : undefined
+  if (!data.thread || !site || data.thread.url !== site.url) return <InvalidThread />
+  return <ChatSession key={threadId} thread={data.thread} site={site} records={data.records} />
 }
 
 export const Assistant = () => {
@@ -78,8 +112,7 @@ export const Assistant = () => {
   useEffect(() => {
     if (threadId || creatingRef.current) return
     creatingRef.current = true
-    const thread = createEmptyThread()
-    void createChatThread(thread).then(() => navigate(`/chat/${thread.id}`, { replace: true }))
+    void createOrOpenSiteThread(defaultWebMcpSite).then((thread) => navigate(`/chat/${thread.id}`, { replace: true }))
   }, [navigate, threadId])
 
   if (!threadId) return <Loading />

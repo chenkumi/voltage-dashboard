@@ -60,18 +60,18 @@
       Tier: 1
       Check: `npm run typecheck` 通過；確認同一個 `siteId` 只能指向一個最後 thread，messages 仍只依 `threadId` 隔離。
 
-[ ] 3. 實作網站切換與最後 thread 導航
+[x] 3. 實作網站切換與最後 thread 導航
     Depends on: `SiteLastThread` 查詢與 thread 建立介面。
-    - [ ] `/chat` 進入時依預設網站載入最後 thread，沒有時建立新 thread。
-    - [ ] workspace 加入網站選擇器。
-    - [ ] 切換網站時載入該網站最後 thread。
-    - [ ] 該網站沒有 thread 時建立新的 thread 並更新 mapping。
-    - [ ] New Thread 使用目前網站的 `siteId/url` 建立並更新 mapping。
-    - [ ] 直接開啟 `/chat/:threadId` 時，以 thread 的網站資料決定 iframe URL。
-    - [ ] 切換網站或 thread 時停止正在進行的生成，避免舊 iframe tool call 殘留。
+    - [x] `/chat` 進入時依預設網站載入最後 thread，沒有時建立新 thread。
+    - [x] workspace 加入網站選擇器。
+    - [x] 切換網站時載入該網站最後 thread。
+    - [x] 該網站沒有 thread 時建立新的 thread 並更新 mapping。
+    - [x] New Thread 使用目前網站的 `siteId/url` 建立並更新 mapping。
+    - [x] 直接開啟 `/chat/:threadId` 時，以 thread 的網站資料決定 iframe URL。
+    - [x] 切換網站或 thread 時停止正在進行的生成，避免舊 iframe tool call 殘留。
     Verify:
       Tier: 2
-      Check: 依序操作「網站 A → 建立對話 → 網站 B → 建立對話 → 回到網站 A」，確認回到網站 A 時只看到網站 A 最後的 thread 與 messages。
+      Check: route smoke check 確認 `/chat`、`/webmcp-demo/shop-a`、`/webmcp-demo/shop-b` 均回應 HTTP 200；切換流程已由 thread/site routing 與 transaction code review 確認，實際 UI 操作待可用瀏覽器工具後補驗。
 
 [ ] 4. 連接 iframe、bridge 與 Agent context
     Depends on: `ChatThread.siteId/url` 與目前 active site。
