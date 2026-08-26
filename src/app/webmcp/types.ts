@@ -1,4 +1,4 @@
-import type { AgentTool } from "@/app/agent/agent-common"
+import type { ToolSet } from "ai"
 
 export type WebMcpRegisteredTool = {
   name: string
@@ -38,9 +38,7 @@ export type WebMcpBridgeState = {
   error: string | null
 }
 
-export type WebMcpAgentTool = AgentTool & {
-  source: "iframe"
-}
+export type WebMcpToolSet = ToolSet
 
 export type WebMcpDocument = Document & {
   modelContext?: WebMcpModelContext

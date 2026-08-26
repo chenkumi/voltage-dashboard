@@ -1,6 +1,6 @@
-import type { AgentExecutorProps } from "@/app/agent/agent-common"
+import { dynamicTool, jsonSchema } from "ai"
+import type { ToolSet } from "ai"
 import type {
-  WebMcpAgentTool,
   WebMcpBridgeState,
   WebMcpDocument,
   WebMcpModelContext,
@@ -33,9 +33,19 @@ const normalizeSchema = (schema: unknown) => {
   }
 }
 
+const defaultSchema = {
+  type: "object",
+  properties: {},
+  additionalProperties: false,
+}
+
 const normalizeError = (error: unknown) => {
   if (error instanceof Error) return error.message
   return typeof error === "string" ? error : "WebMCP tool execution failed."
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> => {
+  return Boolean(value) && typeof value === "object" && !Array.isArray(value)
 }
 
 class WebMcpBridge {
@@ -73,23 +83,17 @@ class WebMcpBridge {
       return
     }
 
-    this.setState({
-      frameWindow,
-      tools: [],
-      status: "loading",
-      error: null,
-    })
+    this.setState({ frameWindow, tools: [], status: "loading", error: null })
     this.specialContext = { instructions: null, skills: [], skillsLoaded: false }
 
     try {
-      const modelContext = readModelContext(frameWindow)
       const targetWindow = frameWindow as WebMcpWindow
       await targetWindow.__webmcpReady
-      const testProvider = targetWindow.__webmcpTestProvider
 
+      const modelContext = readModelContext(frameWindow)
       const tools = modelContext
         ? await modelContext.getTools()
-        : testProvider?.getTools() ?? null
+        : targetWindow.__webmcpTestProvider?.getTools() ?? null
 
       if (version !== this.refreshVersion) return
 
@@ -98,18 +102,12 @@ class WebMcpBridge {
           frameWindow,
           tools: [],
           status: "unsupported",
-          error: "此瀏覽器目前沒有可用的 WebMCP API。",
+          error: "The embedded page does not expose a WebMCP provider.",
         })
         return
       }
 
-      this.setState({
-        frameWindow,
-        tools,
-        status: "ready",
-        error: null,
-      })
-      this.specialContext = { instructions: null, skills: [], skillsLoaded: false }
+      this.setState({ frameWindow, tools, status: "ready", error: null })
     } catch (error) {
       if (version !== this.refreshVersion) return
 
@@ -133,8 +131,10 @@ class WebMcpBridge {
 
     const instructionPromise = instructionTool
       ? this.executeRegisteredTool(instructionTool, {}).then((result) => {
-          const text = this.readInstructionText(result)
-          this.specialContext = { ...this.specialContext, instructions: text }
+          this.specialContext = {
+            ...this.specialContext,
+            instructions: this.readInstructionText(result),
+          }
         })
       : Promise.resolve()
 
@@ -168,27 +168,37 @@ class WebMcpBridge {
     return sections.join("\n\n")
   }
 
-  agentTools(): WebMcpAgentTool[] {
-    const skillPairIsAvailable = this.state.tools.some((tool) => tool.name === SKILL_LIST_TOOL)
-      && this.state.tools.some((tool) => tool.name === LOAD_SKILL_TOOL)
-
-    return this.state.tools
-      .filter((tool) => tool.name !== AGENT_INSTRUCTIONS_TOOL)
-      .filter((tool) => !(skillPairIsAvailable && tool.name === SKILL_LIST_TOOL))
-      .map((tool) => ({
-      source: "iframe",
-      name: tool.name,
-      description: tool.description ?? `Execute ${tool.name} in the embedded website.`,
-      inputSchema: normalizeSchema(tool.inputSchema) ?? {
-        type: "object",
-        properties: {},
-        additionalProperties: false,
-      },
-      executor: (props: AgentExecutorProps) => this.executeRegisteredTool(tool, props.args),
-      }))
+  toolDescriptions() {
+    return this.agentToolDefinitions()
+      .map((tool) => `- ${tool.name}: ${tool.description ?? "No description provided."}`)
+      .join("\n")
   }
 
-  async executeRegisteredTool(tool: WebMcpRegisteredTool, args: Record<string, unknown>) {
+  aiSdkTools(): ToolSet {
+    return Object.fromEntries(
+      this.agentToolDefinitions().map((registeredTool) => [
+        registeredTool.name,
+        dynamicTool({
+          description: registeredTool.description ?? `Execute ${registeredTool.name} in the embedded website.`,
+          inputSchema: jsonSchema((normalizeSchema(registeredTool.inputSchema) ?? defaultSchema) as never),
+          metadata: { source: "iframe", toolName: registeredTool.name },
+          execute: async (input, { abortSignal }) => {
+            return this.executeRegisteredTool(
+              registeredTool,
+              isRecord(input) ? input : {},
+              abortSignal,
+            )
+          },
+        }),
+      ]),
+    )
+  }
+
+  async executeRegisteredTool(
+    tool: WebMcpRegisteredTool,
+    args: Record<string, unknown>,
+    signal?: AbortSignal,
+  ) {
     const frameWindow = this.state.frameWindow
     if (!frameWindow) {
       return { status: "ERROR", message: "WebMCP iframe is not connected." }
@@ -199,7 +209,7 @@ class WebMcpBridge {
 
     try {
       if (modelContext) {
-        return await modelContext.executeTool(tool, JSON.stringify(args))
+        return await modelContext.executeTool(tool, JSON.stringify(args), { signal })
       }
 
       if (testProvider) {
@@ -212,24 +222,30 @@ class WebMcpBridge {
     }
   }
 
+  private agentToolDefinitions() {
+    const skillPairIsAvailable = this.state.tools.some((tool) => tool.name === SKILL_LIST_TOOL)
+      && this.state.tools.some((tool) => tool.name === LOAD_SKILL_TOOL)
+
+    return this.state.tools
+      .filter((tool) => tool.name !== AGENT_INSTRUCTIONS_TOOL)
+      .filter((tool) => !(skillPairIsAvailable && tool.name === SKILL_LIST_TOOL))
+  }
+
   private readInstructionText(result: unknown) {
     const payload = this.unwrapToolResult(result)
-    if (!payload || typeof payload !== "object") return null
-    const text = (payload as { text?: unknown }).text
+    if (!isRecord(payload)) return null
+    const text = payload.text
     return typeof text === "string" ? text : null
   }
 
   private readSkills(result: unknown) {
     const payload = this.unwrapToolResult(result)
-    if (!payload || typeof payload !== "object") return []
-    const skills = (payload as { skills?: unknown }).skills
-    if (!Array.isArray(skills)) return []
+    if (!isRecord(payload) || !Array.isArray(payload.skills)) return []
 
-    return skills.filter((skill): skill is { name: string; description: string } => {
-      return Boolean(skill)
-        && typeof skill === "object"
-        && typeof (skill as { name?: unknown }).name === "string"
-        && typeof (skill as { description?: unknown }).description === "string"
+    return payload.skills.filter((skill): skill is { name: string; description: string } => {
+      return isRecord(skill)
+        && typeof skill.name === "string"
+        && typeof skill.description === "string"
     })
   }
 
@@ -242,17 +258,13 @@ class WebMcpBridge {
       }
     }
 
-    if (!result || typeof result !== "object") return result
+    if (!isRecord(result)) return result
 
-    const content = (result as { content?: unknown }).content
-    if (Array.isArray(content)) {
-      const textBlock = content.find((block): block is { text: string } => {
-        return Boolean(block)
-          && typeof block === "object"
-          && typeof (block as { text?: unknown }).text === "string"
-      })
-
-      if (textBlock) return this.unwrapToolResult(textBlock.text)
+    if (Array.isArray(result.content)) {
+      const textBlock = result.content.find((block) => isRecord(block) && typeof block.text === "string")
+      if (isRecord(textBlock) && typeof textBlock.text === "string") {
+        return this.unwrapToolResult(textBlock.text)
+      }
     }
 
     return result

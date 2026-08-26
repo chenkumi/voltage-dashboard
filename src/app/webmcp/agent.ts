@@ -1,19 +1,19 @@
-import { Agent } from "@/app/agent/agent-impl-openai"
+import { stepCountIs, ToolLoopAgent } from "ai"
+import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
 import { PrimaryLanguage } from "@/app/assistant/env"
 import { webMcpBridge } from "./bridge"
 
-const renderIframeTools = () => {
-  const tools = webMcpBridge.agentTools()
-  if (tools.length === 0) return "No WebMCP tools are currently available from the embedded page."
+const modelName = import.meta.env.VITE_APP_LLM_MODEL || "local-model"
+const baseURL = import.meta.env.VITE_APP_LLM_BASE_URL || "http://localhost:1234/v1"
+const apiKey = import.meta.env.VITE_APP_AUTH_KEY || "local"
 
-  return tools
-    .map((tool) => `- ${tool.name}: ${tool.description ?? "No description provided."}`)
-    .join("\n")
-}
+const localProvider = createOpenAICompatible({
+  name: "local",
+  baseURL,
+  apiKey,
+})
 
-export const webMcpAgent = new Agent("webmcp-agent")
-
-webMcpAgent.setSystemInstruction(() => `
+const buildInstructions = () => `
 <role>
 You are a browser WebMCP agent operating an embedded website.
 </role>
@@ -25,13 +25,23 @@ Always communicate in ${PrimaryLanguage()}.
 </instructions>
 
 <iframe_tools>
-${renderIframeTools()}
+${webMcpBridge.toolDescriptions() || "No WebMCP tools are currently available from the embedded page."}
 </iframe_tools>
 
 <embedded_context>
 ${webMcpBridge.specialPrompt()}
 </embedded_context>
-`)
+`
 
-webMcpAgent.setTools(() => webMcpBridge.agentTools())
-webMcpAgent.setUserInputPreparation(() => webMcpBridge.prepareForUserInput())
+export const createWebMcpAgent = async () => {
+  await webMcpBridge.prepareForUserInput()
+
+  return new ToolLoopAgent({
+    id: "webmcp-agent",
+    model: localProvider(modelName),
+    instructions: buildInstructions(),
+    tools: webMcpBridge.aiSdkTools(),
+    stopWhen: stepCountIs(9),
+    maxOutputTokens: 16384,
+  })
+}

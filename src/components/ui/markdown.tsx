@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
-import React, { ReactNode, useId, useMemo } from "react";
-import ReactMarkdown, { Components } from "react-markdown";
+import React, { useId, useMemo } from "react";
+import ReactMarkdown, { type Components } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import remarkGfm from 'remark-gfm'
@@ -102,7 +102,7 @@ export const Markdown = ({
     components?: Partial<Components>;
     normalizedHeaderLevel?: number; // 例如傳入 3
     fontLevel?: 'small' | 'standard' | 'large',
-    parentHeaderRenderers?: any,
+    parentHeaderRenderers?: Partial<Components>,
 }) => {
     const generatedId = useId();
     const blockId = id ?? generatedId;
@@ -136,7 +136,7 @@ export const Markdown = ({
         const headerRenderers = parentHeaderRenderers ?? ([1, 2, 3, 4, 5, 6] as const).reduce((acc, level) => {
             const OriginalTag = `h${level}` as const;
 
-            acc[OriginalTag] = ({ children: nodeChildren }: { children: ReactNode }) => {
+            acc[OriginalTag] = ({ children: nodeChildren }: React.ComponentProps<"h1">) => {
                 // 計算平移後的實際等級，最大限制為 6
                 const targetLevel = Math.min(6, level + offset);
                 const TargetTag = `h${targetLevel}` as const;
@@ -151,7 +151,7 @@ export const Markdown = ({
                 }, nodeChildren);
             };
             return acc;
-        }, {} as any);
+        }, {} as Partial<Components>);
 
         return {
             ...headerRenderers,
@@ -215,7 +215,7 @@ export const Markdown = ({
                 );
             },
         };
-    }, [currentMinHeaderLevel, fontLevel, headerRange, normalizedHeaderLevel]);
+    }, [currentMinHeaderLevel, fontLevel, headerRange, normalizedHeaderLevel, parentHeaderRenderers]);
 
     const fontSizeConfig = {
         "[--text-xs:calc(0.75rem*0.8)] [--text-sm:calc(0.875rem*0.8)] [--text-base:calc(1rem*0.8)] [--text-lg:calc(1.125rem*0.8)] [--text-xl:calc(1.25rem*0.8)] [--text-2xl:calc(1.5rem*0.8)] [--text-3xl:calc(1.875rem*0.8)] [--text-4xl:calc(2.25rem*0.8)] [--text-5xl:calc(3rem*0.8)]": fontLevel === 'small',
