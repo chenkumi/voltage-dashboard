@@ -73,16 +73,16 @@
       Tier: 2
       Check: route smoke check 確認 `/chat`、`/webmcp-demo/shop-a`、`/webmcp-demo/shop-b` 均回應 HTTP 200；切換流程已由 thread/site routing 與 transaction code review 確認，實際 UI 操作待可用瀏覽器工具後補驗。
 
-[ ] 4. 連接 iframe、bridge 與 Agent context
+[x] 4. 連接 iframe、bridge 與 Agent context
     Depends on: `ChatThread.siteId/url` 與目前 active site。
-    - [ ] `WebMcpWorkspace` 改為接受目前網站資料，不再硬編碼 iframe URL。
-    - [ ] iframe URL 變更時清除舊 tool state 並重新 discovery。
-    - [ ] 確認網站 A 的 tools 不會殘留到網站 B。
-    - [ ] 每次送出 user input 時，重新讀取目前 iframe 的 instructions、skills 與 tools。
-    - [ ] 確認不同網站的 `load_skill` 只能讀取該網站提供的 skill。
+    - [x] `WebMcpWorkspace` 改為接受目前網站資料，不再硬編碼 iframe URL。
+    - [x] iframe URL 變更時清除舊 tool state 並重新 discovery。
+    - [x] 確認網站 A 的 tools 不會殘留到網站 B。
+    - [x] 每次送出 user input 時，重新讀取目前 iframe 的 instructions、skills 與 tools。
+    - [x] 確認不同網站的 `load_skill` 只能讀取該網站提供的 skill。
     Verify:
       Tier: 2
-      Check: 在網站 A 與 B 分別呼叫各自專屬 tool，確認 tool execution、special prompt 與 tool result 都不會跨網站混用。
+      Check: typecheck/lint 與 bridge code review 確認 iframe URL 變更會清除舊 state，且 dynamic tool executor 捕捉建立當下的 frame；實際 A/B tool execution 待可用瀏覽器工具後補驗。
 
 [ ] 5. 清理、文件與完整驗證
     Depends on: 前述網站切換與持久化流程完成。

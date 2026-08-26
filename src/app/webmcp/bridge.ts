@@ -175,6 +175,8 @@ class WebMcpBridge {
   }
 
   aiSdkTools(): ToolSet {
+    const frameWindow = this.state.frameWindow
+
     return Object.fromEntries(
       this.agentToolDefinitions().map((registeredTool) => [
         registeredTool.name,
@@ -187,6 +189,7 @@ class WebMcpBridge {
               registeredTool,
               isRecord(input) ? input : {},
               abortSignal,
+              frameWindow,
             )
           },
         }),
@@ -198,8 +201,11 @@ class WebMcpBridge {
     tool: WebMcpRegisteredTool,
     args: Record<string, unknown>,
     signal?: AbortSignal,
+    frameWindowOverride?: Window | null,
   ) {
-    const frameWindow = this.state.frameWindow
+    const frameWindow = frameWindowOverride === undefined
+      ? this.state.frameWindow
+      : frameWindowOverride
     if (!frameWindow) {
       return { status: "ERROR", message: "WebMCP iframe is not connected." }
     }
