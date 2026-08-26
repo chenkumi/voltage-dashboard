@@ -1,5 +1,11 @@
 import type { ToolSet } from "ai"
 
+export type WebMcpSite = {
+  id: string
+  name: string
+  url: string
+}
+
 export type WebMcpRegisteredTool = {
   name: string
   description?: string

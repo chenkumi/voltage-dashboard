@@ -14,6 +14,7 @@ export function App() {
                 <Route path='/chat/:threadId' element={<Assistant />} />
                 <Route path='/chat' element={<Assistant />} />
                 <Route path='/webmcp-demo' element={<WebMcpDemo />} />
+                <Route path='/webmcp-demo/:siteId' element={<WebMcpDemo />} />
                 <Route path='/' element={<Assistant />} />
 
                 <Route path='*' element={<Assistant />} />
