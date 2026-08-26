@@ -84,18 +84,18 @@
       Tier: 2
       Check: typecheck/lint 與 bridge code review 確認 iframe URL 變更會清除舊 state，且 dynamic tool executor 捕捉建立當下的 frame；實際 A/B tool execution 待可用瀏覽器工具後補驗。
 
-[ ] 5. 清理、文件與完整驗證
+[x] 5. 清理、文件與完整驗證
     Depends on: 前述網站切換與持久化流程完成。
-    - [ ] 更新 `AGENTS.md`，描述網站 registry、site/thread 隔離與最後 thread table。
-    - [ ] 更新 `PLAN.md` checkpoint 狀態。
-    - [ ] 清除不再使用的 route、props、state 與 imports。
-    - [ ] 執行 `npm run lint`。
-    - [ ] 執行 `npm run typecheck`。
-    - [ ] 執行 `npm run build`。
-    - [ ] 手動驗證兩個網站、thread 切換、New Thread、重新整理與 IndexedDB reload。
+    - [x] 更新 `AGENTS.md`，描述網站 registry、site/thread 隔離與最後 thread table。
+    - [x] 更新 `PLAN.md` checkpoint 狀態。
+    - [x] 清除不再使用的 route、props、state 與 imports。
+    - [x] 執行 `npm run lint`。
+    - [x] 執行 `npm run typecheck`。
+    - [x] 執行 `npm run build`。
+    - [ ] 手動驗證兩個網站、thread 切換、New Thread、重新整理與 IndexedDB reload（目前環境沒有可用的瀏覽器控制工具）。
     Verify:
       Tier: 2
-      Check: `npm run lint`、`npm run typecheck`、`npm run build` 全部通過，且兩個網站的對話與 tools 維持完全隔離。
+      Check: `npm run lint`、`npm run typecheck`、`npm run build` 全部通過；route smoke check 通過。實際兩個網站的 UI thread 切換、tool execution 與 IndexedDB reload 待可用瀏覽器工具後補驗。
 
 ## Open questions
 
