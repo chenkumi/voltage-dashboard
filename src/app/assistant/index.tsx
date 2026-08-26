@@ -7,6 +7,7 @@ import { Spinner } from "@/components/ui/spinner"
 import { Toaster } from "@/components/ui/sonner"
 import { WebMcpWorkspace } from "../webmcp/workspace"
 import { WebMcpChatTransport } from "../webmcp/transport"
+import { defaultWebMcpSite } from "../webmcp/sites"
 import type { ChatThread } from "../types"
 import { createChatThread, getChatThread, listChatMessages, saveChatMessages } from "./chat-store"
 import { AssistantChatHeader } from "./components/chat-header"
@@ -19,7 +20,7 @@ const Loading = () => <div className="flex h-full items-center justify-center"><
 
 const createEmptyThread = (): ChatThread => {
   const timestamp = Date.now()
-  return { id: createId(), title: "New Chat", createdAt: timestamp, updatedAt: timestamp }
+  return { id: createId(), siteId: defaultWebMcpSite.id, url: defaultWebMcpSite.url, title: "New Chat", createdAt: timestamp, updatedAt: timestamp }
 }
 
 const InvalidThread = () => {

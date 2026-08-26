@@ -48,14 +48,14 @@
       Tier: 2
       Check: Vite smoke check 確認兩個 demo route 回應 HTTP 200，source check 確認頁面內容、tool 清單、instructions 與 skill 清單均不同；實際 iframe registration 待可用瀏覽器工具後補驗。
 
-[ ] 2. 重建 IndexedDB 網站與 thread 關聯模型
+[x] 2. 重建 IndexedDB 網站與 thread 關聯模型
     Depends on: `WebMcpSite.siteId`，作為 thread 與最後使用紀錄的穩定識別。
-    - [ ] `ChatThread` 新增 `siteId` 與 `url`。
-    - [ ] 新增 `SiteLastThread` 型別。
-    - [ ] 新增 `siteLastThreads` table，以 `siteId` 作為 primary key。
-    - [ ] 建立依網站取得最後 thread 的查詢方法。
-    - [ ] 建立 thread、儲存訊息與更新最後 thread 的原子操作。
-    - [ ] 直接使用新 database schema，不處理舊 thread migration。
+    - [x] `ChatThread` 新增 `siteId` 與 `url`。
+    - [x] 新增 `SiteLastThread` 型別。
+    - [x] 新增 `siteLastThreads` table，以 `siteId` 作為 primary key。
+    - [x] 建立依網站取得最後 thread 的查詢方法。
+    - [x] 建立 thread、儲存訊息與更新最後 thread 的原子操作。
+    - [x] 使用新 database name `webmcp-agent-db-v2`，不處理舊 thread migration。
     Verify:
       Tier: 1
       Check: `npm run typecheck` 通過；確認同一個 `siteId` 只能指向一個最後 thread，messages 仍只依 `threadId` 隔離。
