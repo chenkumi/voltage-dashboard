@@ -4,6 +4,25 @@ export type AssistantCompletionStatus = "complete" | "aborted" | "disconnected" 
 
 export const isPersistableAssistantCompletion = (status: AssistantCompletionStatus) => status === "complete"
 
+// AI SDK serializes `reasoning` parts as the OpenAI-compatible
+// `reasoning_content` field. Keep that internal model output out of both
+// persisted messages and subsequent model requests.
+export const withoutReasoningContent = (messages: readonly UIMessage[]) =>
+  messages.map((message) => ({
+    ...message,
+    parts: message.parts.filter((part) => part.type !== "reasoning"),
+  }))
+
+export const withoutToolCalls = (messages: readonly UIMessage[]) =>
+  messages
+    .map((message) => ({
+      ...message,
+      parts: message.parts.filter(
+        (part) => part.type !== "dynamic-tool" && !part.type.startsWith("tool-"),
+      ),
+    }))
+    .filter((message) => message.parts.length > 0)
+
 export const persistableMessagesForTurn = ({
   userMessage,
   assistantMessage,

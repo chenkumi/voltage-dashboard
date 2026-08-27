@@ -2,7 +2,11 @@ import type { UIMessage } from "ai"
 import { Dexie } from "dexie"
 import { chatDb } from "@/app/db"
 import type { ChatThread, StoredMessage } from "@/app/types"
-import { isPersistableAssistantCompletion, type AssistantCompletionStatus } from "./chat-message-state"
+import {
+  isPersistableAssistantCompletion,
+  type AssistantCompletionStatus,
+  withoutReasoningContent,
+} from "./chat-message-state"
 
 const now = () => Date.now()
 
@@ -62,6 +66,7 @@ export const getChatMessage = async (threadId: string, messageId: string) => {
 
 const persistMessage = async (threadId: string, message: UIMessage) => {
   const timestamp = now()
+  const [sanitizedMessage] = withoutReasoningContent([message])
 
   await chatDb.transaction("rw", chatDb.threads, chatDb.messages, chatDb.siteLastThreads, async () => {
     const thread = await chatDb.threads.get(threadId)
@@ -75,7 +80,7 @@ const persistMessage = async (threadId: string, message: UIMessage) => {
       threadId,
       createdAt: existing?.createdAt ?? timestamp,
       updatedAt: timestamp,
-      message,
+      message: sanitizedMessage,
     }
 
     await chatDb.messages.put(record)

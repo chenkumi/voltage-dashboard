@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>webmcp-agent 收斂邊界架構審查報告</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mermaid/10.9.1/mermaid.min.js"></script>
+<style>
+  :root{--bg:#0f1115;--panel:#171a21;--border:#2a2f3a;--text:#e8eaed;--muted:#9aa3af;--accent:#6ea8fe;--red:#ff6b6b;--yellow:#ffd166;--green:#51cf66}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,"PingFang TC","Microsoft JhengHei",sans-serif;background:var(--bg);color:var(--text)}
+  header{padding:24px 32px;border-bottom:1px solid var(--border)}
+  header h1{margin:0 0 6px;font-size:22px}
+  header p{margin:0;color:var(--muted);font-size:14px;line-height:1.6}
+  nav{display:flex;gap:4px;padding:0 32px;border-bottom:1px solid var(--border);overflow-x:auto}
+  nav button{background:none;border:0;color:var(--muted);padding:14px 16px;cursor:pointer;font-size:14px;border-bottom:2px solid transparent;white-space:nowrap}
+  nav button.active{color:var(--text);border-bottom-color:var(--accent)}
+  main{padding:24px 32px;max-width:1160px;margin:0 auto}
+  section{display:none} section.active{display:block}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px}
+  .card h3{margin-top:0} .card p,.card li{line-height:1.7}
+  table{width:100%;border-collapse:collapse;font-size:14px}
+  th,td{text-align:left;padding:9px 10px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.55}
+  th{color:var(--muted);font-weight:600}
+  code{color:#c9dcff;background:#111722;border-radius:4px;padding:1px 4px}
+  .tag{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap}
+  .tag-red{background:rgba(255,107,107,.15);color:var(--red)} .tag-yellow{background:rgba(255,209,102,.15);color:var(--yellow)} .tag-green{background:rgba(81,207,102,.15);color:var(--green)}
+  .filters{display:flex;gap:8px;margin-bottom:12px}.filters button{background:var(--panel);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}.filters button.active{border-color:var(--accent);color:var(--accent)}
+  .mermaid{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;overflow:auto}
+  details{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:10px} details summary{cursor:pointer;font-weight:600}
+  .contract-yes{color:var(--green)}.contract-no{color:var(--yellow)}.empty{color:var(--muted);font-size:14px}.callout{border-left:3px solid var(--accent);padding-left:14px}.risk-high{color:var(--red);font-weight:600}.risk-medium{color:var(--yellow);font-weight:600}.risk-low{color:var(--green);font-weight:600}
+  @media(max-width:760px){header,nav,main{padding-left:16px;padding-right:16px}table{font-size:13px;display:block;overflow-x:auto;white-space:normal}.mermaid{padding:8px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>webmcp-agent — 收斂邊界架構審查報告</h1>
+  <p>產出時間：2026-08-27 ・ 分析範圍：目前工作樹的 Vite React SPA、WebMCP bridge、Chat/IndexedDB persistence 與 local LLM integration</p>
+  <p>依據：<code>AGENTS.md</code>、<code>PLAN.md</code>、目前 source 與 git checkpoint history；未找到正式 ADR、OpenAPI 或 WebMCP schema 文件，未標為「明確契約」的部分均是程式碼推斷。</p>
+</header>
+<nav id="tabs">
+  <button data-tab="overview" class="active">總覽</button><button data-tab="c4">C4 架構</button><button data-tab="modules">模組清單</button><button data-tab="scenarios">情境流程</button><button data-tab="entrypoints">入口清單</button><button data-tab="protocols">通訊協定 / 契約</button><button data-tab="datamodel">資料模型</button><button data-tab="assumptions">假設清單</button><button data-tab="findings">審查發現</button><button data-tab="adr">ADR 草稿</button><button data-tab="diff">差異摘要</button>
+</nav>
+<main>
+  <section id="overview" class="active">
+    <div class="card">
+      <h3>結論先行</h3>
+      <p>目前的收斂邊界大致符合問題規模：單一瀏覽器 SPA、單一 Chat flow、iframe-only WebMCP 與 IndexedDB persistence，沒有證據支持拆成後端服務或微服務。<strong>主要風險不在模組數量，而在跨模組共享的可變 context 與重複的持久化 identity。</strong></p>
+      <p class="callout">建議優先修正兩個一致性缺口：將「一次 user input 的 bridge/agent context」變成不可變 snapshot；明確定義 <code>siteId</code> 與 <code>url</code> 的權威關係並加入 URL drift recovery。其次統一 theme state authority。其餘拆分應等待真實 change coupling 或需求出現。</p>
+    </div>
+    <div class="card">
+      <h3>審查範圍與判斷尺度</h3>
+      <ul>
+        <li>架構尺度：module / single-application；不是 distributed-system redesign。</li>
+        <li>核心 change drivers：WebMCP browser integration、Chat/thread lifecycle、local LLM transport、presentation/UI。</li>
+        <li>品質屬性：目前最相關的是 Reliability、Modifiability、Testability、Security；未見流量或團隊資料，因此不對 Scalability/組織邊界作過度推論。</li>
+        <li>git history 顯示最近以 checkpoint 逐步收斂到 multi-site thread 與 iframe context，說明現有 feature boundary 是實際變更驅動形成，而非純資料夾分類。</li>
+      </ul>
+    </div>
+    <div class="card"><h3>系統情境圖（Context）</h3><div class="mermaid">flowchart LR
+  U["使用者"] --> SPA["webmcp-agent SPA"]
+  SPA --> I["嵌入的 WebMCP iframe"]
+  SPA --> DB[("瀏覽器 IndexedDB")]
+  SPA --> LLM["本地 OpenAI-compatible LLM"]
+  B["瀏覽器 modelContext API"] --> I
+  I --> B
+    </div></div>
+  </section>
+
+  <section id="c4">
+    <div class="card"><h3>Container 圖</h3><div class="mermaid">flowchart TB
+  Browser["Browser runtime"] --> SPA["React 19 + Vite SPA"]
+  SPA --> Frame["Embedded same-origin WebMCP page"]
+  SPA --> IDB[("IndexedDB: webmcp-agent-db-v2")]
+  SPA --> LocalLLM["Local LLM server"]
+  User["User"] --> SPA
+    </div></div>
+    <div class="card"><h3>Component 圖</h3><div class="mermaid">flowchart LR
+  Routes["App routes"] --> Assistant["assistant/index.tsx"]
+  Assistant --> ChatStore["assistant/chat-store.ts"]
+  Assistant --> Workspace["webmcp/workspace.tsx"]
+  Assistant --> Transport["webmcp/transport.ts"]
+  ChatStore --> DB["db.ts / Dexie"]
+  Workspace --> Sites["webmcp/sites.ts"]
+  Workspace --> Bridge["webmcp/bridge.ts"]
+  Transport --> Agent["webmcp/agent.ts"]
+  Agent --> Bridge
+  Bridge --> Iframe["iframe document"]
+  Agent --> LLM["localProvider / local LLM"]
+  Assistant --> UI["assistant components + ui components"]
+    </div></div>
+    <div class="card"><h3>收斂判斷</h3><ul>
+      <li><strong>合理：</strong><code>assistant</code> 是 application orchestration boundary，負責 route、thread lifecycle 與 user flow；<code>webmcp</code> 負責 iframe capability discovery/execution。兩者協作不等於應合併。</li>
+      <li><strong>需要補強：</strong><code>webMcpBridge</code> 是 module-level singleton，卻同時承載 frame identity、discovery state、special prompt state 與 executor。這是明確的生命週期/一致性邊界，不能只靠資料夾名稱保護。</li>
+      <li><strong>不建議：</strong>目前沒有理由引入 service/repository/interface 多層或後端；那會增加 deployment、failure 與 contract cost，卻不解決現有 snapshot/invariant 問題。</li>
+    </ul></div>
+  </section>
+
+  <section id="modules">
+    <div class="card"><h3>Application shell</h3><p><strong>職責：</strong><code>src/main.tsx</code> 啟動 React、theme provider 與 router；<code>src/App.tsx</code> 定義 route 到 Assistant/demo。</p><p><strong>介面：</strong>瀏覽器 URL routes。</p><p><strong>依賴：</strong>React、React Router、ThemeProvider。</p><p><strong>儲存/外部服務：</strong>無直接資料存取。</p></div>
+    <div class="card"><h3>Assistant / Chat lifecycle</h3><p><strong>職責：</strong><code>src/app/assistant/index.tsx</code> 協調 thread 導航、site switching、useChat lifecycle 與 UI；components 負責輸入、訊息呈現與動作。</p><p><strong>介面：</strong><code>/chat</code>、<code>/chat/:threadId</code>、New Thread、send/stop、site selector。</p><p><strong>依賴：</strong>Dexie hooks、AI SDK <code>useChat</code>、WebMcpWorkspace、WebMcpChatTransport。</p><p><strong>儲存/外部服務：</strong>間接使用 IndexedDB、iframe bridge、local LLM。</p></div>
+    <div class="card"><h3>Thread persistence</h3><p><strong>職責：</strong><code>src/app/assistant/chat-store.ts</code> 隱藏 thread/message/site-last-thread 的 Dexie transaction 與查詢。</p><p><strong>介面：</strong><code>createChatThread</code>、<code>getChatThread</code>、<code>getLastChatThread</code>、<code>saveChatMessages</code>。</p><p><strong>依賴：</strong><code>chatDb</code> 與 AI SDK <code>UIMessage</code> 型別。</p><p><strong>儲存/外部服務：</strong>IndexedDB <code>webmcp-agent-db-v2</code>；沒有 migration。</p></div>
+    <div class="card"><h3>WebMCP capability boundary</h3><p><strong>職責：</strong><code>sites.ts</code> 管理 site identity；<code>workspace.tsx</code> 管理 iframe；<code>bridge.ts</code> discovery、special tools、tool adapter；<code>agent.ts</code>/<code>transport.ts</code> 建立每次 input 的 ToolLoopAgent。</p><p><strong>介面：</strong>iframe <code>document.modelContext</code> 或 same-origin test provider；AI SDK <code>ToolSet</code>。</p><p><strong>依賴：</strong>WebMCP browser contract、AI SDK、iframe Window/Document。</p><p><strong>儲存/外部服務：</strong>嵌入網站與 local LLM；目前沒有跨來源實作。</p></div>
+    <div class="card"><h3>Embedded demo provider</h3><p><strong>職責：</strong><code>src/app/webmcp/demo.tsx</code> 在 iframe 內提供兩個 site-specific catalog、tools、instructions、skills 與 visible state。</p><p><strong>介面：</strong>demo routes、native <code>registerTool</code> 或 <code>__webmcpTestProvider</code>。</p><p><strong>依賴：</strong>site registry、React state、WebMCP type contract。</p><p><strong>儲存/外部服務：</strong>只使用 iframe 記憶體 state。</p></div>
+    <div class="card"><h3>Platform/UI services</h3><p><strong>職責：</strong><code>theme-provider.tsx</code> 管理 global theme；<code>sonner.tsx</code> 顯示 toast；<code>markdown.tsx</code> 處理 Markdown/KaTeX/code block；其餘為 shadcn-style primitives。</p><p><strong>介面：</strong>React components/context。</p><p><strong>依賴：</strong>browser localStorage/matchMedia、Sonner、Markdown ecosystem。</p><p><strong>儲存/外部服務：</strong>theme localStorage；無 server。</p></div>
+  </section>
+
+  <section id="scenarios">
+    <div class="card"><h3>情境：首次進入 /chat</h3><p class="empty">觸發條件：使用者開啟沒有 threadId 的 <code>/chat</code>。</p><div class="mermaid">sequenceDiagram
+  participant U as 使用者
+  participant A as Assistant
+  participant S as chat-store
+  participant D as IndexedDB
+  participant R as Router
+  U->>A: 開啟 /chat
+  A->>S: getLastChatThread(default site)
+  S->>D: 讀 siteLastThreads / threads
+  D-->>S: last thread 或空
+  alt 找到 thread
+    S-->>A: thread
+  else 沒有 thread
+    A->>S: createChatThread(new thread)
+    S->>D: transaction 寫 thread + pointer
+    D-->>S: commit
+    S-->>A: new thread
+  end
+  A->>R: navigate /chat/threadId
+  R-->>U: render ChatSession
+    </div></div>
+    <div class="card"><h3>情境：送出訊息並執行 iframe tool</h3><p class="empty">觸發條件：使用者在目前 site 的 Chat Room 送出文字。</p><div class="mermaid">sequenceDiagram
+  participant U as 使用者
+  participant I as ChatInput
+  participant C as useChat
+  participant T as WebMcpChatTransport
+  participant A as ToolLoopAgent
+  participant B as WebMcpBridge
+  participant F as iframe provider
+  participant L as local LLM
+  U->>I: submit text
+  I->>C: sendMessage
+  C->>T: sendMessages(messages, abortSignal)
+  T->>A: create agent
+  A->>B: prepareForUserInput
+  B->>F: execute instructions / skill_list
+  F-->>B: special context
+  T->>L: stream prompt + iframe tools
+  L-->>A: tool call
+  A->>B: executeRegisteredTool
+  B->>F: executeTool in same frame
+  F-->>B: tool result
+  B-->>A: result
+  L-->>C: streamed UI message
+  C-->>I: update chat window
+    </div></div>
+    <div class="card"><h3>情境：切換網站</h3><p class="empty">觸發條件：使用者在 Workspace site selector 選擇另一個 site。</p><div class="mermaid">sequenceDiagram
+  participant U as 使用者
+  participant W as Workspace
+  participant A as Assistant
+  participant S as chat-store
+  participant R as Router
+  participant B as Bridge
+  participant F as 新 iframe
+  U->>W: select next site
+  W->>A: onSiteChange(nextSite)
+  A->>A: stop current generation
+  A->>S: getLastChatThread(nextSite.id)
+  S-->>A: existing thread 或 create new
+  A->>R: navigate next thread
+  R-->>W: remount with next site
+  W->>B: attach(null)
+  W->>F: load next iframe
+  F-->>W: onLoad
+  W->>B: attach(frameWindow)
+  B->>F: await ready + discover tools
+  F-->>B: site-specific tools
+  B-->>W: ready state
+    </div></div>
+    <div class="card"><h3>情境：串流完成後保存訊息</h3><p class="empty">觸發條件：AI SDK stream 正常完成並觸發 <code>onFinish</code>。</p><div class="mermaid">sequenceDiagram
+  participant C as useChat
+  participant A as Assistant
+  participant S as chat-store
+  participant D as IndexedDB
+  C-->>A: onFinish(messages)
+  A->>S: saveChatMessages(threadId, messages)
+  S->>D: transaction read existing records
+  S->>D: bulkPut + delete removed + update thread + pointer
+  D-->>S: commit
+  S-->>A: complete
+    </div></div>
+  </section>
+
+  <section id="entrypoints">
+    <div class="card"><h3>入口總覽</h3><table><thead><tr><th>類型</th><th>入口名稱/路徑</th><th>觸發方式</th><th>完整鏈路摘要</th></tr></thead><tbody>
+      <tr><td>Route</td><td><code>/</code></td><td>開啟 URL</td><td>App → Assistant → default site last thread / new thread → ChatSession。</td></tr>
+      <tr><td>Route</td><td><code>/chat</code></td><td>開啟 URL</td><td>Assistant 建立或載入 default site thread，再 replace navigate 到 thread route。</td></tr>
+      <tr><td>Route</td><td><code>/chat/:threadId</code></td><td>開啟 URL</td><td>Dexie live query → 驗證 thread/site → workspace + chat session；失敗時回到 <code>/chat</code>。</td></tr>
+      <tr><td>Route</td><td><code>/webmcp-demo</code></td><td>開啟 URL</td><td>WebMcpDemo 使用 shop-a default definition，建立 iframe provider。</td></tr>
+      <tr><td>Route</td><td><code>/webmcp-demo/:siteId</code></td><td>開啟 URL</td><td>WebMcpDemo 依 registry siteId 選擇 site-specific catalog/provider。</td></tr>
+      <tr><td>Route</td><td>unknown path <code>*</code></td><td>開啟 URL</td><td>App fallback → Assistant，走 default chat flow。</td></tr>
+      <tr><td>UI</td><td>Send / Shift+Enter</td><td>表單提交 / 鍵盤</td><td>ChatInput → useChat → transport → agent → iframe tools → streamed message。</td></tr>
+      <tr><td>UI</td><td>Cancel</td><td>點擊按鈕</td><td>ChatInput → useChat.stop，停止目前 generation。</td></tr>
+      <tr><td>UI</td><td>New Thread</td><td>點擊按鈕</td><td>Assistant stop → create thread + site pointer → navigate。</td></tr>
+      <tr><td>UI</td><td>Site selector</td><td>選擇 option</td><td>Workspace → Assistant stop → load/create next-site thread → remount iframe/discovery。</td></tr>
+      <tr><td>UI</td><td>Refresh WebMCP tools</td><td>點擊按鈕</td><td>Workspace → bridge.refresh → attach current frame → rediscovery。</td></tr>
+      <tr><td>UI</td><td>Demo product button</td><td>點擊按鈕</td><td>Demo local React state → cart + lastAction visible state。</td></tr>
+      <tr><td>UI</td><td>Copy / Speak</td><td>點擊訊息 action</td><td>ChatWindow → clipboard 或 browser speechSynthesis。</td></tr>
+      <tr><td>External callback</td><td><code>modelContext.getTools</code> / <code>executeTool</code></td><td>Bridge 呼叫 iframe API</td><td>Bridge → iframe document modelContext；若原生 API 不可用則使用 demo test provider。</td></tr>
+      <tr><td>External service</td><td>Local LLM OpenAI-compatible endpoint</td><td>Agent stream</td><td>WebMcpChatTransport → ToolLoopAgent → localProvider；URL 由 Vite env/default 決定。</td></tr>
+      <tr><td>API / CLI / Schedule</td><td>未發現</td><td>—</td><td>本專案為純前端；沒有本地 REST route、CLI、cron、webhook 或 queue consumer。</td></tr>
+    </tbody></table></div>
+    <div class="card"><h3>完整鏈路：核心 send message</h3><div class="mermaid">sequenceDiagram
+  participant UI as ChatInput
+  participant Hook as useChat
+  participant T as WebMcpChatTransport
+  participant Agent as ToolLoopAgent
+  participant Bridge as WebMcpBridge
+  participant Frame as iframe WebMCP
+  participant LLM as Local LLM
+  UI->>Hook: sendMessage(text)
+  Hook->>T: sendMessages
+  T->>Agent: createWebMcpAgent
+  Agent->>Bridge: prepare + build tools/prompt
+  Bridge->>Frame: discover special context
+  Frame-->>Bridge: tools/instructions/skills
+  T->>LLM: stream model messages
+  LLM->>Agent: tool call
+  Agent->>Bridge: execute tool
+  Bridge->>Frame: execute in captured iframe context
+  Frame-->>Bridge: result or ERROR object
+  Bridge-->>Agent: tool result
+  LLM-->>Hook: UIMessage stream
+  Hook-->>UI: render parts
+    </div></div>
+  </section>
+
+  <section id="protocols"><div class="card"><h3>通訊協定總表</h3><table><thead><tr><th>來源</th><th>目的</th><th>協定</th><th>格式</th><th>同步性</th><th>契約狀態</th></tr></thead><tbody>
+    <tr><td>Browser URL</td><td>App / React Router</td><td>History routing</td><td>Path params</td><td>同步</td><td class="contract-no">⚠️ 程式碼推斷</td></tr>
+    <tr><td>Assistant</td><td>IndexedDB</td><td>Dexie API / transaction</td><td>ChatThread, StoredMessage, SiteLastThread</td><td>非同步</td><td class="contract-no">⚠️ 型別與 schema 由程式碼推斷</td></tr>
+    <tr><td>useChat</td><td>WebMcpChatTransport</td><td>AI SDK ChatTransport</td><td>UIMessage / UIMessageChunk</td><td>非同步串流</td><td class="contract-yes">✅ AI SDK TypeScript contract</td></tr>
+    <tr><td>Agent</td><td>Local LLM</td><td>OpenAI-compatible HTTP</td><td>Model messages / streamed result</td><td>非同步串流</td><td class="contract-no">⚠️ env + provider 設定，未找到 OpenAPI 文件</td></tr>
+    <tr><td>Bridge</td><td>iframe modelContext</td><td>WebMCP browser API</td><td>RegisteredTool / JSON input / unknown result</td><td>非同步</td><td class="contract-no">⚠️ 本地型別推斷，未找到正式 schema</td></tr>
+    <tr><td>Bridge</td><td>demo test provider</td><td>Window property callback</td><td>WebMcpTestProvider</td><td>非同步</td><td class="contract-no">⚠️ 測試 fallback contract 由程式碼推斷</td></tr>
+  </tbody></table></div></section>
+
+  <section id="datamodel">
+    <div class="card"><h3>ER 圖（IndexedDB / conceptual）</h3><p class="empty">IndexedDB 沒有資料庫層級 foreign key；下圖的 SITE_REGISTRY 是程式碼中的 <code>webMcpSites</code> 概念，不是 persisted table。</p><div class="mermaid">erDiagram
+  SITE_REGISTRY ||--o{ SITE_LAST_THREADS : identifies
+  CHAT_THREADS ||--o{ STORED_MESSAGES : contains
+  CHAT_THREADS ||--o{ SITE_LAST_THREADS : targets
+  SITE_REGISTRY {
+    string siteId PK
+    string url
+    string name
+  }
+  CHAT_THREADS {
+    string id PK
+    string siteId
+    string url
+    string title
+    number createdAt
+    number updatedAt
+  }
+  STORED_MESSAGES {
+    string id PK
+    string threadId
+    number createdAt
+    number updatedAt
+    UIMessage message
+  }
+  SITE_LAST_THREADS {
+    string siteId PK
+    string threadId
+    number updatedAt
+  }
+    </div></div>
+    <div class="card"><h3>類別/型別關係圖</h3><div class="mermaid">classDiagram
+  class WebMcpSite {
+    +String id
+    +String name
+    +String url
+  }
+  class ChatThread {
+    +String id
+    +String siteId
+    +String url
+    +String title
+    +Number updatedAt
+  }
+  class StoredMessage {
+    +String id
+    +String threadId
+    +UIMessage message
+  }
+  class SiteLastThread {
+    +String siteId
+    +String threadId
+    +Number updatedAt
+  }
+  class WebMcpRegisteredTool {
+    +String name
+    +String description
+    +Unknown inputSchema
+  }
+  class WebMcpBridgeState {
+    +Window frameWindow
+    +WebMcpRegisteredTool tools
+    +String status
+    +String error
+  }
+  WebMcpSite "1" --> "0..*" ChatThread : siteId
+  ChatThread "1" --> "0..*" StoredMessage : threadId
+  WebMcpSite "1" --> "0..1" SiteLastThread : siteId
+  SiteLastThread --> ChatThread : threadId
+  WebMcpBridgeState "1" --> "0..*" WebMcpRegisteredTool : tools
+    </div></div>
+    <div class="card"><h3>資料模型判斷</h3><ul><li><code>siteLastThreads</code> 是明確的一對一 pointer consistency boundary，且 create/save 已使用 transaction，這是目前設計的強項。</li><li><code>ChatThread.siteId</code> 與 <code>ChatThread.url</code> 同時保存，而 registry 另有 <code>WebMcpSite.url</code>，形成跨持久化/程式碼的雙重來源；這是本審查的主要 invariant 風險。</li><li>StoredMessage 直接包住 AI SDK <code>UIMessage</code>，符合目前「thin envelope、保留 SDK runtime」的 scope，但把 persistence schema 綁到供應商型別。</li></ul></div>
+  </section>
+
+  <section id="assumptions"><div class="card"><h3>假設清單</h3><table><thead><tr><th>#</th><th>假設內容</th><th>觀察依據</th><th>風險</th><th>需要確認的問題</th></tr></thead><tbody>
+    <tr><td>1</td><td>同一時間只有一個 active iframe/Chat session 會使用 bridge singleton。</td><td><code>src/app/webmcp/bridge.ts</code> export 單一 <code>webMcpBridge</code> instance；Workspace 以 attach/reset 管理它。</td><td class="risk-high">高</td><td>是否需要支援多 tab、瀏覽器 back/forward 或並行 request？</td></tr>
+    <tr><td>2</td><td>site registry 的 URL 永遠不會改變。</td><td><code>ChatThread.url</code> 持久化後，<code>ChatPage</code> 以 <code>thread.url !== site.url</code> 判 invalid；沒有 repair/migration。</td><td class="risk-high">高</td><td>URL 變更時要保留 thread、修復資料，還是明確顯示不可用？</td></tr>
+    <tr><td>3</td><td>AI generation 只在正常完成後才需要 durable persistence。</td><td><code>useChat</code> 只在 <code>onFinish</code> 呼叫 <code>saveChatMessages</code>。</td><td class="risk-medium">中</td><td>使用者按 Cancel、分頁關閉或網路中斷時，部分對話是否必須保留？</td></tr>
+    <tr><td>4</td><td>只需要同源 demo/fallback，不需要跨來源 WebMCP。</td><td><code>PLAN.md</code> 明確將跨來源整合列為 Out；bridge 直接讀取 frame document。</td><td class="risk-medium">中</td><td>進入真實外部網站前，誰負責 allow/exposedTo/fromOrigins 與 Permissions Policy 驗證？</td></tr>
+    <tr><td>5</td><td>local LLM endpoint 可用，且符合 OpenAI-compatible provider。</td><td><code>src/app/webmcp/agent.ts</code> 使用 env/default URL，沒有 offline/error UX contract。</td><td class="risk-medium">中</td><td>LLM 不可用時是否需要可觀察的 UI 錯誤、重試或健康檢查？</td></tr>
+    <tr><td>6</td><td>目前沒有需要由 app 層攔截的不可逆 tool side effect。</td><td>demo 只有 search、add/reserve、summary；instructions 將 add/reserve 描述為可變更。</td><td class="risk-low">低/待確認</td><td>未來加入 checkout、付款或帳號動作時，confirmation boundary 放在 bridge、tool metadata 還是 UI？</td></tr>
+  </tbody></table></div></section>
+
+  <section id="findings"><div class="filters"><button class="active" data-filter="all">全部</button><button data-filter="red">🔴 缺漏</button><button data-filter="yellow">🟡 過度設計/邊界漂移</button><button data-filter="green">🟢 合理但待確認</button></div><table id="findings-table"><thead><tr><th>分類</th><th>項目</th><th>說明</th><th>位置</th><th>建議動作</th></tr></thead><tbody>
+    <tr data-cat="red"><td><span class="tag tag-red">🔴 缺漏</span></td><td>Thread site identity 有兩個來源</td><td><strong>Observation：</strong><code>ChatThread</code> 同時保存 <code>siteId</code>/<code>url</code>，而 <code>sites.ts</code> 再保存 canonical URL；<code>ChatPage</code> 發現 mismatch 只 redirect 到 <code>/chat</code>。<br><strong>Concern：</strong>registry URL 變更或舊資料漂移時，<code>/chat</code> 會載入同一個 last thread 再被判 invalid，形成 redirect loop，且沒有明確 recovery boundary。<br><strong>Quality：</strong>Reliability、Modifiability。</td><td><code>src/app/types.ts</code><br><code>src/app/assistant/index.tsx:102</code><br><code>src/app/assistant/chat-store.ts:22</code></td><td>先決定 authority：建議以 <code>siteId</code> 作 identity、registry URL 作 current target；對 mismatch 做一次 repair/migration 或顯式 stale state，不要只 redirect。驗證：測試修改 registry URL 後開啟 <code>/chat</code>，不得無限 redirect，且 thread/pointer 結果可預期。</td></tr>
+    <tr data-cat="red"><td><span class="tag tag-red">🔴 缺漏</span></td><td>Agent context 不是一次性的 immutable snapshot</td><td><strong>Observation：</strong><code>createWebMcpAgent</code> 先呼叫 <code>prepareForUserInput</code>，再分別讀取 bridge 的 <code>toolDescriptions</code>、<code>specialPrompt</code>、<code>aiSdkTools</code>；<code>specialContext</code> 與 frame state 都在 singleton 中可變。<br><strong>Concern：</strong>若 attach/refresh/site switch 與 async preparation 交錯，可能出現 A site 的 special prompt 配 B site tools，或舊 preparation 在新 attach 後寫回。這破壞「每次 input 對應當次 iframe context」的不變量。<br><strong>Quality：</strong>Reliability、Testability、Security。</td><td><code>src/app/webmcp/agent.ts:16-44</code><br><code>src/app/webmcp/bridge.ts:51-198</code></td><td>由 bridge 提供單一 <code>prepareAgentContext()</code> 結果，包含 prompt snapshot、tool descriptions、captured frame executor；agent 只消費該 snapshot。Trade-off 是增加一個明確 context type，但減少共享可變 state 與交錯讀取。驗證：並行 attach A/B + prepare，assert prompt/tools/executor 永遠同一 frame。</td></tr>
+    <tr data-cat="yellow"><td><span class="tag tag-yellow">🟡 邊界漂移</span></td><td>Theme 有兩個 state authority</td><td><strong>Observation：</strong>app 使用自製 <code>src/components/ui/theme-provider.tsx</code>；但 <code>src/components/ui/sonner.tsx</code> 從 <code>next-themes</code> 讀 <code>useTheme</code>，而 main 沒有掛載 next-themes provider。<br><strong>Concern：</strong>主畫面 theme 與 toast theme 不是同一個 ownership/context；手動切換或 storage sync 時可能不一致。這是 global state boundary drift，不是單純 import style。<br><strong>Quality：</strong>Modifiability、Reliability。</td><td><code>src/main.tsx:7</code><br><code>src/components/ui/theme-provider.tsx</code><br><code>src/components/ui/sonner.tsx:1-6</code></td><td>選一個 authority：最小變更是 Sonner 使用本地 provider contract，並移除 <code>next-themes</code> 依賴；或整體改用 next-themes。驗證：切換 theme、跨 tab storage event、toast 顯示三者結果一致。</td></tr>
+    <tr data-cat="green"><td><span class="tag tag-green">🟢 合理但待確認</span></td><td>Feature boundary 合理，暫不應再拆分</td><td><strong>Observation：</strong>git checkpoints 顯示變更主要集中在 <code>webmcp</code>、<code>assistant</code>、persistence；Assistant orchestration 與 WebMCP capability 的變更理由不同。<br><strong>Concern：</strong>若以 pipeline adjacency 或檔案大小為理由把 Agent、bridge、workspace 拆成更多 layer，會引入不必要的 contract/coupling。<br><strong>Quality：</strong>Modifiability、Cost、Testability。</td><td><code>src/app/assistant</code><br><code>src/app/webmcp</code><br><code>git log --stat</code></td><td>保留目前 application-level boundary；只在出現第二種 provider、第二個 execution lifecycle 或獨立 ownership 時再拆。驗證：用 git change coupling 觀察新功能是否集中在同一 feature region。</td></tr>
+    <tr data-cat="green"><td><span class="tag tag-green">🟢 合理但待確認</span></td><td>Persistence consistency boundary 是正確方向，但 durability contract 未明確</td><td><strong>Observation：</strong><code>saveChatMessages</code> 將 message bulkPut、刪除舊記錄、更新 thread 與 site pointer 放在同一 transaction；這符合共同 invariant。<br><strong>Concern：</strong>保存只掛在 <code>onFinish</code>，取消、分頁終止、LLM failure 的行為沒有測試/文件佐證。<br><strong>Quality：</strong>Reliability、Testability。</td><td><code>src/app/assistant/chat-store.ts:47-80</code><br><code>src/app/assistant/index.tsx:55-61</code></td><td>先確認產品 durability requirement；若只需 completed exchanges，維持現狀並補 characterization tests；若需 partial recovery，再將 checkpoint/save lifecycle 明確化。不要先把 DB 拆成新服務。</td></tr>
+    <tr data-cat="green"><td><span class="tag tag-green">🟢 合理但待確認</span></td><td>跨來源 WebMCP 是刻意的 scope boundary</td><td><strong>Observation：</strong>AGENTS/PLAN 將跨來源整合列為 out；bridge 直接存取 frame document，原生 modelContext 失敗時才走 same-origin provider。<br><strong>Concern：</strong>若未來把 demo URL 換成外部來源，現有 boundary 不能直接延伸，會涉及 Permissions Policy、origin allowlist 與安全模型。<br><strong>Quality：</strong>Security、Portability、Reliability。</td><td><code>AGENTS.md: WebMCP Agent 邊界</code><br><code>PLAN.md: Scope Out</code><br><code>src/app/webmcp/bridge.ts:22</code></td><td>目前維持 same-origin，不預先加跨來源 abstraction。進入該需求時先建立正式 origin contract 與 browser scenario，再決定 bridge adapter 是否需要分出安全邊界。</td></tr>
+  </tbody></table></div></section>
+
+  <section id="adr">
+    <p class="empty">以下 ADR 是依目前程式碼反推的草稿，並非原作者已確認的決策；需人類補充或修正。</p>
+    <details><summary>ADR-001：以單一 SPA 保持 WebMCP agent 的 application boundary（草稿）</summary><p><strong>背景：</strong>專案是純前端 Vite app，核心能力是瀏覽器中的 Chat、iframe tool bridge 與 local LLM；沒有後端部署、跨團隊 ownership 或高流量證據。</p><p><strong>選項：</strong>1. 維持 single SPA：低部署與 network complexity，但共享 runtime state 要靠 lifecycle contract。2. 拆成 backend/API：可隔離 server policy，但增加 deployment、API contract、failure handling。3. 微服務：不符合目前規模與需求。</p><p><strong>選擇：</strong>維持 single SPA，按 change driver 保持 assistant/webmcp/persistence 的 module boundary。</p><p><strong>取捨：</strong>換得最低必要複雜度與較小 change surface；代價是 bridge singleton 與 browser lifecycle 必須被明確測試。</p></details>
+    <details><summary>ADR-002：以 iframe 當次暴露能力作為 tool boundary（草稿）</summary><p><strong>背景：</strong>AGENTS 明確要求 Chat 只使用當下 iframe 暴露的 tools，且 executor 必須回到同一 frame context。</p><p><strong>選項：</strong>1. bridge snapshot + captured executor：保持 iframe-only boundary。2. 將 tools 複製到 app registry：較容易測試，但會脫離實際網站能力。3. app 自帶 filesystem/network tools：違反 scope 與安全邊界。</p><p><strong>選擇：</strong>保留 iframe-only bridge，補強 immutable context snapshot 與 origin contract。</p><p><strong>取捨：</strong>換得網站能力與 Agent schema 一致；代價是 browser API availability、跨來源政策與 frame lifecycle 需要明確處理。</p></details>
+  </section>
+
+  <section id="diff"><p class="empty">本次是首次架構審查，不是與舊版 HTML/commit 的 diff 模式；以下記錄目前收斂狀態，不代表本輪程式碼變更。</p><div class="card"><h3>目前已收斂</h3><p>single SPA、feature-based assistant/webmcp/persistence boundary、iframe-only tools、per-site last-thread pointer、每次 input 建立 ToolLoopAgent。</p></div><div class="card"><h3>目前未收斂</h3><p>bridge context 的跨 async operation 一致性、thread site URL authority、theme provider authority；這些是後續最小有效改善區域。</p></div><div class="card"><h3>本次不建議新增</h3><p>後端/Hono、微服務、event bus、Repository/Service interface 多層、跨來源 adapter。現有資料不足以證明它們解決當前問題。</p></div></section>
+</main>
+<script>
+  mermaid.initialize({startOnLoad:true,theme:'dark',securityLevel:'loose'});
+  document.querySelectorAll('#tabs button').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('#tabs button').forEach(b=>b.classList.remove('active'));document.querySelectorAll('main section').forEach(s=>s.classList.remove('active'));btn.classList.add('active');document.getElementById(btn.dataset.tab).classList.add('active')}));
+  document.querySelectorAll('.filters button').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.filters button').forEach(b=>b.classList.remove('active'));btn.classList.add('active');const filter=btn.dataset.filter;document.querySelectorAll('#findings-table tbody tr').forEach(tr=>{tr.style.display=filter==='all'||tr.dataset.cat===filter?'':'none'})}));
+</script>
+</body>
+</html>

@@ -1,9 +1,12 @@
 import type { UIMessage } from "ai"
 
-export type ChatThread = {
-  id: string
+export type ThreadSiteTarget = {
   siteId: string
   url: string
+}
+
+export type ChatThread = ThreadSiteTarget & {
+  id: string
   title: string
   pin?: 0 | 1
   customTitle?: string

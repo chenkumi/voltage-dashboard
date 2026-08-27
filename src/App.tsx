@@ -1,25 +1,22 @@
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Outlet, Route, Routes } from 'react-router-dom';
+import { Route, Routes } from 'react-router-dom';
+import { lazy, Suspense } from "react";
 import { Assistant } from "./app/assistant";
-import { WebMcpDemo } from "./app/webmcp/demo";
 
-export const Main = () => {
-    return (<Outlet />)
-};
+const WebMcpDemo = lazy(() =>
+    import("./app/webmcp/demo").then(({ WebMcpDemo }) => ({ default: WebMcpDemo }))
+);
 
 export function App() {
     return (
-        <TooltipProvider>
-            <Routes>
-                <Route path='/chat/:threadId' element={<Assistant />} />
-                <Route path='/chat' element={<Assistant />} />
-                <Route path='/webmcp-demo' element={<WebMcpDemo />} />
-                <Route path='/webmcp-demo/:siteId' element={<WebMcpDemo />} />
-                <Route path='/' element={<Assistant />} />
+        <Routes>
+            <Route path='/chat/:threadId' element={<Assistant />} />
+            <Route path='/chat' element={<Assistant />} />
+            <Route path='/webmcp-demo' element={<Suspense fallback={null}><WebMcpDemo /></Suspense>} />
+            <Route path='/webmcp-demo/:siteId' element={<Suspense fallback={null}><WebMcpDemo /></Suspense>} />
+            <Route path='/' element={<Assistant />} />
 
-                <Route path='*' element={<Assistant />} />
-            </Routes>
-        </TooltipProvider>
+            <Route path='*' element={<Assistant />} />
+        </Routes>
     );
 }
 

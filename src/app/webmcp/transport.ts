@@ -7,7 +7,11 @@ import {
   type UIMessage,
   type UIMessageChunk,
 } from "ai"
-import { mergeMessagesById } from "../assistant/chat-message-state"
+import {
+  mergeMessagesById,
+  withoutReasoningContent,
+  withoutToolCalls,
+} from "../assistant/chat-message-state"
 import { createWebMcpAgent } from "./agent"
 import type { WebMcpSession } from "./session"
 
@@ -28,7 +32,10 @@ export class WebMcpChatTransport implements ChatTransport<UIMessage> {
     const agent = createWebMcpAgent(turn)
     const validationTools = agent.tools as Record<string, Tool<unknown, unknown>>
     const mergedMessages = mergeMessagesById(history, messages)
-    const validatedMessages = await validateUIMessages<UIMessage>({ messages: mergedMessages, tools: validationTools })
+    const validatedMessages = await validateUIMessages<UIMessage>({
+      messages: withoutToolCalls(withoutReasoningContent(mergedMessages)),
+      tools: validationTools,
+    })
     const modelMessages = await convertToModelMessages(validatedMessages, { tools: agent.tools })
     const result = await agent.stream({ prompt: modelMessages, abortSignal })
 

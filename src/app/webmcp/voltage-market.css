@@ -1,0 +1,210 @@
+.voltage-market {
+  --voltage-page: #e9ebe6;
+  --voltage-surface: #f5f6f1;
+  --voltage-surface-muted: #e2e5df;
+  --voltage-border: #cfd3cb;
+  --voltage-ink: #30322e;
+  --voltage-muted: #747872;
+  --voltage-accent: #5d695f;
+  background: var(--voltage-page);
+  color: var(--voltage-ink);
+}
+
+.voltage-market .border-2,
+.voltage-market .border-y-2,
+.voltage-market .border-t-2,
+.voltage-market .border-l-2 {
+  border-color: var(--voltage-border);
+  border-width: 1px;
+}
+
+.voltage-market .rounded-none {
+  border-radius: 0.75rem;
+}
+
+.voltage-market [class*="shadow-"] {
+  box-shadow: none;
+}
+
+.voltage-market input,
+.voltage-market select,
+.voltage-market textarea {
+  border-color: var(--voltage-border);
+  border-width: 1px;
+  border-radius: 0.625rem;
+  background: var(--voltage-surface);
+}
+
+.voltage-market input:focus,
+.voltage-market select:focus,
+.voltage-market textarea:focus {
+  background: #fff;
+  --tw-ring-color: #6f7d72;
+}
+
+.voltage-market > .max-w-7xl > header {
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding: 0 0 2rem;
+}
+
+.voltage-market > .max-w-7xl > header > div > button > span:first-child {
+  border-radius: 9999px;
+  background: var(--voltage-surface-muted);
+  color: var(--voltage-accent);
+}
+
+.voltage-market > .max-w-7xl > header nav button {
+  border: 0;
+  background: transparent;
+  color: var(--voltage-muted);
+  font-weight: 600;
+  text-transform: none;
+}
+
+.voltage-market > .max-w-7xl > header nav button:hover,
+.voltage-market > .max-w-7xl > header nav button:focus-visible {
+  background: var(--voltage-surface-muted);
+  color: var(--voltage-ink);
+}
+
+.voltage-market [aria-label="Voltage Market 商品目錄"] > div:first-child {
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  color: var(--voltage-ink);
+}
+
+.voltage-market [aria-label="Voltage Market 商品目錄"] > div:first-child > div:first-child {
+  padding: 2.5rem 0;
+}
+
+.voltage-market [aria-label="Voltage Market 商品目錄"] > div:first-child h1,
+.voltage-market [aria-label="購物車"] h1,
+.voltage-market [aria-label="模擬結帳"] h1,
+.voltage-market [aria-label="訂單紀錄"] h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 400;
+  letter-spacing: -0.06em;
+}
+
+.voltage-market [aria-label="Voltage Market 商品目錄"] > div:first-child > div:last-child {
+  border-radius: 1rem;
+  background: var(--voltage-surface-muted);
+  color: var(--voltage-ink);
+}
+
+.voltage-market [aria-label="Voltage Market 商品目錄"] > div:first-child > div:last-child > div {
+  border: 0;
+  border-radius: 0.75rem;
+  background: var(--voltage-surface);
+  box-shadow: none;
+}
+
+.voltage-market [aria-label="Voltage Market 商品目錄"] > section {
+  border: 0;
+  border-top: 1px solid var(--voltage-border);
+  background: transparent;
+  padding: 1.25rem 0;
+}
+
+.voltage-market [aria-label="Voltage Market 商品目錄"] > section label {
+  color: var(--voltage-muted);
+  font-weight: 600;
+}
+
+.voltage-market .voltage-product-grid article {
+  transition: transform 200ms ease;
+}
+
+.voltage-market .voltage-product-grid article:hover {
+  transform: translateY(-3px);
+}
+
+.voltage-market .voltage-product-grid img {
+  transition: transform 200ms ease;
+}
+
+.voltage-market .voltage-product-grid article:hover img {
+  transform: scale(1.035);
+}
+
+.voltage-market [aria-label="購物車"] article,
+.voltage-market [aria-label="訂單紀錄"] article,
+.voltage-market [aria-label="模擬結帳"] form {
+  border: 0;
+  border-radius: 1rem;
+  background: var(--voltage-surface);
+  box-shadow: none;
+}
+
+.voltage-market [aria-label="購物車"] aside,
+.voltage-market [aria-label="模擬結帳"] aside {
+  border: 0;
+  border-radius: 1rem;
+  background: var(--voltage-surface-muted);
+  box-shadow: none;
+}
+
+.voltage-market [aria-label="訂單紀錄"] article > div:first-child,
+.voltage-market [aria-label="模擬結帳"] fieldset {
+  border-color: var(--voltage-border);
+}
+
+.voltage-market .bg-pink-500,
+.voltage-market .bg-zinc-950 {
+  background: var(--voltage-accent);
+}
+
+.voltage-market .bg-white,
+.voltage-market .bg-zinc-100 {
+  background: var(--voltage-surface);
+}
+
+.voltage-market .bg-amber-300,
+.voltage-market .bg-pink-50,
+.voltage-market .bg-zinc-200 {
+  background: var(--voltage-surface-muted);
+}
+
+.voltage-market .text-zinc-950 {
+  color: var(--voltage-ink);
+}
+
+.voltage-market .text-zinc-600,
+.voltage-market .text-zinc-500 {
+  color: var(--voltage-muted);
+}
+
+.voltage-market .bg-pink-100 {
+  background: #e9eeea;
+}
+
+.voltage-market .text-pink-900 {
+  color: #6d4b43;
+}
+
+.voltage-market .text-pink-600,
+.voltage-market .text-pink-700 {
+  color: var(--voltage-accent);
+}
+
+.voltage-market .hover\:bg-pink-600:hover,
+.voltage-market .hover\:bg-zinc-800:hover {
+  background: #4b574d;
+}
+
+.voltage-market .hover\:bg-pink-100:hover {
+  background: var(--voltage-surface-muted);
+}
+
+@media (max-width: 640px) {
+  .voltage-market [aria-label="Voltage Market 商品目錄"] > div:first-child > div:first-child {
+    padding: 1.5rem 0;
+  }
+
+  .voltage-market .voltage-product-grid {
+    gap: 1.5rem 0.625rem;
+  }
+}

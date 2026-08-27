@@ -1,10 +1,12 @@
 import { cn } from "@/lib/utils";
-import React, { useId, useMemo } from "react";
-import ReactMarkdown, { type Components } from "react-markdown";
+import React, { useEffect, useId, useMemo, useState } from "react";
+import mermaid from "mermaid";
+import ReactMarkdown, { Components } from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkMath from "remark-math";
 import remarkGfm from 'remark-gfm'
 import { CodeBlock } from 'react-code-block';
+
 interface HeaderRange {
     min_header_level: number | null;
     max_header_level: number | null;
@@ -12,6 +14,14 @@ interface HeaderRange {
 
 const getCodeLanguage = (className?: string) => {
     return /(?:^|\s)language-([^\s]+)/.exec(className ?? "")?.[1]?.toLowerCase();
+};
+
+let isMermaidInitialized = false;
+
+const decodeHtmlEntities = (value: string) => {
+    const textarea = document.createElement("textarea");
+    textarea.innerHTML = value;
+    return textarea.value;
 };
 
 function getMarkdownHeaderRange(markdown: string): HeaderRange {
@@ -85,6 +95,73 @@ function MarkdownCodeBlock({ src, className, language }:{src:string, className?:
   );
 }
 
+function MermaidDiagram({ src }: { src: string }) {
+    const generatedId = useId();
+    const diagramId = useMemo(
+        () => `mermaid-${generatedId.replace(/[^a-zA-Z0-9_-]/g, "")}`,
+        [generatedId]
+    );
+    const [svg, setSvg] = useState("");
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+        let isMounted = true;
+
+        const renderDiagram = async () => {
+            try {
+                if (!isMermaidInitialized) {
+                    mermaid.initialize({
+                        startOnLoad: false,
+                        securityLevel: "strict",
+                        theme: "dark",
+                    });
+                    isMermaidInitialized = true;
+                }
+
+                const { svg: renderedSvg } = await mermaid.render(
+                    diagramId,
+                    decodeHtmlEntities(src)
+                );
+
+                if (isMounted) {
+                    setSvg(renderedSvg);
+                    setError(null);
+                }
+            } catch (renderError) {
+                if (isMounted) {
+                    setSvg("");
+                    setError(
+                        renderError instanceof Error
+                            ? renderError.message
+                            : "Mermaid diagram render failed"
+                    );
+                }
+            }
+        };
+
+        renderDiagram();
+
+        return () => {
+            isMounted = false;
+        };
+    }, [diagramId, src]);
+
+    if (error) {
+        return (
+            <div className="my-2 rounded-sm border border-destructive/40 bg-destructive/10 px-2 py-1.5 text-sm text-destructive">
+                {error}
+            </div>
+        );
+    }
+
+    return (
+        <div
+            className="my-2 overflow-auto rounded-sm border bg-background/70 px-3 py-2 text-foreground"
+            dangerouslySetInnerHTML={{ __html: svg }}
+        />
+    );
+}
+
 const DefaultPartStyle = "my-1";
 
 export const Markdown = ({
@@ -133,10 +210,10 @@ export const Markdown = ({
         const headerStyles = getDynamicHeaderStyles(styleMaxHeaderLevel);
 
         // 3. 建立標籤轉換映射與渲染器
-        const headerRenderers = parentHeaderRenderers ?? ([1, 2, 3, 4, 5, 6] as const).reduce((acc, level) => {
+        const headerRenderers = parentHeaderRenderers ?? ([1, 2, 3, 4, 5, 6] as const).reduce<Partial<Components>>((acc, level) => {
             const OriginalTag = `h${level}` as const;
 
-            acc[OriginalTag] = ({ children: nodeChildren }: React.ComponentProps<"h1">) => {
+            acc[OriginalTag] = ({ children: nodeChildren }: React.ComponentPropsWithoutRef<"h1">) => {
                 // 計算平移後的實際等級，最大限制為 6
                 const targetLevel = Math.min(6, level + offset);
                 const TargetTag = `h${targetLevel}` as const;
@@ -151,18 +228,18 @@ export const Markdown = ({
                 }, nodeChildren);
             };
             return acc;
-        }, {} as Partial<Components>);
+        }, {});
 
         return {
             ...headerRenderers,
             hr: () => <div className="my-4 w-full h-px bg-foreground/20" />,
             p: ({ children }) => <div className={cn("text-base", DefaultPartStyle)}>{children}</div>,
-            ol: ({ children }) => <ol className="list-decimal text-base ml-6 my-2">{children}</ol>,
-            ul: ({ children }) => <ul className="list-disc text-base ml-6 my-2">{children}</ul>,
+            ol: ({ children }) => <ol className="list-decimal text-base ml-8 my-2">{children}</ol>,
+            ul: ({ children }) => <ul className="list-disc text-base ml-8 my-2">{children}</ul>,
             defs: ({ children }) => <div className={cn("text-base", DefaultPartStyle)}>{children}</div>,
             pre:  ({ children }) => <>{children}</>,
             strong:  ({ children }) => <strong className={cn("text-base font-semibold", DefaultPartStyle)}>{children}</strong>,
-            table: ({ children }) => <div className="rounded-sm overflow-hidden border"><table className="rounded-sm bg-background/70 text-foreground/90">{children}</table></div>,
+            table: ({ children }) => <div className="rounded-sm overflow-hidden border"><table width="100%" className="rounded-sm bg-background/70 text-foreground/90">{children}</table></div>,
             tr: ({ children }) => <tr className="border-b last:border-b-0">{children}</tr>,
             thead: ({ children }) => <thead className="border-b">{children}</thead>,
             th: ({ children }) => <th className="px-2 py-1.5 border-r last:border-r-0">{children}</th>,
@@ -183,6 +260,14 @@ export const Markdown = ({
                             {children}
                         </span>
                     );
+                }
+
+                if (language === "mermaid") {
+                    return <MermaidDiagram src={codeContent} />;
+                }
+
+                if (language && language.toLowerCase()==='html') {
+                    return <div dangerouslySetInnerHTML={{ __html: children.replace(/&lt;/g, '<').replace(/&gt;/g, '>') }}/>;
                 }
 
                 if (language && textLanguages.has(language)) {

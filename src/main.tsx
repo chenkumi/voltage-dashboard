@@ -1,10 +1,10 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import { BrowserRouter } from "react-router";
+import { BrowserRouter } from "react-router-dom";
 import "katex/dist/katex.min.css";
 import './index.css'
 
-import { ThemeProvider } from "@/components/ui/theme-provider";
+import { ThemeProvider } from "@/app/theme";
 import App from "./App";
 
 

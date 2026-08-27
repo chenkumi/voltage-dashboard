@@ -4,7 +4,9 @@ import {
   mergeMessagesById,
   mergeMessageIds,
   persistableMessagesForTurn,
+  withoutReasoningContent,
   withoutDiscardedAssistantMessages,
+  withoutToolCalls,
 } from "./chat-message-state"
 
 const message = (id: string, role: UIMessage["role"], text: string): UIMessage => ({
@@ -48,6 +50,63 @@ describe("chat message state", () => {
       [persistedUser, persistedAssistant],
       [liveUser, liveAssistant],
     )).toEqual([persistedUser, persistedAssistant, liveAssistant])
+  })
+
+  it("removes reasoning parts before persistence or model requests", () => {
+    const assistant: UIMessage = {
+      id: "assistant-1",
+      role: "assistant",
+      parts: [
+        { type: "reasoning", text: "Private chain of thought" },
+        { type: "text", text: "Public answer" },
+      ],
+    }
+
+    expect(withoutReasoningContent([assistant])).toEqual([
+      {
+        ...assistant,
+        parts: [{ type: "text", text: "Public answer" }],
+      },
+    ])
+    expect(assistant.parts).toHaveLength(2)
+  })
+
+  it("removes tool calls and results from model history", () => {
+    const assistant: UIMessage = {
+      id: "assistant-1",
+      role: "assistant",
+      parts: [
+        {
+          type: "dynamic-tool",
+          toolCallId: "call-1",
+          toolName: "search_catalog",
+          state: "input-available",
+          input: { query: "headphones" },
+        },
+        { type: "text", text: "I found some options." },
+      ],
+    }
+    const toolOnlyAssistant: UIMessage = {
+      id: "assistant-2",
+      role: "assistant",
+      parts: [
+        {
+          type: "dynamic-tool",
+          toolCallId: "call-2",
+          toolName: "search_catalog",
+          state: "output-available",
+          input: { query: "headphones" },
+          output: { items: [] },
+        },
+      ],
+    }
+
+    expect(withoutToolCalls([assistant, toolOnlyAssistant])).toEqual([
+      {
+        ...assistant,
+        parts: [{ type: "text", text: "I found some options." }],
+      },
+    ])
   })
 
 })

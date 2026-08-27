@@ -1,0 +1,317 @@
+.voltage-admin {
+  --admin-page: #e9ebe6;
+  --admin-surface: #f5f6f1;
+  --admin-muted: #e2e5df;
+  --admin-border: #cfd3cb;
+  --admin-ink: #30322e;
+  --admin-subtle: #747872;
+  background: var(--admin-page);
+  color: var(--admin-ink);
+}
+
+.voltage-admin-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid var(--admin-border);
+}
+
+.voltage-admin-brand {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.voltage-admin-brand > span:first-child {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  place-items: center;
+  border-radius: 9999px;
+  background: var(--admin-muted);
+  color: #5d695f;
+}
+
+.voltage-admin-brand small,
+.voltage-admin-brand strong {
+  display: block;
+}
+
+.voltage-admin-brand small,
+.voltage-admin-nav > p,
+.voltage-admin-title > p,
+.voltage-admin-panel-heading p {
+  color: var(--admin-subtle);
+  font-size: 0.67rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.voltage-admin-brand strong {
+  font-size: 1rem;
+}
+
+.voltage-admin-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.voltage-admin-nav > div {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.voltage-admin-nav button {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.7rem;
+  color: var(--admin-subtle);
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-align: left;
+  transition:
+    background 200ms ease,
+    color 200ms ease;
+}
+
+.voltage-admin-nav button:hover,
+.voltage-admin-nav button.is-active {
+  background: var(--admin-muted);
+  color: var(--admin-ink);
+}
+
+.voltage-admin-nav button span {
+  min-width: 1.2rem;
+  padding: 0.1rem 0.35rem;
+  margin-left: auto;
+  border-radius: 9999px;
+  background: #d5ddd6;
+  color: #526155;
+  font-size: 0.67rem;
+  text-align: center;
+}
+
+.voltage-admin-nav aside {
+  display: grid;
+  gap: 0.55rem;
+  padding: 0.9rem;
+  margin-top: 0.5rem;
+  border-radius: 0.9rem;
+  background: var(--admin-muted);
+  color: #5d695f;
+}
+
+.voltage-admin-nav aside p {
+  color: var(--admin-subtle);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+
+.voltage-admin-title {
+  margin-bottom: 1.5rem;
+}
+
+.voltage-admin-title h1 {
+  margin-top: 0.4rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  font-weight: 400;
+  letter-spacing: -0.06em;
+  line-height: 0.95;
+}
+
+.voltage-admin-title > span {
+  display: block;
+  max-width: 38rem;
+  margin-top: 0.85rem;
+  color: var(--admin-subtle);
+  font-size: 0.875rem;
+  line-height: 1.55;
+}
+
+.voltage-admin-metric,
+.voltage-admin-panel,
+.voltage-admin-customer {
+  border-radius: 1rem;
+  background: var(--admin-surface);
+}
+
+.voltage-admin-metric {
+  padding: 1.1rem;
+}
+
+.voltage-admin-metric span,
+.voltage-admin-metric small {
+  display: block;
+  color: var(--admin-subtle);
+  font-size: 0.75rem;
+}
+
+.voltage-admin-metric strong {
+  display: block;
+  margin: 0.5rem 0 0.2rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.8rem;
+  font-weight: 400;
+  letter-spacing: -0.05em;
+}
+
+.voltage-admin-panel {
+  padding: 1.25rem;
+}
+
+.voltage-admin-panel-heading,
+.voltage-admin-list-row,
+.voltage-admin-list-row > span:last-child,
+.voltage-admin-customer > div,
+.voltage-admin-alert-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.voltage-admin-panel-heading h2 {
+  margin-top: 0.25rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.45rem;
+  font-weight: 400;
+  letter-spacing: -0.04em;
+}
+
+.voltage-admin-list-row,
+.voltage-admin-alert-row {
+  padding: 0.8rem 0;
+  border-top: 1px solid var(--admin-border);
+  font-size: 0.8rem;
+}
+
+.voltage-admin-list-row > span:first-child small,
+.voltage-admin-list-row > span:first-child strong,
+table td strong,
+table td small {
+  display: block;
+}
+
+.voltage-admin-list-row small,
+table td small,
+.voltage-admin-customer p {
+  margin-top: 0.18rem;
+  color: var(--admin-subtle);
+  font-size: 0.7rem;
+}
+
+.voltage-admin-alert {
+  background: #edf0ea;
+}
+
+.voltage-admin-alert-row {
+  color: var(--admin-subtle);
+}
+
+.voltage-admin-alert-row strong {
+  color: #8b5d3c;
+  font-size: 0.75rem;
+}
+
+.voltage-admin-search {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0 0.8rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 0.7rem;
+  background: var(--admin-surface);
+  color: var(--admin-subtle);
+}
+
+.voltage-admin-search input,
+table input {
+  width: 100%;
+  min-height: 2.6rem;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--admin-ink);
+  font-size: 0.875rem;
+}
+
+table {
+  width: 100%;
+  min-width: 42rem;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+th,
+td {
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid var(--admin-border);
+  font-size: 0.8rem;
+}
+
+th {
+  color: var(--admin-subtle);
+  font-size: 0.67rem;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+table input {
+  width: 5rem;
+  min-height: 2rem;
+  padding: 0 0.4rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 0.45rem;
+  background: #fff;
+}
+
+.voltage-admin-customer {
+  padding: 1.1rem;
+}
+
+.voltage-admin-customer > strong {
+  display: block;
+  margin-top: 1.8rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.7rem;
+  font-weight: 400;
+  letter-spacing: -0.05em;
+}
+
+@media (max-width: 1023px) {
+  .voltage-admin-nav {
+    overflow-x: auto;
+    flex-direction: row;
+    align-items: center;
+    padding-bottom: 0.4rem;
+  }
+
+  .voltage-admin-nav > p,
+  .voltage-admin-nav aside {
+    display: none;
+  }
+
+  .voltage-admin-nav > div {
+    display: flex;
+  }
+
+  .voltage-admin-nav button {
+    width: auto;
+    white-space: nowrap;
+  }
+}
