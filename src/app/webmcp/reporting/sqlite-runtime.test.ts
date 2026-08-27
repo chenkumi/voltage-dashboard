@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest"
-import { SqliteReportingRuntime } from "./sqlite-runtime"
+import {
+  SqliteReportingRuntime,
+  SqliteReportingRuntimeError,
+} from "./sqlite-runtime"
 import type {
   ReportingWorkerPort,
   ReportingWorkerRequest,
@@ -144,17 +147,52 @@ describe("SqliteReportingRuntime", () => {
     )
   })
 
-  it("propagates worker initialization failures", async () => {
+  it("normalizes worker initialization failures without exposing internals", async () => {
     const worker = new FakeWorker()
     const runtime = new SqliteReportingRuntime(() => worker)
     const initialized = runtime.initialize()
     worker.fail("WASM asset failed to load")
 
-    await expect(initialized).rejects.toThrow("WASM asset failed to load")
+    await expect(initialized).rejects.toEqual(
+      new SqliteReportingRuntimeError(
+        "SQLITE_WORKER_ERROR",
+        "SQLite reporting worker failed."
+      )
+    )
     await runtime.dispose()
     expect(worker.terminateCalls).toBe(1)
-    await expect(runtime.execute({ sql: "SELECT 1" })).rejects.toThrow(
-      "WASM asset failed to load"
+    await expect(runtime.execute({ sql: "SELECT 1" })).rejects.toEqual(
+      new SqliteReportingRuntimeError(
+        "SQLITE_WORKER_ERROR",
+        "SQLite reporting worker failed."
+      )
+    )
+  })
+
+  it("preserves safe worker query error categories", async () => {
+    const worker = new FakeWorker()
+    const runtime = new SqliteReportingRuntime(() => worker)
+    const query = runtime.execute({ sql: "DELETE FROM agent_inventory" })
+    const init = nextRequest(worker, "init")
+    worker.respond({ id: init.id, type: "ready" })
+    await vi.waitFor(() =>
+      expect(worker.requests.some((item) => item.type === "execute")).toBe(true)
+    )
+    const execute = nextRequest(worker, "execute")
+    worker.respond({
+      id: execute.id,
+      type: "error",
+      error: {
+        category: "SQL_POLICY_ERROR",
+        message: "Only SELECT or WITH queries are allowed.",
+      },
+    })
+
+    await expect(query).rejects.toEqual(
+      new SqliteReportingRuntimeError(
+        "SQL_POLICY_ERROR",
+        "Only SELECT or WITH queries are allowed."
+      )
     )
   })
 })

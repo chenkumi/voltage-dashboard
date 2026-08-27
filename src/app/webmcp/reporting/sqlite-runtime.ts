@@ -15,6 +15,16 @@ type PendingRequest = {
 
 type WorkerFactory = () => ReportingWorkerPort
 
+export class SqliteReportingRuntimeError extends Error {
+  constructor(
+    readonly category: string,
+    message: string
+  ) {
+    super(message)
+    this.name = "SqliteReportingRuntimeError"
+  }
+}
+
 const createWorker: WorkerFactory = () =>
   new Worker(new URL("./sqlite-worker.ts", import.meta.url), {
     type: "module",
@@ -112,14 +122,23 @@ export class SqliteReportingRuntime {
     this.pending.delete(response.id)
     pending.removeAbortListener?.()
     if (response.type === "error") {
-      pending.reject(new Error(response.error.message))
+      pending.reject(
+        new SqliteReportingRuntimeError(
+          response.error.category,
+          response.error.message
+        )
+      )
       return
     }
     pending.resolve(response)
   }
 
   private handleError = (event: ErrorEvent) => {
-    this.failure = new Error(event.message || "SQLite reporting worker failed.")
+    event.preventDefault?.()
+    this.failure = new SqliteReportingRuntimeError(
+      "SQLITE_WORKER_ERROR",
+      "SQLite reporting worker failed."
+    )
     this.rejectPending(this.failure)
     this.worker.removeEventListener("message", this.handleMessage)
     this.worker.removeEventListener("error", this.handleError)
