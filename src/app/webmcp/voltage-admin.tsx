@@ -10,7 +10,14 @@ import {
   Sparkles,
   Users,
 } from "lucide-react"
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { useWebMcpNavigation } from "./navigation"
@@ -31,6 +38,7 @@ import {
   type VoltageAdminInventory,
 } from "./voltage-admin-data"
 import { voltageProductById } from "./voltage-market-data"
+import { SqliteReportingRuntime } from "./reporting/sqlite-runtime"
 import "./voltage-admin.css"
 
 type VoltageAdminView =
@@ -202,7 +210,8 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
 
 const useVoltageAdminWebMcpTools = (
   toolDefinitions: WebMcpRegisteredTool[],
-  executeTool: (name: string, args: Record<string, unknown>) => Promise<unknown>
+  executeTool: (name: string, args: Record<string, unknown>) => Promise<unknown>,
+  prepareProvider?: () => Promise<void>
 ) => {
   const executeRef = useRef(executeTool)
 
@@ -214,6 +223,9 @@ const useVoltageAdminWebMcpTools = (
     const modelContext = (document as WebMcpDocument).modelContext
     const controller = new AbortController()
     const registerTools = async () => {
+      await prepareProvider?.()
+      if (controller.signal.aborted) return
+
       if (modelContext?.registerTool) {
         try {
           await Promise.all(
@@ -260,7 +272,7 @@ const useVoltageAdminWebMcpTools = (
       delete currentWindow.__webmcpReady
       delete currentWindow.__webmcpTestProvider
     }
-  }, [toolDefinitions])
+  }, [prepareProvider, toolDefinitions])
 }
 
 const statusClass = (status: string) => {
@@ -293,6 +305,24 @@ const DataTable = ({ children }: { children: React.ReactNode }) => (
 )
 
 export const VoltageAdminDemo = () => {
+  const reportingRuntimeRef = useRef<SqliteReportingRuntime | null>(null)
+  const prepareReportingRuntime = useCallback(async () => {
+    let runtime = reportingRuntimeRef.current
+    if (!runtime) {
+      runtime = new SqliteReportingRuntime()
+      reportingRuntimeRef.current = runtime
+    }
+    await runtime.initialize()
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      const runtime = reportingRuntimeRef.current
+      reportingRuntimeRef.current = null
+      void runtime?.dispose()
+    }
+  }, [])
+
   const { view, setView, goBack, goForward, getNavigationState } =
     useWebMcpNavigation<VoltageAdminView>("dashboard")
   const [inventory, setInventory] = useState<VoltageAdminInventory>(
@@ -440,7 +470,11 @@ export const VoltageAdminDemo = () => {
     return { status: "NOT_FOUND", message: "Unknown tool." }
   }
 
-  useVoltageAdminWebMcpTools(VOLTAGE_ADMIN_TOOLS, executeTool)
+  useVoltageAdminWebMcpTools(
+    VOLTAGE_ADMIN_TOOLS,
+    executeTool,
+    prepareReportingRuntime
+  )
 
   const navigation = [
     ["dashboard", "Dashboard", LayoutDashboard],
