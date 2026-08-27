@@ -129,6 +129,21 @@ export class ReportStateStore {
     return freezeWidget(widget)
   }
 
+  updateWidgetTitle(widgetId: string, title: string) {
+    const report = this.requireReport()
+    const index = report.widgets.findIndex((widget) => widget.id === widgetId)
+    if (index < 0) this.throwWidgetNotFound()
+    const widgets = [...report.widgets]
+    widgets[index] = { ...widgets[index], title } as ReportWidget
+    this.report = freezeReport({
+      ...report,
+      widgets,
+      updatedAt: this.now(),
+    })
+    this.emit()
+    return widgets[index]
+  }
+
   moveWidget(widgetId: string, toIndex: number) {
     const report = this.requireReport()
     const fromIndex = report.widgets.findIndex(

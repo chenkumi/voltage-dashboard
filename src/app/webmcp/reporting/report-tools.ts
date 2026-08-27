@@ -1,7 +1,7 @@
 import type { WebMcpRegisteredTool } from "../types"
 import { QueryResultCache } from "./query-cache"
 import { ReportStateError, ReportStateStore } from "./report-state"
-import type { NewReportWidget, ReportPeriod, SqlQueryResult } from "./types"
+import type { CachedQueryResult, NewReportWidget, ReportPeriod } from "./types"
 
 const schema = (
   properties: Record<string, unknown>,
@@ -208,6 +208,12 @@ const assertSafeString = (value: unknown, label: string, maxLength: number) => {
   return value.trim()
 }
 
+export const validateReportTitle = (value: unknown) =>
+  assertSafeString(value, "Report title", 120)
+
+export const validateReportWidgetTitle = (value: unknown) =>
+  assertSafeString(value, "Widget title", 120)
+
 const assertMarkdown = (value: unknown) => {
   const markdown = assertSafeString(value, "Widget markdown", 4_000)
   if (
@@ -231,13 +237,15 @@ const assertColumnName = (value: unknown) => {
 }
 
 const assertColumn = (
-  result: SqlQueryResult,
+  result: CachedQueryResult,
   name: string,
   numeric = false
 ) => {
   const column = result.columns.find((candidate) => candidate.name === name)
   if (!column)
-    throwArgumentError("Widget references a column that is not in the query.")
+    return throwArgumentError(
+      "Widget references a column that is not in the query."
+    )
   if (numeric && column.type !== "number")
     throwArgumentError("Widget value columns must be numeric.")
 }
@@ -276,7 +284,7 @@ const parseWidget = (
 ): NewReportWidget => {
   const input = assertObject(value, "Widget")
   const type = input.type
-  const title = assertSafeString(input.title, "Widget title", 120)
+  const title = validateReportWidgetTitle(input.title)
 
   if (type === "text") {
     assertKeys(
@@ -353,7 +361,7 @@ export const executeReportAuthoringTool = (
   if (name === "create_report") {
     const input = assertRootInput(args, ["title", "audience", "period"])
     const report = reportState.createReport({
-      title: assertSafeString(input.title, "Report title", 120),
+      title: validateReportTitle(input.title),
       audience:
         input.audience === undefined
           ? undefined

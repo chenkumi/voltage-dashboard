@@ -4,6 +4,7 @@ import {
   ChevronRight,
   CircleAlert,
   ClipboardList,
+  FileChartColumn,
   LayoutDashboard,
   PackageSearch,
   Search,
@@ -52,10 +53,11 @@ import {
   isReportAuthoringTool,
   REPORT_AUTHORING_TOOLS,
 } from "./reporting/report-tools"
+import { ReportCanvas } from "./reporting/report-canvas"
 import "./voltage-admin.css"
 
 type VoltageAdminView =
-  "dashboard" | "products" | "orders" | "customers" | "inventory"
+  "dashboard" | "products" | "orders" | "customers" | "inventory" | "reports"
 
 const schema = (
   properties: Record<string, unknown>,
@@ -84,7 +86,8 @@ const isSection = (value: unknown): value is VoltageAdminView =>
   value === "products" ||
   value === "orders" ||
   value === "customers" ||
-  value === "inventory"
+  value === "inventory" ||
+  value === "reports"
 
 // Exported for WebMCP capability and privacy-boundary tests.
 // eslint-disable-next-line react-refresh/only-export-components
@@ -167,12 +170,19 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "open_voltage_admin_section",
     description:
-      "用途：開啟後台管理區塊。何時呼叫：使用者要切換 Dashboard、Products、Orders、Customers 或 Inventory 時。觸發例子：「開啟商品管理」、「帶我到庫存」、「查看客戶」、「前往訂單」。不該呼叫：用來建立、確認或取消訂單時。",
+      "用途：開啟後台管理區塊。何時呼叫：使用者要切換 Dashboard、Products、Orders、Customers、Inventory 或 Reports 時。觸發例子：「開啟商品管理」、「帶我到庫存」、「查看報表」、「前往訂單」。不該呼叫：用來建立、確認或取消訂單時。",
     inputSchema: schema(
       {
         section: {
           type: "string",
-          enum: ["dashboard", "products", "orders", "customers", "inventory"],
+          enum: [
+            "dashboard",
+            "products",
+            "orders",
+            "customers",
+            "inventory",
+            "reports",
+          ],
         },
       },
       ["section"]
@@ -323,20 +333,16 @@ const DataTable = ({ children }: { children: React.ReactNode }) => (
 )
 
 export const VoltageAdminDemo = () => {
-  const reportingControllerRef = useRef<ReportingRuntimeController | null>(null)
-  if (reportingControllerRef.current == null) {
-    reportingControllerRef.current = new ReportingRuntimeController()
-  }
+  const [reportingController] = useState(() => new ReportingRuntimeController())
   const prepareReportingRuntime = useCallback(async () => {
-    await reportingControllerRef.current?.prepare()
-  }, [])
+    await reportingController.prepare()
+  }, [reportingController])
 
   useEffect(() => {
     return () => {
-      const controller = reportingControllerRef.current
-      void controller?.dispose()
+      void reportingController.dispose()
     }
-  }, [])
+  }, [reportingController])
 
   const { view, setView, goBack, goForward, getNavigationState } =
     useWebMcpNavigation<VoltageAdminView>("dashboard")
@@ -364,18 +370,10 @@ export const VoltageAdminDemo = () => {
 
   const executeTool = async (name: string, args: Record<string, unknown>) => {
     if (name === EXECUTE_READONLY_SQL_TOOL_NAME) {
-      const controller = reportingControllerRef.current
-      if (!controller) {
-        throw new Error("SQLite reporting runtime is not ready.")
-      }
-      return controller.execute(args)
+      return reportingController.execute(args)
     }
     if (isReportAuthoringTool(name)) {
-      const controller = reportingControllerRef.current
-      if (!controller) {
-        throw new Error("Report workspace is not ready.")
-      }
-      return controller.executeReportTool(name, args)
+      return reportingController.executeReportTool(name, args)
     }
     if (name === "agent_instructions") {
       return { text: VOLTAGE_ADMIN_AGENT_INSTRUCTIONS }
@@ -482,6 +480,7 @@ export const VoltageAdminDemo = () => {
     ["orders", "Orders", ClipboardList],
     ["customers", "Customers", Users],
     ["inventory", "Inventory", Boxes],
+    ["reports", "Reports", FileChartColumn],
   ] as const
 
   return (
@@ -853,6 +852,17 @@ export const VoltageAdminDemo = () => {
                     </tbody>
                   </table>
                 </DataTable>
+              </section>
+            ) : null}
+
+            {view === "reports" ? (
+              <section aria-label="Voltage Market Admin Reports">
+                <SectionTitle
+                  eyebrow="Smart Dashboard · shared workspace"
+                  title="Shape the report together."
+                  detail="Agent tools and your direct edits update the same in-memory report. Query evidence stays inside this Admin iframe."
+                />
+                <ReportCanvas controller={reportingController} />
               </section>
             ) : null}
           </div>

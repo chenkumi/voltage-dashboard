@@ -36,6 +36,10 @@ describe("QueryResultCache", () => {
       cache.add(createResult())
 
     expect(cache.getStatus().entryCount).toBe(32)
+    expect(cache.getStatus()).toMatchObject({
+      limitReached: true,
+      lastRejection: null,
+    })
     expect(() => cache.add(createResult())).toThrow(
       new QueryCacheError(
         "QUERY_CACHE_LIMIT_EXCEEDED",
@@ -43,6 +47,7 @@ describe("QueryResultCache", () => {
       )
     )
     expect(cache.getStatus().entryCount).toBe(32)
+    expect(cache.getStatus().lastRejection).toBe("QUERY_CACHE_LIMIT_EXCEEDED")
   })
 
   it("enforces the 8 MiB default and distinguishes one oversized entry", () => {
@@ -55,7 +60,12 @@ describe("QueryResultCache", () => {
         "The query result is too large to cache."
       )
     )
-    expect(cache.getStatus()).toMatchObject({ entryCount: 0, totalBytes: 0 })
+    expect(cache.getStatus()).toMatchObject({
+      entryCount: 0,
+      totalBytes: 0,
+      limitReached: true,
+      lastRejection: "QUERY_CACHE_ENTRY_TOO_LARGE",
+    })
   })
 
   it("refuses cumulative capacity overflow without evicting prior results", () => {
@@ -73,6 +83,10 @@ describe("QueryResultCache", () => {
     )
     expect(cache.get(firstId).rows).toEqual([{ category: "Beauty" }])
     expect(cache.getStatus().entryCount).toBe(1)
+    expect(cache.getStatus()).toMatchObject({
+      limitReached: true,
+      lastRejection: "QUERY_CACHE_LIMIT_EXCEEDED",
+    })
   })
 
   it("returns one fixed safe error for an unknown query ID", () => {
@@ -95,6 +109,8 @@ describe("QueryResultCache", () => {
       state: "disposed",
       entryCount: 0,
       totalBytes: 0,
+      limitReached: false,
+      lastRejection: null,
     })
     expect(() => cache.get(queryId)).toThrowError(
       expect.objectContaining({ category: "QUERY_CACHE_DISPOSED" })

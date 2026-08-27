@@ -53,6 +53,7 @@ export class QueryResultCache {
   private readonly createId: () => QueryId
   private totalBytes = 0
   private disposed = false
+  private lastRejection: QueryCacheErrorCategory | null = null
 
   constructor(options: QueryCacheOptions = {}) {
     this.maxEntries = options.maxEntries ?? MAX_QUERY_CACHE_ENTRIES
@@ -65,7 +66,7 @@ export class QueryResultCache {
     const cachedResult = cloneAndFreezeResult(result)
     const sizeBytes = serializedSize(cachedResult)
     if (sizeBytes > this.maxTotalBytes) {
-      throw new QueryCacheError(
+      this.reject(
         "QUERY_CACHE_ENTRY_TOO_LARGE",
         "The query result is too large to cache."
       )
@@ -74,7 +75,7 @@ export class QueryResultCache {
       this.entries.size >= this.maxEntries ||
       this.totalBytes + sizeBytes > this.maxTotalBytes
     ) {
-      throw new QueryCacheError(
+      this.reject(
         "QUERY_CACHE_LIMIT_EXCEEDED",
         "The query result cache limit has been reached."
       )
@@ -105,12 +106,18 @@ export class QueryResultCache {
       totalBytes: this.totalBytes,
       maxEntries: this.maxEntries,
       maxTotalBytes: this.maxTotalBytes,
+      limitReached:
+        this.entries.size >= this.maxEntries ||
+        this.totalBytes >= this.maxTotalBytes ||
+        this.lastRejection !== null,
+      lastRejection: this.lastRejection,
     }
   }
 
   dispose() {
     this.entries.clear()
     this.totalBytes = 0
+    this.lastRejection = null
     this.disposed = true
   }
 
@@ -128,9 +135,14 @@ export class QueryResultCache {
       const queryId = this.createId()
       if (!this.entries.has(queryId)) return queryId
     }
-    throw new QueryCacheError(
+    this.reject(
       "QUERY_CACHE_LIMIT_EXCEEDED",
       "The query result cache could not allocate an identifier."
     )
+  }
+
+  private reject(category: QueryCacheErrorCategory, message: string): never {
+    this.lastRejection = category
+    throw new QueryCacheError(category, message)
   }
 }

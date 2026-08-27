@@ -14,11 +14,14 @@ import { QueryResultCache } from "./query-cache"
 import {
   executeReportAuthoringTool,
   isReportAuthoringTool,
+  validateReportTitle,
+  validateReportWidgetTitle,
 } from "./report-tools"
 import { ReportStateStore } from "./report-state"
 import type {
   QueryCacheStatus,
   QueryId,
+  ReportingWorkspaceSnapshot,
   SqlQueryInput,
   SqlQueryResult,
   SqlQueryResultWithId,
@@ -334,6 +337,9 @@ export class ReportingRuntimeController {
   private readonly createQueryCache: QueryCacheFactory
   private reportState: ReportStateStore
   private readonly createReportState: ReportStateFactory
+  private readonly reportListeners = new Set<() => void>()
+  private unsubscribeReportState: (() => void) | undefined
+  private workspaceSnapshot: ReportingWorkspaceSnapshot
 
   constructor(
     createRuntime: RuntimeFactory = () => new SqliteReportingRuntime(),
@@ -345,6 +351,8 @@ export class ReportingRuntimeController {
     this.queryCache = createQueryCache()
     this.createReportState = createReportState
     this.reportState = createReportState()
+    this.workspaceSnapshot = this.createWorkspaceSnapshot()
+    this.bindReportState(this.reportState)
   }
 
   async prepare() {
@@ -353,7 +361,7 @@ export class ReportingRuntimeController {
       if (this.queryCache.getStatus().state === "disposed")
         this.queryCache = this.createQueryCache()
       if (this.reportState.getStatus() === "disposed")
-        this.reportState = this.createReportState()
+        this.bindReportState(this.createReportState())
       context = {
         runtime: this.createRuntime(),
         queryCache: this.queryCache,
@@ -366,7 +374,12 @@ export class ReportingRuntimeController {
     } catch (error) {
       if (this.context === context) this.context = null
       context.queryCache.dispose()
+      if (this.reportState === context.reportState) {
+        this.unsubscribeReportState?.()
+        this.unsubscribeReportState = undefined
+      }
       context.reportState.dispose()
+      if (this.reportState === context.reportState) this.emitReportChange()
       await context.runtime.dispose()
       throw error
     }
@@ -393,13 +406,17 @@ export class ReportingRuntimeController {
         "SQLite reporting runtime is not ready."
       )
     }
-    const queryId = context.queryCache.add(result)
-    return { ...result, queryId }
+    try {
+      const queryId = context.queryCache.add(result)
+      this.emitReportChange()
+      return { ...result, queryId }
+    } catch (error) {
+      this.emitReportChange()
+      throw error
+    }
   }
 
-  getQueryResult(queryId: QueryId) {
-    return this.queryCache.get(queryId)
-  }
+  getQueryResult = (queryId: QueryId) => this.queryCache.get(queryId)
 
   getQueryCacheStatus(): QueryCacheStatus {
     return this.queryCache.getStatus()
@@ -407,6 +424,36 @@ export class ReportingRuntimeController {
 
   getReportStateStore() {
     return this.reportState
+  }
+
+  getReportSnapshot = () => this.reportState.getSnapshot()
+
+  getWorkspaceSnapshot = () => this.workspaceSnapshot
+
+  subscribeReport = (listener: () => void) => {
+    this.reportListeners.add(listener)
+    return () => this.reportListeners.delete(listener)
+  }
+
+  updateReportTitle(title: string) {
+    return this.requireContext().reportState.updateReport({
+      title: validateReportTitle(title),
+    })
+  }
+
+  updateReportWidgetTitle(widgetId: string, title: string) {
+    return this.requireContext().reportState.updateWidgetTitle(
+      widgetId,
+      validateReportWidgetTitle(title)
+    )
+  }
+
+  moveReportWidget(widgetId: string, toIndex: number) {
+    return this.requireContext().reportState.moveWidget(widgetId, toIndex)
+  }
+
+  removeReportWidget(widgetId: string) {
+    return this.requireContext().reportState.removeWidget(widgetId)
   }
 
   executeReportTool(name: string, args: unknown) {
@@ -431,7 +478,41 @@ export class ReportingRuntimeController {
     const queryCache = context?.queryCache ?? this.queryCache
     const reportState = context?.reportState ?? this.reportState
     queryCache.dispose()
+    if (this.reportState === reportState) {
+      this.unsubscribeReportState?.()
+      this.unsubscribeReportState = undefined
+    }
     reportState.dispose()
+    if (this.reportState === reportState) this.emitReportChange()
     await context?.runtime.dispose()
+  }
+
+  private requireContext() {
+    if (!this.context) {
+      throw new SqliteReportingRuntimeError(
+        "SQLITE_NOT_READY",
+        "SQLite reporting runtime is not ready."
+      )
+    }
+    return this.context
+  }
+
+  private bindReportState(reportState: ReportStateStore) {
+    this.unsubscribeReportState?.()
+    this.reportState = reportState
+    this.unsubscribeReportState = reportState.subscribe(this.emitReportChange)
+    this.emitReportChange()
+  }
+
+  private emitReportChange = () => {
+    this.workspaceSnapshot = this.createWorkspaceSnapshot()
+    for (const listener of this.reportListeners) listener()
+  }
+
+  private createWorkspaceSnapshot(): ReportingWorkspaceSnapshot {
+    return {
+      report: this.reportState.getSnapshot(),
+      cacheStatus: this.queryCache.getStatus(),
+    }
   }
 }

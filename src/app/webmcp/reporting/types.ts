@@ -20,9 +20,12 @@ export type SqlQueryResult = {
 
 export type QueryId = string
 
-export type CachedQueryResult = Readonly<SqlQueryResult> & {
+export type CachedQueryResult = {
   readonly columns: readonly Readonly<SqlColumn>[]
   readonly rows: readonly Readonly<Record<string, SqlScalar>>[]
+  readonly rowCount: number
+  readonly truncated: boolean
+  readonly executionTimeMs: number
 }
 
 export type SqlQueryResultWithId = SqlQueryResult & {
@@ -37,6 +40,8 @@ export type QueryCacheStatus = {
   totalBytes: number
   maxEntries: number
   maxTotalBytes: number
+  limitReached: boolean
+  lastRejection: QueryCacheErrorCategory | null
 }
 
 export type QueryCacheErrorCategory =
@@ -66,13 +71,13 @@ export type KpiReportWidget = ReportWidgetBase & {
 export type TableReportWidget = ReportWidgetBase & {
   type: "table"
   queryId: QueryId
-  columns: string[]
+  columns: readonly string[]
 }
 
 export type TextReportWidget = ReportWidgetBase & {
   type: "text"
   markdown: string
-  evidenceQueryIds: QueryId[]
+  evidenceQueryIds: readonly QueryId[]
 }
 
 export type BarReportWidget = ReportWidgetBase & {
@@ -96,9 +101,14 @@ export type Report = {
   title: string
   audience?: string
   period?: ReportPeriod
-  widgets: ReportWidget[]
+  widgets: readonly ReportWidget[]
   createdAt: string
   updatedAt: string
+}
+
+export type ReportingWorkspaceSnapshot = {
+  report: Report | null
+  cacheStatus: QueryCacheStatus
 }
 
 export type ReportErrorCategory =

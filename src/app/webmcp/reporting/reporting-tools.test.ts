@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { REPORTING_SCHEMA_SQL } from "./reporting-data"
+import { QueryResultCache } from "./query-cache"
 import {
   EXECUTE_READONLY_SQL_TOOL,
   ReportingRuntimeController,
@@ -515,5 +516,75 @@ describe("ReportingRuntimeController", () => {
     const newState = controller.getReportStateStore()
     expect(newState).not.toBe(oldState)
     expect(newState.getSnapshot()).toBeNull()
+  })
+
+  it("bridges report subscriptions and validated human edits across replay", async () => {
+    const runtime = {
+      initialize: vi.fn(async () => undefined),
+      execute: vi.fn(async () => result),
+      dispose: vi.fn(async () => undefined),
+    }
+    const controller = new ReportingRuntimeController(() => runtime)
+    const listener = vi.fn()
+    controller.subscribeReport(listener)
+    await controller.prepare()
+    controller.executeReportTool("create_report", { title: "Operations" })
+    const query = await controller.execute({ sql: "SELECT 1" })
+    controller.executeReportTool("add_report_widget", {
+      widget: {
+        type: "table",
+        title: "Categories",
+        queryId: query.queryId,
+        columns: ["category"],
+      },
+    })
+    const widgetId = controller.getReportSnapshot()?.widgets[0].id
+    if (!widgetId) throw new Error("Expected a report widget.")
+
+    controller.updateReportTitle("Reviewed operations")
+    controller.updateReportWidgetTitle(widgetId, "Reviewed categories")
+
+    expect(controller.getReportSnapshot()).toMatchObject({
+      title: "Reviewed operations",
+      widgets: [{ title: "Reviewed categories" }],
+    })
+    expect(listener.mock.calls.length).toBeGreaterThanOrEqual(4)
+
+    await controller.dispose()
+    await controller.prepare()
+    expect(controller.getReportSnapshot()).toBeNull()
+    expect(listener.mock.calls.length).toBeGreaterThanOrEqual(6)
+  })
+
+  it("publishes cache additions and rejected limits through one stable workspace snapshot", async () => {
+    const runtime = {
+      initialize: vi.fn(async () => undefined),
+      execute: vi.fn(async () => result),
+      dispose: vi.fn(async () => undefined),
+    }
+    const controller = new ReportingRuntimeController(
+      () => runtime,
+      () => new QueryResultCache({ maxEntries: 1 })
+    )
+    const listener = vi.fn()
+    controller.subscribeReport(listener)
+    await controller.prepare()
+
+    await controller.execute({ sql: "SELECT 1" })
+    expect(controller.getWorkspaceSnapshot().cacheStatus).toMatchObject({
+      entryCount: 1,
+      limitReached: true,
+      lastRejection: null,
+    })
+
+    await expect(controller.execute({ sql: "SELECT 1" })).rejects.toMatchObject(
+      { category: "QUERY_CACHE_LIMIT_EXCEEDED" }
+    )
+    expect(controller.getWorkspaceSnapshot().cacheStatus).toMatchObject({
+      entryCount: 1,
+      limitReached: true,
+      lastRejection: "QUERY_CACHE_LIMIT_EXCEEDED",
+    })
+    expect(listener).toHaveBeenCalledTimes(2)
   })
 })
