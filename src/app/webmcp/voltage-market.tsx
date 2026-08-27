@@ -3,6 +3,7 @@ import {
   ArrowRight,
   Check,
   CreditCard,
+  ExternalLink,
   Minus,
   Package,
   Plus,
@@ -936,6 +937,18 @@ export const VoltageMarketDemo = () => {
                 <p className="mt-5 max-w-lg text-sm leading-6 text-[#596057]">
                   這是一個高對比、模組化的選物宇宙，
                   內含 {voltageProducts.length} 筆可搜尋、可結帳的靜態商品資料。
+                </p>
+                <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-zinc-600">
+                  測試資料來源：
+                  <a
+                    href="https://dummyjson.com/"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex cursor-pointer items-center gap-1 font-semibold text-zinc-950 underline decoration-zinc-400 underline-offset-4 transition-colors duration-200 hover:text-pink-700 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-500"
+                  >
+                    DummyJSON
+                    <ExternalLink className="size-3" aria-hidden="true" />
+                  </a>
                 </p>
               </div>
               <div className="grid gap-3 bg-pink-500 p-5 text-zinc-950 min-[900px]:grid-cols-1 min-[900px]:p-7 sm:grid-cols-2">

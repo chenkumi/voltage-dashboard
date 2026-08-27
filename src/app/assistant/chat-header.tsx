@@ -1,21 +1,40 @@
-import { Button } from "@/components/ui/button";
-import { BotIcon, PlusCircleIcon, Settings2Icon } from "lucide-react";
+import { Button } from "@/components/ui/button"
+import { BotIcon, PlusIcon } from "lucide-react"
 
-export const AssistantChatHeader = ({ title, onNewThread }: { title: string; onNewThread: () => void }) => {
-    return (
-        <header className="mx-auto flex w-full max-w-3xl items-center justify-between gap-2 rounded-xl border p-1">
-            <div className="flex items-center justify-center rounded-full border p-1 size-8">
-                <BotIcon className="size-6" />
-            </div>
-            <h1 className="min-w-0 flex-1 truncate px-2 text-sm font-medium">{title}</h1>
+export const AssistantChatHeader = ({
+  title,
+  onNewThread,
+}: {
+  title: string
+  onNewThread: () => void
+}) => {
+  return (
+    <header className="flex min-h-18 w-full items-center gap-3 border-b border-white/10 bg-[#151b1f] px-4 py-2">
+      <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-amber-300/20 bg-amber-300/10 text-amber-300 shadow-[0_0_24px_rgba(251,191,36,0.08)]">
+        <BotIcon className="size-5" />
+      </div>
 
-            <Button type="button" onClick={onNewThread} className="size-8" variant="ghost">
-                <Settings2Icon />
-            </Button>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-semibold tracking-[0.22em] text-amber-300/70 uppercase">
+          Agent chat
+        </p>
+        <h1 className="mt-1 truncate text-sm font-semibold text-slate-100">
+          {title}
+        </h1>
+      </div>
 
-            <Button type="button" onClick={onNewThread} className="size-8">
-                <PlusCircleIcon />
-            </Button>
-        </header>
-    )
+      <div className="flex items-center gap-1">
+        <Button
+          type="button"
+          onClick={onNewThread}
+          size="icon"
+          className="bg-amber-300 text-[#101417] shadow-sm hover:bg-amber-200"
+          aria-label="Start new chat"
+          title="Start new chat"
+        >
+          <PlusIcon className="size-4" />
+        </Button>
+      </div>
+    </header>
+  )
 }
