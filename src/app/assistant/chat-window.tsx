@@ -2,13 +2,14 @@ import { Button } from "@/components/ui/button"
 import { Markdown } from "@/components/ui/markdown"
 import { ScrollButton } from "@/components/ui/scroll-button"
 import { cn } from "@/lib/utils"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import { getToolName, type UIMessage } from "ai"
 import { useLiveQuery } from "dexie-react-hooks"
 import { CopyIcon, Volume2Icon } from "lucide-react"
+import { forwardRef, type CSSProperties, useMemo, useRef } from "react"
 import { toast } from "sonner"
-import { StickToBottom } from "use-stick-to-bottom"
-import { getChatMessage } from "./chat-store"
 import { mergeMessageRows, type ChatMessageRow } from "./chat-message-state"
+import { getChatMessage } from "./chat-store"
 
 const textFromMessage = (message: UIMessage) => message.parts
   .filter((part): part is { type: "text"; text: string } => part.type === "text")
@@ -62,18 +63,25 @@ const MessagePart = ({ part }: { part: UIMessage["parts"][number] }) => {
   return null
 }
 
-const MessageRow = ({ threadId, row }: { threadId: string; row: ChatMessageRow }) => {
+type MessageRowProps = {
+  threadId: string
+  row: ChatMessageRow
+  index: number
+  style: CSSProperties
+}
+
+const MessageRow = forwardRef<HTMLLIElement, MessageRowProps>(function MessageRow({ threadId, row, index, style }, ref) {
   const record = useLiveQuery(() => getChatMessage(threadId, row.id), [threadId, row.id])
   const message = row.message ?? record?.message
 
-  if (!message) return null
+  if (!message) return <li ref={ref} style={style} data-index={index} className="absolute left-0 top-0 min-h-24 w-full" aria-busy="true" />
 
   const text = textFromMessage(message)
   const isUser = message.role === "user"
   const date = record?.createdAt
 
   return (
-    <li className={cn("flex w-full flex-col gap-1", isUser ? "items-end" : "items-start")}>
+    <li ref={ref} style={style} data-index={index} className={cn("absolute left-0 top-0 flex w-full flex-col gap-1", isUser ? "items-end" : "items-start")}>
       {date && (
         <time className="px-1 text-[11px] text-muted-foreground/60">
           {new Date(date).toLocaleString()}
@@ -96,7 +104,7 @@ const MessageRow = ({ threadId, row }: { threadId: string; row: ChatMessageRow }
       )}
     </li>
   )
-}
+})
 
 export const AssistantChatWindow = ({
   threadId,
@@ -109,7 +117,23 @@ export const AssistantChatWindow = ({
   messages: UIMessage[]
   discardedAssistantIds: ReadonlySet<string>
 }) => {
-  const rows = mergeMessageRows({ persistedIds: messageIds, liveMessages: messages, discardedAssistantIds })
+  const rows = useMemo(() => mergeMessageRows({ persistedIds: messageIds, liveMessages: messages, discardedAssistantIds }), [discardedAssistantIds, messageIds, messages])
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const virtualizer = useVirtualizer<HTMLDivElement, HTMLLIElement>({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    initialOffset: () => Number.MAX_SAFE_INTEGER,
+    useFlushSync: false,
+    estimateSize: () => 120,
+    getItemKey: (index) => rows[index]?.id ?? index,
+    overscan: 6,
+    paddingStart: 24,
+    paddingEnd: 24,
+    gap: 24,
+    anchorTo: "end",
+    followOnAppend: "auto",
+    scrollEndThreshold: 120,
+  })
 
   if (rows.length === 0) {
     return <div className="flex h-full items-center justify-center text-2xl text-muted-foreground/70">Hi, how can I help you?</div>
@@ -117,16 +141,33 @@ export const AssistantChatWindow = ({
 
   return (
     <div className="relative h-full w-full">
-      <StickToBottom role="log" aria-live="polite" className="h-full overflow-auto px-5" initial="instant">
-        <StickToBottom.Content className="mx-auto max-w-3xl pb-6 pt-6">
-          <ol className="space-y-6">
-            {rows.map((row) => <MessageRow key={row.id} threadId={threadId} row={row} />)}
-          </ol>
-        </StickToBottom.Content>
+      <div ref={scrollRef} role="log" aria-live="polite" className="h-full overflow-auto px-5">
+        <ol className="relative mx-auto max-w-3xl" style={{ height: virtualizer.getTotalSize() }}>
+          {virtualizer.getVirtualItems().map((virtualRow) => {
+            const row = rows[virtualRow.index]
+            if (!row) return null
+
+            return (
+              <MessageRow
+                key={virtualRow.key}
+                ref={virtualizer.measureElement}
+                threadId={threadId}
+                row={row}
+                index={virtualRow.index}
+                style={{ transform: `translateY(${virtualRow.start}px)` }}
+              />
+            )
+          })}
+        </ol>
         <div className="absolute bottom-4 right-7">
-          <ScrollButton className="shadow-sm" />
+          <ScrollButton
+            className="shadow-sm"
+            aria-label="Jump to latest"
+            isAtBottom={virtualizer.isAtEnd()}
+            onScrollToBottom={() => virtualizer.scrollToEnd({ behavior: "smooth" })}
+          />
         </div>
-      </StickToBottom>
+      </div>
     </div>
   )
 }
