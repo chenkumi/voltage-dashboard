@@ -23,6 +23,15 @@ export const persistableMessagesForTurn = ({
   return messages
 }
 
+export const mergeMessagesById = (
+  persistedMessages: readonly UIMessage[],
+  liveMessages: readonly UIMessage[],
+) => {
+  const messages = new Map(persistedMessages.map((message) => [message.id, message]))
+  for (const message of liveMessages) messages.set(message.id, message)
+  return [...messages.values()]
+}
+
 export const withoutDiscardedAssistantMessages = (
   messages: readonly UIMessage[],
   discardedAssistantIds: ReadonlySet<string>,

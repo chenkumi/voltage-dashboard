@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import type { UIMessage } from "ai"
 import {
+  mergeMessagesById,
   mergeMessageRows,
   persistableMessagesForTurn,
   withoutDiscardedAssistantMessages,
@@ -43,6 +44,18 @@ describe("chat message state", () => {
       { id: "assistant-1", message: liveAssistant },
       { id: "assistant-2", message: liveNew },
     ])
+  })
+
+  it("merges model history by ID without duplicating the current runtime turn", () => {
+    const persistedUser = message("user-1", "user", "Hello")
+    const persistedAssistant = message("assistant-1", "assistant", "Hi")
+    const liveUser = message("user-1", "user", "Hello")
+    const liveAssistant = message("assistant-2", "assistant", "Current")
+
+    expect(mergeMessagesById(
+      [persistedUser, persistedAssistant],
+      [liveUser, liveAssistant],
+    )).toEqual([persistedUser, persistedAssistant, liveAssistant])
   })
 
   it("filters discarded IDs before merging rows", () => {
