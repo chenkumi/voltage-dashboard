@@ -106,13 +106,14 @@ const SAFE_DATE_FORMATS = new Set([
 ])
 
 const SAFE_REPORTING_STRINGS = new Set(
-  [
-    ...REPORTING_PRODUCTS,
-    ...REPORTING_SALES,
-    ...REPORTING_INVENTORY,
-    ...REPORTING_DATASET_STATUS,
-  ]
-    .flat()
+  (
+    [
+      ...REPORTING_PRODUCTS,
+      ...REPORTING_SALES,
+      ...REPORTING_INVENTORY,
+      ...REPORTING_DATASET_STATUS,
+    ].flat() as unknown[]
+  )
     .filter((value): value is string => typeof value === "string")
     .map((value) => value.toLowerCase())
 )
@@ -308,11 +309,13 @@ export const executeReadonlySqlTool = async (
 
 export class ReportingRuntimeController {
   private runtime: ManagedReadonlySqlRuntime | null = null
+  private readonly createRuntime: RuntimeFactory
 
   constructor(
-    private readonly createRuntime: RuntimeFactory = () =>
-      new SqliteReportingRuntime()
-  ) {}
+    createRuntime: RuntimeFactory = () => new SqliteReportingRuntime()
+  ) {
+    this.createRuntime = createRuntime
+  }
 
   async prepare() {
     const runtime = this.runtime ?? this.createRuntime()

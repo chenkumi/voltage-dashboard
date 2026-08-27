@@ -17,17 +17,22 @@ import {
   SqlPolicyError,
   validateReadonlySql,
 } from "./sql-policy"
-import type { SqlColumn, SqlQueryInput, SqlQueryResult, SqlScalar } from "./types"
+import type {
+  SqlColumn,
+  SqlQueryInput,
+  SqlQueryResult,
+  SqlScalar,
+} from "./types"
 
 type Sqlite3 = Awaited<ReturnType<typeof sqlite3InitModule>>
 type Database = InstanceType<Sqlite3["oo1"]["DB"]>
 
 export class ReportingDatabaseError extends Error {
-  constructor(
-    readonly category: string,
-    message: string
-  ) {
+  readonly category: string
+
+  constructor(category: string, message: string) {
     super(message)
+    this.category = category
     this.name = "ReportingDatabaseError"
   }
 }
@@ -74,7 +79,10 @@ const insertRows = (
   const statement = database.prepare(sql)
   try {
     for (const row of rows) {
-      statement.bind([...row] as never).stepReset().clearBindings()
+      statement
+        .bind([...row] as never)
+        .stepReset()
+        .clearBindings()
     }
   } finally {
     statement.finalize()
@@ -82,10 +90,13 @@ const insertRows = (
 }
 
 export class SqliteReportingDatabase {
-  private constructor(
-    private readonly sqlite3: Sqlite3,
-    private readonly database: Database
-  ) {}
+  private readonly sqlite3: Sqlite3
+  private readonly database: Database
+
+  private constructor(sqlite3: Sqlite3, database: Database) {
+    this.sqlite3 = sqlite3
+    this.database = database
+  }
 
   static async create() {
     const sqlite3 = await sqlite3InitModule()

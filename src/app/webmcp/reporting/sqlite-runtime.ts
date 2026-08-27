@@ -16,11 +16,11 @@ type PendingRequest = {
 type WorkerFactory = () => ReportingWorkerPort
 
 export class SqliteReportingRuntimeError extends Error {
-  constructor(
-    readonly category: string,
-    message: string
-  ) {
+  readonly category: string
+
+  constructor(category: string, message: string) {
     super(message)
+    this.category = category
     this.name = "SqliteReportingRuntimeError"
   }
 }
@@ -60,7 +60,9 @@ export class SqliteReportingRuntime {
     this.readyPromise = this.request({ id: ulid(), type: "init" }).then(
       (response) => {
         if (response.type !== "ready")
-          throw new Error("SQLite reporting runtime returned an invalid init response.")
+          throw new Error(
+            "SQLite reporting runtime returned an invalid init response."
+          )
       }
     )
     return this.readyPromise
@@ -73,7 +75,9 @@ export class SqliteReportingRuntime {
       signal
     )
     if (response.type !== "result")
-      throw new Error("SQLite reporting runtime returned an invalid query response.")
+      throw new Error(
+        "SQLite reporting runtime returned an invalid query response."
+      )
     return response.result satisfies SqlQueryResult
   }
 
@@ -160,9 +164,9 @@ export class SqliteReportingRuntime {
     return new Promise<T>((resolve, reject) => {
       const abort = () => reject(createAbortError())
       signal.addEventListener("abort", abort, { once: true })
-      promise.then(resolve, reject).finally(() =>
-        signal.removeEventListener("abort", abort)
-      )
+      promise
+        .then(resolve, reject)
+        .finally(() => signal.removeEventListener("abort", abort))
     })
   }
 
