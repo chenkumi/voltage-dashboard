@@ -1,0 +1,98 @@
+import { describe, expect, it } from "vitest"
+import {
+  listVoltageAdminSkills,
+  loadVoltageAdminSkill,
+  VOLTAGE_ADMIN_AGENT_INSTRUCTIONS,
+} from "./voltage-admin-skills"
+
+const smartDashboardSkillNames = [
+  "voltage-sales-data",
+  "voltage-inventory-data",
+  "voltage-report-authoring",
+]
+
+describe("Voltage Admin skills", () => {
+  it("discovers the three Smart Dashboard skills alongside existing safety skills", () => {
+    const actualNames = listVoltageAdminSkills().skills.map(
+      (skill) => skill.name
+    )
+
+    expect(actualNames).toEqual(
+      expect.arrayContaining([
+        "voltage-admin-inventory",
+        "voltage-admin-order-safety",
+        ...smartDashboardSkillNames,
+      ])
+    )
+  })
+
+  it.each(smartDashboardSkillNames)(
+    "loads %s by its exact discovered name",
+    (name) => {
+      const actual = loadVoltageAdminSkill(name)
+
+      expect(actual).toEqual({
+        type: "skill",
+        name,
+        text: expect.any(String),
+      })
+    }
+  )
+
+  it("rejects unknown and invalid skill names without leaking the registry", () => {
+    const expected = {
+      status: "ARGUMENT_ERROR",
+      message: "Skill not found.",
+    }
+
+    expect(loadVoltageAdminSkill("voltage-missing")).toEqual(expected)
+    expect(loadVoltageAdminSkill(undefined)).toEqual(expected)
+  })
+
+  it("documents sales grain, units, timezone, period, status, and joins", () => {
+    const actual = loadVoltageAdminSkill("voltage-sales-data")
+
+    expect(actual).toMatchObject({ type: "skill" })
+    expect("text" in actual ? actual.text : "").toMatch(
+      /agent_products[\s\S]*agent_sales_daily[\s\S]*銷售日期 × 商品/
+    )
+    expect("text" in actual ? actual.text : "").toMatch(
+      /USD[\s\S]*Asia\/Taipei[\s\S]*2026-08-21 至 2026-08-27/
+    )
+    expect("text" in actual ? actual.text : "").toMatch(
+      /product_id[\s\S]*agent_dataset_status[\s\S]*不得.*多對多 join/
+    )
+  })
+
+  it("documents inventory units, freshness, and safe sales aggregation", () => {
+    const actual = loadVoltageAdminSkill("voltage-inventory-data")
+    const text = "text" in actual ? actual.text : ""
+
+    expect(text).toMatch(/agent_inventory[\s\S]*stock[\s\S]*單位為件/)
+    expect(text).toContain("2026-08-28T00:00:00+08:00")
+    expect(text).toMatch(/先將.*agent_sales_daily.*聚合[\s\S]*禁止.*重複計算/)
+  })
+
+  it("requires evidence and honest report capability discovery", () => {
+    const actual = loadVoltageAdminSkill("voltage-report-authoring")
+    const text = "text" in actual ? actual.text : ""
+
+    expect(text).toMatch(
+      /先查詢 `agent_dataset_status`[\s\S]*資料期間[\s\S]*Asia\/Taipei[\s\S]*更新時間[\s\S]*截斷/
+    )
+    expect(text).toMatch(/實際 discovery[\s\S]*不得宣稱已建立 Report Canvas/)
+    expect(text).toMatch(/先讀取其 state[\s\S]*不要反覆建立新 report/)
+  })
+
+  it("keeps instructions and skills free of personal or payment data capabilities", () => {
+    const serialized = JSON.stringify({
+      instructions: VOLTAGE_ADMIN_AGENT_INSTRUCTIONS,
+      skills: smartDashboardSkillNames.map(loadVoltageAdminSkill),
+    })
+
+    expect(serialized).toMatch(/不得.*個資|不得.*姓名/)
+    expect(serialized).not.toMatch(
+      /customer_name|email_address|shipping_address|phone_number|account_id|card_number|payment_token/i
+    )
+  })
+})

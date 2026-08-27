@@ -39,6 +39,11 @@ import {
 } from "./voltage-admin-data"
 import { voltageProductById } from "./voltage-market-data"
 import {
+  listVoltageAdminSkills,
+  loadVoltageAdminSkill,
+  VOLTAGE_ADMIN_AGENT_INSTRUCTIONS,
+} from "./voltage-admin-skills"
+import {
   EXECUTE_READONLY_SQL_TOOL,
   EXECUTE_READONLY_SQL_TOOL_NAME,
   ReportingRuntimeController,
@@ -197,14 +202,14 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "skill_list",
     description:
-      "用途：列出可按需載入的後台作業指引。何時呼叫：host 在每個對話回合開始時。觸發例子：盤點、查看訂單、客戶區隔、詢問權限。不該呼叫：不能用來存取個資。",
+      "用途：列出可按需載入的後台作業與資料語意指引。何時呼叫：host 在每個對話回合開始時。觸發例子：盤點、營收分析、製作報表、查看訂單。不該呼叫：不能用來存取個資。",
     inputSchema: noInput,
     annotations: { readOnlyHint: true },
   },
   {
     name: "load_skill",
     description:
-      "用途：取得指定後台作業指引。何時呼叫：模型需要 skill_list 內的流程細節時。觸發例子：庫存更新、訂單安全、客戶區隔、營運摘要。不該呼叫：名稱不在 skill_list 時。",
+      "用途：取得指定後台作業或資料語意指引。何時呼叫：模型需要 skill_list 內的資料粒度、join、分析或安全細節時。觸發例子：銷售資料、庫存風險、報表撰寫、訂單安全。不該呼叫：名稱不在 skill_list 時。",
     inputSchema: schema(
       { name: { type: "string", description: "skill_list 所列的技能名稱。" } },
       ["name"]
@@ -361,42 +366,13 @@ export const VoltageAdminDemo = () => {
       return controller.execute(args)
     }
     if (name === "agent_instructions") {
-      return {
-        text: "目標：協助 Voltage Market 商家查閱 Dashboard、Products、Orders、Customers 與 Inventory。可查詢匿名化營運資料，並在管理者明確指定商品與非負整數存量時更新庫存。不得在 Chat 索取、接收、重述或輸出姓名、Email、地址、電話、帳戶或付款資料；不得建立、確認或取消訂單。需要流程細節時，載入對應 skill。",
-      }
+      return { text: VOLTAGE_ADMIN_AGENT_INSTRUCTIONS }
     }
     if (name === "skill_list") {
-      return {
-        skills: [
-          {
-            name: "voltage-admin-inventory",
-            description:
-              "用途：安全更新後台庫存。何時呼叫：管理者明確要求補貨或校正時。觸發例子：「補貨」、「庫存改為 20」、「盤點」、「缺貨商品」。不該呼叫：未指定商品和數量時。",
-          },
-          {
-            name: "voltage-admin-order-safety",
-            description:
-              "用途：說明匿名訂單查閱的安全邊界。何時呼叫：詢問訂單處理或客戶資料限制時。觸發例子：「訂單怎麼處理」、「取消訂單」、「客戶資料」、「付款狀態」。不該呼叫：僅需商品庫存時。",
-          },
-        ],
-      }
+      return listVoltageAdminSkills()
     }
     if (name === "load_skill") {
-      if (args.name === "voltage-admin-inventory") {
-        return {
-          type: "skill",
-          name: "voltage-admin-inventory",
-          text: "先用 get_voltage_admin_product 或 list_voltage_admin_inventory 確認目前庫存。只有當管理者明確提供商品 ID 與新的非負整數存量時，才可使用 set_voltage_admin_inventory。回覆更新後的商品與庫存摘要；不要推測或自行調整存量。",
-        }
-      }
-      if (args.name === "voltage-admin-order-safety") {
-        return {
-          type: "skill",
-          name: "voltage-admin-order-safety",
-          text: "訂單工具只提供匿名化摘要，不能回傳或索取姓名、Email、地址、電話或付款資料。不得以任何 WebMCP tool 建立、確認或取消訂單；需要這些高風險操作時，請使用者直接在安全的管理頁面完成最終動作。",
-        }
-      }
-      return { status: "ARGUMENT_ERROR", message: "Skill not found." }
+      return loadVoltageAdminSkill(args.name)
     }
     if (name === "get_voltage_admin_dashboard")
       return getVoltageAdminDashboard(inventory)
