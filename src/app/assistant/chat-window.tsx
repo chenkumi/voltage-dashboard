@@ -6,10 +6,21 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { getToolName, type UIMessage } from "ai"
 import { useLiveQuery } from "dexie-react-hooks"
 import { CopyIcon, Volume2Icon } from "lucide-react"
-import { forwardRef, type CSSProperties, useMemo, useRef } from "react"
+import {
+  forwardRef,
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useSyncExternalStore,
+} from "react"
 import { toast } from "sonner"
-import { mergeMessageRows, type ChatMessageRow } from "./chat-message-state"
-import { getChatMessage } from "./chat-store"
+import { mergeMessageIds } from "./chat-message-state"
+import { getChatMessage, listChatMessageIds } from "./chat-store"
+import type { ChatStreamRuntime } from "./chat-stream-runtime"
+
+const emptyMessageIds: string[] = []
 
 const textFromMessage = (message: UIMessage) => message.parts
   .filter((part): part is { type: "text"; text: string } => part.type === "text")
@@ -65,15 +76,29 @@ const MessagePart = ({ part }: { part: UIMessage["parts"][number] }) => {
 
 type MessageRowProps = {
   threadId: string
-  row: ChatMessageRow
+  messageId: string
   index: number
   style: CSSProperties
+  runtime: ChatStreamRuntime
 }
 
-const MessageRow = forwardRef<HTMLLIElement, MessageRowProps>(function MessageRow({ threadId, row, index, style }, ref) {
-  const record = useLiveQuery(() => getChatMessage(threadId, row.id), [threadId, row.id])
-  const message = row.message ?? record?.message
+const MessageRow = forwardRef<HTMLLIElement, MessageRowProps>(function MessageRow({
+  threadId,
+  messageId,
+  index,
+  style,
+  runtime,
+}, ref) {
+  const record = useLiveQuery(() => getChatMessage(threadId, messageId), [threadId, messageId])
+  const subscribeMessage = useCallback((listener: () => void) => runtime.subscribeMessage(messageId, listener), [messageId, runtime])
+  const getLiveMessage = useCallback(() => runtime.getMessage(messageId), [messageId, runtime])
+  const liveMessage = useSyncExternalStore(subscribeMessage, getLiveMessage, getLiveMessage)
 
+  useEffect(() => {
+    if (record && !runtime.isTransientMessage(messageId)) runtime.releasePersistedMessage(messageId)
+  }, [messageId, record, runtime])
+
+  const message = liveMessage ?? record?.message
   if (!message) return <li ref={ref} style={style} data-index={index} className="absolute left-0 top-0 min-h-24 w-full" aria-busy="true" />
 
   const text = textFromMessage(message)
@@ -88,7 +113,7 @@ const MessageRow = forwardRef<HTMLLIElement, MessageRowProps>(function MessageRo
         </time>
       )}
       <div className={cn("flex max-w-[90%] flex-col gap-2 overflow-hidden rounded-lg px-3 py-2 text-base", isUser ? "items-end bg-slate-500/10" : "items-start bg-indigo-500/10")}>
-        {message.parts.map((part, index) => <MessagePart key={`${message.id}-${index}`} part={part} />)}
+        {message.parts.map((part, partIndex) => <MessagePart key={`${message.id}-${partIndex}`} part={part} />)}
       </div>
       {text && (
         <div className="flex items-center gap-1">
@@ -108,24 +133,33 @@ const MessageRow = forwardRef<HTMLLIElement, MessageRowProps>(function MessageRo
 
 export const AssistantChatWindow = ({
   threadId,
-  messageIds,
-  messages,
-  discardedAssistantIds,
+  runtime,
 }: {
   threadId: string
-  messageIds: string[]
-  messages: UIMessage[]
-  discardedAssistantIds: ReadonlySet<string>
+  runtime: ChatStreamRuntime
 }) => {
-  const rows = useMemo(() => mergeMessageRows({ persistedIds: messageIds, liveMessages: messages, discardedAssistantIds }), [discardedAssistantIds, messageIds, messages])
+  const persistedMessageIds = useLiveQuery(
+    () => listChatMessageIds(threadId),
+    [threadId],
+    emptyMessageIds,
+  )
+  const transientMessageIds = useSyncExternalStore(
+    runtime.subscribeMessageIds,
+    runtime.getTransientMessageIds,
+    runtime.getTransientMessageIds,
+  )
+  const messageIds = useMemo(
+    () => mergeMessageIds(persistedMessageIds, transientMessageIds),
+    [persistedMessageIds, transientMessageIds],
+  )
   const scrollRef = useRef<HTMLDivElement>(null)
   const virtualizer = useVirtualizer<HTMLDivElement, HTMLLIElement>({
-    count: rows.length,
+    count: messageIds.length,
     getScrollElement: () => scrollRef.current,
     initialOffset: () => Number.MAX_SAFE_INTEGER,
     useFlushSync: false,
     estimateSize: () => 120,
-    getItemKey: (index) => rows[index]?.id ?? index,
+    getItemKey: (index) => messageIds[index] ?? index,
     overscan: 6,
     paddingStart: 24,
     paddingEnd: 24,
@@ -135,7 +169,11 @@ export const AssistantChatWindow = ({
     scrollEndThreshold: 120,
   })
 
-  if (rows.length === 0) {
+  useEffect(() => {
+    runtime.reconcilePersistedMessageIds(persistedMessageIds)
+  }, [persistedMessageIds, runtime])
+
+  if (messageIds.length === 0) {
     return <div className="flex h-full items-center justify-center text-2xl text-muted-foreground/70">Hi, how can I help you?</div>
   }
 
@@ -144,17 +182,18 @@ export const AssistantChatWindow = ({
       <div ref={scrollRef} role="log" aria-live="polite" className="h-full overflow-auto px-5">
         <ol className="relative mx-auto max-w-3xl" style={{ height: virtualizer.getTotalSize() }}>
           {virtualizer.getVirtualItems().map((virtualRow) => {
-            const row = rows[virtualRow.index]
-            if (!row) return null
+            const messageId = messageIds[virtualRow.index]
+            if (!messageId) return null
 
             return (
               <MessageRow
                 key={virtualRow.key}
                 ref={virtualizer.measureElement}
                 threadId={threadId}
-                row={row}
+                messageId={messageId}
                 index={virtualRow.index}
                 style={{ transform: `translateY(${virtualRow.start}px)` }}
+                runtime={runtime}
               />
             )
           })}

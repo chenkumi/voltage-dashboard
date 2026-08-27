@@ -45,6 +45,8 @@ export class ChatStreamRuntime {
 
   getTransientMessageIds = () => this.#transientMessageIds
 
+  isTransientMessage = (messageId: string) => this.#transientMessageIds.includes(messageId)
+
   getStatus = () => this.#status
 
   syncLatestAssistantMessage = (messages: readonly UIMessage[]) => {

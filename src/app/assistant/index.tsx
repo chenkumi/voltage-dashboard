@@ -1,21 +1,20 @@
 import { useTheme } from "@/app/theme-context"
 import { Toaster } from "@/components/ui/sonner"
 import { Spinner } from "@/components/ui/spinner"
-import { type UIMessage, useChat } from "@ai-sdk/react"
 import { useLiveQuery } from "dexie-react-hooks"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from "react"
 import { useNavigate, useParams } from "react-router"
 import { monotonicFactory } from "ulid"
 import type { ChatThread, ThreadSiteTarget } from "../types"
 import { WebMcpSession } from "../webmcp/session"
 import { createThreadSiteTarget, defaultWebMcpSite, resolveThreadSite } from "../webmcp/sites"
-import { WebMcpChatTransport } from "../webmcp/transport"
 import type { WebMcpSite } from "../webmcp/types"
 import { WebMcpWorkspace } from "../webmcp/workspace"
 import { AssistantChatHeader } from "./chat-header"
 import { AssistantChatInput } from "./chat-input"
-import { createChatThread, getChatThread, getLastChatThread, listChatMessageIds, listChatMessages, saveCompletedAssistantMessage, saveUserMessage, touchSiteLastThread } from "./chat-store"
-import { isPersistableAssistantCompletion, withoutDiscardedAssistantMessages, type AssistantCompletionStatus } from "./chat-message-state"
+import { ChatStreamController } from "./chat-stream-controller"
+import { createChatThread, getChatThread, getLastChatThread, touchSiteLastThread } from "./chat-store"
+import { ChatStreamRuntime } from "./chat-stream-runtime"
 import { AssistantChatWindow } from "./chat-window"
 
 const createId = monotonicFactory()
@@ -45,127 +44,65 @@ const InvalidThread = () => {
     return <Loading />
 }
 
-const ChatSession = ({ thread, site, target, messageIds }: {
+const ChatWorkspace = ({
+    site,
+    target,
+    session,
+    runtime,
+    onSiteChange,
+}: {
+    site: WebMcpSite
+    target: ThreadSiteTarget
+    session: WebMcpSession
+    runtime: ChatStreamRuntime
+    onSiteChange: (site: WebMcpSite) => void
+}) => {
+    const status = useSyncExternalStore(runtime.subscribeStatus, runtime.getStatus, runtime.getStatus)
+    const disabled = status === "submitted" || status === "streaming"
+
+    return <WebMcpWorkspace site={site} target={target} session={session} onSiteChange={onSiteChange} disabled={disabled} />
+}
+
+const ChatSession = ({ thread, site, target }: {
     thread: ChatThread
     site: WebMcpSite
     target: ThreadSiteTarget
-    messageIds: Awaited<ReturnType<typeof listChatMessageIds>>
 }) => {
     const navigate = useNavigate()
     const { theme } = useTheme()
     const session = useMemo(() => new WebMcpSession(), [])
-    const transport = useMemo(() => new WebMcpChatTransport(session, async () => {
-        const records = await listChatMessages(thread.id)
-        return records.map((record) => record.message)
-    }), [session, thread.id])
+    const runtime = useMemo(() => new ChatStreamRuntime(), [])
     const generateId = useMemo(() => monotonicFactory(), [])
-    const [discardedAssistantIds, setDiscardedAssistantIds] = useState<Set<string>>(new Set())
-    const persistedAssistantIds = useRef(new Set<string>())
-    const messagesRef = useRef<UIMessage[]>([])
-    const setMessagesRef = useRef<((messages: UIMessage[] | ((messages: UIMessage[]) => UIMessage[])) => void) | undefined>(undefined)
-    const discardIncompleteAssistants = useCallback(() => {
-        const incompleteIds = messagesRef.current
-            .filter((message) => message.role === "assistant" && !persistedAssistantIds.current.has(message.id))
-            .map((message) => message.id)
-        if (incompleteIds.length > 0) {
-            for (const id of incompleteIds) persistedAssistantIds.current.delete(id)
-            setDiscardedAssistantIds((current) => new Set([...current, ...incompleteIds]))
-        }
-        setMessagesRef.current?.((current) => withoutDiscardedAssistantMessages(current, new Set(incompleteIds)))
-    }, [])
-    const handleFinish = useCallback(({
-        message,
-        isAbort,
-        isDisconnect,
-        isError,
-    }: {
-        message: UIMessage
-        isAbort: boolean
-        isDisconnect: boolean
-        isError: boolean
-    }) => {
-        const completion: AssistantCompletionStatus = isAbort
-            ? "aborted"
-            : isDisconnect
-                ? "disconnected"
-                : isError
-                    ? "error"
-                    : "complete"
-        if (isPersistableAssistantCompletion(completion)) {
-            persistedAssistantIds.current.add(message.id)
-            void saveCompletedAssistantMessage(thread.id, message, completion)
-        } else {
-            setDiscardedAssistantIds((current) => new Set([...current, message.id]))
-            setMessagesRef.current?.((current) => current.filter((item) => item.id !== message.id))
-        }
-    }, [thread.id])
-    const { messages, sendMessage, setMessages, status, stop } = useChat<UIMessage>({
-        id: thread.id,
-        generateId,
-        transport,
-        onFinish: handleFinish,
-        onError: discardIncompleteAssistants,
-    })
-    useEffect(() => {
-        setMessagesRef.current = setMessages
-        return () => { setMessagesRef.current = undefined }
-    }, [setMessages])
-    useEffect(() => { messagesRef.current = messages }, [messages])
-    const busy = status === "submitted" || status === "streaming"
 
     useEffect(() => () => session.dispose(), [session])
 
     const createNewThread = useCallback(async () => {
-        void stop().catch(() => {})
-        discardIncompleteAssistants()
+        runtime.cancel()
         session.dispose()
         const nextThread = createEmptyThread(site)
         await createChatThread(nextThread)
         await navigate(`/chat/${nextThread.id}`)
-    }, [discardIncompleteAssistants, navigate, session, site, stop])
+    }, [navigate, runtime, session, site])
 
     const switchSite = useCallback(async (nextSite: WebMcpSite) => {
         if (nextSite.id === site.id) return
-        void stop().catch(() => {})
-        discardIncompleteAssistants()
+        runtime.cancel()
         session.dispose()
         const nextThread = await createOrOpenSiteThread(nextSite)
         await navigate(`/chat/${nextThread.id}`)
-    }, [discardIncompleteAssistants, navigate, session, site.id, stop])
-
-    const cancel = useCallback(() => {
-        void stop().catch(() => {})
-        discardIncompleteAssistants()
-    }, [discardIncompleteAssistants, stop])
-
-    const send = useCallback((text: string) => {
-        const userMessage: UIMessage = {
-            id: generateId(),
-            role: "user",
-            parts: [{ type: "text", text }],
-        }
-        void (async () => {
-            try {
-                await saveUserMessage(thread.id, userMessage)
-                await sendMessage(userMessage)
-            } catch (error) {
-                if (!(error instanceof Error && error.name === "AbortError")) discardIncompleteAssistants()
-            }
-        })()
-    }, [discardIncompleteAssistants, generateId, sendMessage, thread.id])
-
-    useEffect(() => () => { void stop().catch(() => {}) }, [stop])
+    }, [navigate, runtime, session, site.id])
 
     return (
         <div className="flex h-full w-full min-w-0 overflow-hidden bg-[#101417]">
-            <WebMcpWorkspace site={site} target={target} session={session} onSiteChange={switchSite} disabled={busy} />
+            <ChatStreamController threadId={thread.id} session={session} runtime={runtime} generateId={generateId} />
+            <ChatWorkspace site={site} target={target} session={session} runtime={runtime} onSiteChange={switchSite} />
             <section className="flex h-full min-w-[320px] basis-[30%] flex-col overflow-hidden border-l border-white/10 bg-background">
                 <div className="flex min-h-0 flex-1 flex-col gap-3 px-4 py-3">
                     <AssistantChatHeader title={thread.customTitle ?? thread.title} onNewThread={createNewThread} />
                     <section className="min-h-0 flex-1 overflow-hidden" aria-label="Chat history">
-                        <AssistantChatWindow threadId={thread.id} messageIds={messageIds} messages={messages} discardedAssistantIds={discardedAssistantIds} />
+                        <AssistantChatWindow threadId={thread.id} runtime={runtime} />
                     </section>
-                        <AssistantChatInput status={status} onSend={send} onStop={cancel} />
+                    <AssistantChatInput runtime={runtime} />
                 </div>
             </section>
             <Toaster theme={theme} />
@@ -174,15 +111,12 @@ const ChatSession = ({ thread, site, target, messageIds }: {
 }
 
 const ChatPage = ({ threadId }: { threadId: string }) => {
-    const data = useLiveQuery(async () => ({
-        thread: await getChatThread(threadId),
-        messageIds: await listChatMessageIds(threadId),
-    }), [threadId])
+    const thread = useLiveQuery(() => getChatThread(threadId), [threadId])
 
-    if (!data) return <Loading />
-    const resolvedSite = data.thread ? resolveThreadSite(data.thread) : undefined
-    if (!data.thread || !resolvedSite) return <InvalidThread />
-    return <ChatSession key={threadId} thread={data.thread} site={resolvedSite.site} target={resolvedSite.target} messageIds={data.messageIds} />
+    if (thread === undefined) return <Loading />
+    const resolvedSite = thread ? resolveThreadSite(thread) : undefined
+    if (!thread || !resolvedSite) return <InvalidThread />
+    return <ChatSession key={threadId} thread={thread} site={resolvedSite.site} target={resolvedSite.target} />
 }
 
 export const Assistant = () => {

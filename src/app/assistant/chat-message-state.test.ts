@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest"
 import type { UIMessage } from "ai"
 import {
   mergeMessagesById,
-  mergeMessageRows,
+  mergeMessageIds,
   persistableMessagesForTurn,
   withoutDiscardedAssistantMessages,
 } from "./chat-message-state"
@@ -31,19 +31,11 @@ describe("chat message state", () => {
     expect(withoutDiscardedAssistantMessages([user, assistant], new Set([assistant.id]))).toEqual([user])
   })
 
-  it("deduplicates persisted and live rows while preserving persisted order", () => {
-    const liveUser = message("user-1", "user", "Updated")
-    const liveAssistant = message("assistant-1", "assistant", "Streaming")
-    const liveNew = message("assistant-2", "assistant", "Next")
-
-    expect(mergeMessageRows({
-      persistedIds: ["user-1", "assistant-1"],
-      liveMessages: [liveUser, liveAssistant, liveNew],
-    })).toEqual([
-      { id: "user-1", message: liveUser },
-      { id: "assistant-1", message: liveAssistant },
-      { id: "assistant-2", message: liveNew },
-    ])
+  it("merges persisted and transient IDs while preserving persisted order", () => {
+    expect(mergeMessageIds(
+      ["user-1", "assistant-1"],
+      ["assistant-1", "assistant-2"],
+    )).toEqual(["user-1", "assistant-1", "assistant-2"])
   })
 
   it("merges model history by ID without duplicating the current runtime turn", () => {
@@ -58,14 +50,4 @@ describe("chat message state", () => {
     )).toEqual([persistedUser, persistedAssistant, liveAssistant])
   })
 
-  it("filters discarded IDs before merging rows", () => {
-    const user = message("user-1", "user", "Hello")
-    const partialAssistant = message("assistant-1", "assistant", "Partial")
-
-    expect(mergeMessageRows({
-      persistedIds: [user.id],
-      liveMessages: [user, partialAssistant],
-      discardedAssistantIds: new Set([partialAssistant.id]),
-    })).toEqual([{ id: user.id, message: user }])
-  })
 })
