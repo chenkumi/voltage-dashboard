@@ -492,4 +492,28 @@ describe("ReportingRuntimeController", () => {
       expect.objectContaining({ category: "QUERY_CACHE_NOT_FOUND" })
     )
   })
+
+  it("keeps report state in the same disposable runtime context", async () => {
+    const runtime = {
+      initialize: vi.fn(async () => undefined),
+      execute: vi.fn(async () => result),
+      dispose: vi.fn(async () => undefined),
+    }
+    const controller = new ReportingRuntimeController(() => runtime)
+    await controller.prepare()
+    const oldState = controller.getReportStateStore()
+
+    controller.executeReportTool("create_report", { title: "Operations" })
+    expect(oldState.getSnapshot()?.title).toBe("Operations")
+    await controller.dispose()
+    expect(oldState.getStatus()).toBe("disposed")
+    expect(() =>
+      controller.executeReportTool("get_report_state", {})
+    ).toThrowError(expect.objectContaining({ category: "SQLITE_NOT_READY" }))
+
+    await controller.prepare()
+    const newState = controller.getReportStateStore()
+    expect(newState).not.toBe(oldState)
+    expect(newState.getSnapshot()).toBeNull()
+  })
 })

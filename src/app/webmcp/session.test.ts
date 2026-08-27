@@ -14,6 +14,12 @@ const reportingTool: WebMcpRegisteredTool = {
   inputSchema: { type: "object", properties: {} },
 }
 
+const reportAuthoringTool: WebMcpRegisteredTool = {
+  name: "create_report",
+  description: "Create an editable report in this iframe.",
+  inputSchema: { type: "object", properties: {} },
+}
+
 const instructionTool: WebMcpRegisteredTool = {
   name: "agent_instructions",
   inputSchema: { type: "object", properties: {} },
@@ -262,6 +268,30 @@ describe("WebMcpSession", () => {
     expect(executeA).toHaveBeenCalledWith(
       expect.objectContaining({ name: "execute_readonly_sql" }),
       '{"sql":"SELECT COUNT(*) FROM agent_products"}'
+    )
+    expect(executeB).not.toHaveBeenCalled()
+  })
+
+  it("keeps a prepared report authoring executor bound to its original iframe state", async () => {
+    const executeA = vi.fn(async () => ({ report: "admin-a" }))
+    const executeB = vi.fn(async () => ({ report: "admin-b" }))
+    const session = new WebMcpSession()
+
+    await session.attach(createFrame([reportAuthoringTool], executeA))
+    const turnA = await session.prepareTurn()
+    await session.attach(createFrame([reportAuthoringTool], executeB))
+    const execute = turnA.tools.create_report.execute
+    if (!execute) throw new Error("Prepared report tool must be executable.")
+
+    await expect(
+      execute(
+        { title: "Weekly operations" },
+        { toolCallId: "report-call", messages: [], context: {} }
+      )
+    ).resolves.toEqual({ report: "admin-a" })
+    expect(executeA).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "create_report" }),
+      '{"title":"Weekly operations"}'
     )
     expect(executeB).not.toHaveBeenCalled()
   })

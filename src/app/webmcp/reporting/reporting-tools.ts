@@ -11,6 +11,11 @@ import {
   SqliteReportingRuntimeError,
 } from "./sqlite-runtime"
 import { QueryResultCache } from "./query-cache"
+import {
+  executeReportAuthoringTool,
+  isReportAuthoringTool,
+} from "./report-tools"
+import { ReportStateStore } from "./report-state"
 import type {
   QueryCacheStatus,
   QueryId,
@@ -66,9 +71,11 @@ export interface ManagedReadonlySqlRuntime extends ReadonlySqlRuntime {
 
 type RuntimeFactory = () => ManagedReadonlySqlRuntime
 type QueryCacheFactory = () => QueryResultCache
+type ReportStateFactory = () => ReportStateStore
 type ReportingRuntimeContext = {
   runtime: ManagedReadonlySqlRuntime
   queryCache: QueryResultCache
+  reportState: ReportStateStore
 }
 
 const isSqlScalar = (value: unknown): value is SqlScalar =>
@@ -325,14 +332,19 @@ export class ReportingRuntimeController {
   private readonly createRuntime: RuntimeFactory
   private queryCache: QueryResultCache
   private readonly createQueryCache: QueryCacheFactory
+  private reportState: ReportStateStore
+  private readonly createReportState: ReportStateFactory
 
   constructor(
     createRuntime: RuntimeFactory = () => new SqliteReportingRuntime(),
-    createQueryCache: QueryCacheFactory = () => new QueryResultCache()
+    createQueryCache: QueryCacheFactory = () => new QueryResultCache(),
+    createReportState: ReportStateFactory = () => new ReportStateStore()
   ) {
     this.createRuntime = createRuntime
     this.createQueryCache = createQueryCache
     this.queryCache = createQueryCache()
+    this.createReportState = createReportState
+    this.reportState = createReportState()
   }
 
   async prepare() {
@@ -340,9 +352,12 @@ export class ReportingRuntimeController {
     if (!context) {
       if (this.queryCache.getStatus().state === "disposed")
         this.queryCache = this.createQueryCache()
+      if (this.reportState.getStatus() === "disposed")
+        this.reportState = this.createReportState()
       context = {
         runtime: this.createRuntime(),
         queryCache: this.queryCache,
+        reportState: this.reportState,
       }
       this.context = context
     }
@@ -351,6 +366,7 @@ export class ReportingRuntimeController {
     } catch (error) {
       if (this.context === context) this.context = null
       context.queryCache.dispose()
+      context.reportState.dispose()
       await context.runtime.dispose()
       throw error
     }
@@ -389,11 +405,33 @@ export class ReportingRuntimeController {
     return this.queryCache.getStatus()
   }
 
+  getReportStateStore() {
+    return this.reportState
+  }
+
+  executeReportTool(name: string, args: unknown) {
+    const context = this.context
+    if (!context || !isReportAuthoringTool(name)) {
+      throw new SqliteReportingRuntimeError(
+        "SQLITE_NOT_READY",
+        "SQLite reporting runtime is not ready."
+      )
+    }
+    return executeReportAuthoringTool(
+      context.queryCache,
+      context.reportState,
+      name,
+      args
+    )
+  }
+
   async dispose() {
     const context = this.context
     this.context = null
     const queryCache = context?.queryCache ?? this.queryCache
+    const reportState = context?.reportState ?? this.reportState
     queryCache.dispose()
+    reportState.dispose()
     await context?.runtime.dispose()
   }
 }

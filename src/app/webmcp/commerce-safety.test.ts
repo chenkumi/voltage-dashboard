@@ -54,6 +54,39 @@ describe("commerce privacy boundaries", () => {
     )
   })
 
+  it("keeps report authoring local, reversible, and free of sensitive fields", () => {
+    const reportToolNames = [
+      "create_report",
+      "get_report_state",
+      "add_report_widget",
+      "update_report_widget",
+      "move_report_widget",
+      "remove_report_widget",
+    ]
+    const reportTools = VOLTAGE_ADMIN_TOOLS.filter((tool) =>
+      reportToolNames.includes(tool.name)
+    )
+
+    expect(reportTools.map((tool) => tool.name)).toEqual(reportToolNames)
+    expect(
+      reportTools.find((tool) => tool.name === "get_report_state")?.annotations
+    ).toMatchObject({ readOnlyHint: true, openWorldHint: false })
+    for (const tool of reportTools.filter(
+      (tool) => tool.name !== "get_report_state"
+    )) {
+      expect(tool.annotations).toMatchObject({
+        readOnlyHint: false,
+        destructiveHint: false,
+        openWorldHint: false,
+      })
+    }
+    expect(
+      JSON.stringify(reportTools.map((tool) => tool.inputSchema))
+    ).not.toMatch(
+      /"(?:customerName|email|address|phone|account|cardNumber|payment|html|script)"/i
+    )
+  })
+
   it("instructs the Agent to keep personal data and final confirmation in the iframe", () => {
     const instructions = buildInstructions({
       frameVersion: 1,

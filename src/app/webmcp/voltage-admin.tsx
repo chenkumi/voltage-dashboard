@@ -48,6 +48,10 @@ import {
   EXECUTE_READONLY_SQL_TOOL_NAME,
   ReportingRuntimeController,
 } from "./reporting/reporting-tools"
+import {
+  isReportAuthoringTool,
+  REPORT_AUTHORING_TOOLS,
+} from "./reporting/report-tools"
 import "./voltage-admin.css"
 
 type VoltageAdminView =
@@ -93,6 +97,7 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
     annotations: { readOnlyHint: true },
   },
   EXECUTE_READONLY_SQL_TOOL,
+  ...REPORT_AUTHORING_TOOLS,
   {
     name: "search_voltage_admin_products",
     description:
@@ -364,6 +369,13 @@ export const VoltageAdminDemo = () => {
         throw new Error("SQLite reporting runtime is not ready.")
       }
       return controller.execute(args)
+    }
+    if (isReportAuthoringTool(name)) {
+      const controller = reportingControllerRef.current
+      if (!controller) {
+        throw new Error("Report workspace is not ready.")
+      }
+      return controller.executeReportTool(name, args)
     }
     if (name === "agent_instructions") {
       return { text: VOLTAGE_ADMIN_AGENT_INSTRUCTIONS }

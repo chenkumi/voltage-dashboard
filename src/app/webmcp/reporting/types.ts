@@ -45,6 +45,68 @@ export type QueryCacheErrorCategory =
   | "QUERY_CACHE_LIMIT_EXCEEDED"
   | "QUERY_CACHE_NOT_FOUND"
 
+export type ReportPeriod = {
+  start: string
+  end: string
+  timeZone: "Asia/Taipei"
+}
+
+type ReportWidgetBase = {
+  id: string
+  title: string
+}
+
+export type KpiReportWidget = ReportWidgetBase & {
+  type: "kpi"
+  queryId: QueryId
+  valueColumn: string
+  comparisonColumn?: string
+}
+
+export type TableReportWidget = ReportWidgetBase & {
+  type: "table"
+  queryId: QueryId
+  columns: string[]
+}
+
+export type TextReportWidget = ReportWidgetBase & {
+  type: "text"
+  markdown: string
+  evidenceQueryIds: QueryId[]
+}
+
+export type BarReportWidget = ReportWidgetBase & {
+  type: "bar"
+  queryId: QueryId
+  categoryColumn: string
+  valueColumn: string
+}
+
+export type ReportWidget =
+  KpiReportWidget | TableReportWidget | TextReportWidget | BarReportWidget
+
+export type NewReportWidget =
+  | Omit<KpiReportWidget, "id">
+  | Omit<TableReportWidget, "id">
+  | Omit<TextReportWidget, "id">
+  | Omit<BarReportWidget, "id">
+
+export type Report = {
+  id: string
+  title: string
+  audience?: string
+  period?: ReportPeriod
+  widgets: ReportWidget[]
+  createdAt: string
+  updatedAt: string
+}
+
+export type ReportErrorCategory =
+  | "REPORT_ARGUMENT_ERROR"
+  | "REPORT_NOT_FOUND"
+  | "REPORT_STATE_DISPOSED"
+  | "REPORT_WIDGET_NOT_FOUND"
+
 export type ReportingWorkerRequest =
   | { id: string; type: "init" }
   | ({ id: string; type: "execute" } & SqlQueryInput)
