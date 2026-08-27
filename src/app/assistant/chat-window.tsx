@@ -3,7 +3,7 @@ import { Markdown } from "@/components/ui/markdown"
 import { ScrollButton } from "@/components/ui/scroll-button"
 import { cn } from "@/lib/utils"
 import { useVirtualizer } from "@tanstack/react-virtual"
-import { getToolName, type UIMessage } from "ai"
+import type { UIMessage } from "ai"
 import { useLiveQuery } from "dexie-react-hooks"
 import { CopyIcon, Volume2Icon } from "lucide-react"
 import {
@@ -27,16 +27,16 @@ const textFromMessage = (message: UIMessage) => message.parts
   .map((part) => part.text)
   .join("")
 
-const formatToolValue = (value: unknown) => {
-  if (value === undefined) return ""
-  if (typeof value === "string") return value
-  return JSON.stringify(value, null, 2)
-}
-
-const MessagePart = ({ part }: { part: UIMessage["parts"][number] }) => {
+const MessagePart = ({
+  part,
+  showReasoning,
+}: {
+  part: UIMessage["parts"][number]
+  showReasoning: boolean
+}) => {
   if (part.type === "text") return <Markdown>{part.text}</Markdown>
 
-  if (part.type === "reasoning") {
+  if (part.type === "reasoning" && showReasoning) {
     return (
       <details className="w-full text-sm text-muted-foreground">
         <summary className="cursor-pointer">Thinking</summary>
@@ -47,28 +47,6 @@ const MessagePart = ({ part }: { part: UIMessage["parts"][number] }) => {
 
   if (part.type === "file" && part.mediaType.startsWith("image/")) {
     return <img src={part.url} alt={part.filename ?? "Attached"} className="max-h-80 max-w-full rounded-md object-contain" />
-  }
-
-  if (part.type === "dynamic-tool" || part.type.startsWith("tool-")) {
-    const toolPart = part as {
-      type: string
-      toolName?: string
-      state?: string
-      input?: unknown
-      output?: unknown
-      errorText?: string
-    }
-    const name = toolPart.toolName ?? getToolName(part as never)
-    const value = toolPart.errorText ?? toolPart.output ?? toolPart.input
-
-    return (
-      <details className="w-full rounded-md border border-white/10 bg-black/10 p-2 text-xs">
-        <summary className="cursor-pointer font-medium">Tool: {name} ({toolPart.state ?? "pending"})</summary>
-        <pre className="mt-2 max-h-48 overflow-auto whitespace-pre-wrap break-words text-muted-foreground">
-          {formatToolValue(value)}
-        </pre>
-      </details>
-    )
   }
 
   return null
@@ -102,6 +80,7 @@ const MessageRow = forwardRef<HTMLLIElement, MessageRowProps>(function MessageRo
   if (!message) return <li ref={ref} style={style} data-index={index} className="absolute left-0 top-0 min-h-24 w-full" aria-busy="true" />
 
   const text = textFromMessage(message)
+  const showReasoning = text.length === 0
   const isUser = message.role === "user"
   const date = record?.createdAt
 
@@ -113,7 +92,13 @@ const MessageRow = forwardRef<HTMLLIElement, MessageRowProps>(function MessageRo
         </time>
       )}
       <div className={cn("flex max-w-[90%] flex-col gap-2 overflow-hidden rounded-lg px-3 py-2 text-base", isUser ? "items-end bg-slate-500/10" : "items-start bg-indigo-500/10")}>
-        {message.parts.map((part, partIndex) => <MessagePart key={`${message.id}-${partIndex}`} part={part} />)}
+        {message.parts.map((part, partIndex) => (
+          <MessagePart
+            key={`${message.id}-${partIndex}`}
+            part={part}
+            showReasoning={showReasoning}
+          />
+        ))}
       </div>
       {text && (
         <div className="flex items-center gap-1">
