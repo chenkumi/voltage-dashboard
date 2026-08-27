@@ -8,6 +8,12 @@ const searchTool: WebMcpRegisteredTool = {
   inputSchema: { type: "object", properties: {} },
 }
 
+const reportingTool: WebMcpRegisteredTool = {
+  name: "execute_readonly_sql",
+  description: "Execute a read-only SQLite query.",
+  inputSchema: { type: "object", properties: {} },
+}
+
 const instructionTool: WebMcpRegisteredTool = {
   name: "agent_instructions",
   inputSchema: { type: "object", properties: {} },
@@ -40,13 +46,19 @@ const navigateForwardTool: WebMcpRegisteredTool = {
 
 const createFrame = (
   tools: WebMcpRegisteredTool[],
-  executeTool: (tool: WebMcpRegisteredTool) => Promise<unknown>
+  executeTool: (
+    tool: WebMcpRegisteredTool,
+    input: string | Record<string, unknown>
+  ) => Promise<unknown>
 ) =>
   ({
     document: {
       modelContext: {
         getTools: async () => tools,
-        executeTool: async (tool: WebMcpRegisteredTool) => executeTool(tool),
+        executeTool: async (
+          tool: WebMcpRegisteredTool,
+          input: string | Record<string, unknown>
+        ) => executeTool(tool, input),
       },
     },
   }) as unknown as Window
@@ -230,6 +242,30 @@ describe("WebMcpSession", () => {
     expect(executeB).not.toHaveBeenCalled()
   })
 
+  it("keeps a prepared reporting executor bound to its original iframe runtime", async () => {
+    const executeA = vi.fn(async () => ({ runtime: "admin-a" }))
+    const executeB = vi.fn(async () => ({ runtime: "admin-b" }))
+    const session = new WebMcpSession()
+
+    await session.attach(createFrame([reportingTool], executeA))
+    const turnA = await session.prepareTurn()
+    await session.attach(createFrame([reportingTool], executeB))
+    const execute = turnA.tools.execute_readonly_sql.execute
+    if (!execute) throw new Error("Prepared reporting tool must be executable.")
+
+    await expect(
+      execute(
+        { sql: "SELECT COUNT(*) FROM agent_products" },
+        { toolCallId: "sql-call", messages: [], context: {} }
+      )
+    ).resolves.toEqual({ runtime: "admin-a" })
+    expect(executeA).toHaveBeenCalledWith(
+      expect.objectContaining({ name: "execute_readonly_sql" }),
+      '{"sql":"SELECT COUNT(*) FROM agent_products"}'
+    )
+    expect(executeB).not.toHaveBeenCalled()
+  })
+
   it("keeps optional navigation tools host-only and tracks navigation state", async () => {
     const executeTool = vi.fn(async (tool: WebMcpRegisteredTool) => {
       if (tool.name === "navigate_state") {
@@ -265,7 +301,8 @@ describe("WebMcpSession", () => {
 
     await session.navigate("back")
     expect(executeTool).toHaveBeenCalledWith(
-      expect.objectContaining({ name: "navigate_back" })
+      expect.objectContaining({ name: "navigate_back" }),
+      "{}"
     )
   })
 })

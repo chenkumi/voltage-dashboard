@@ -3,10 +3,7 @@ import { buildInstructions, createWebMcpAgent } from "./agent"
 import { VOLTAGE_ADMIN_TOOLS } from "./voltage-admin"
 import { VOLTAGE_TOOLS } from "./voltage-market"
 
-const sensitiveToolNames = [
-  "create_voltage_order",
-  "cancel_voltage_order",
-]
+const sensitiveToolNames = ["create_voltage_order", "cancel_voltage_order"]
 
 describe("commerce privacy boundaries", () => {
   it("exposes checkout and order navigation without personal-data tool inputs", () => {
@@ -14,10 +11,7 @@ describe("commerce privacy boundaries", () => {
     const names = tools.map((tool) => tool.name)
 
     expect(names).toEqual(
-      expect.arrayContaining([
-        "open_voltage_checkout",
-        "open_voltage_orders",
-      ])
+      expect.arrayContaining(["open_voltage_checkout", "open_voltage_orders"])
     )
     expect(names).not.toEqual(expect.arrayContaining(sensitiveToolNames))
     expect(JSON.stringify(tools)).not.toMatch(
@@ -31,6 +25,7 @@ describe("commerce privacy boundaries", () => {
     expect(names).toEqual(
       expect.arrayContaining([
         "get_voltage_admin_dashboard",
+        "execute_readonly_sql",
         "list_voltage_admin_orders",
         "set_voltage_admin_inventory",
       ])
@@ -41,6 +36,21 @@ describe("commerce privacy boundaries", () => {
         "confirm_voltage_admin_order",
         "cancel_voltage_admin_order",
       ])
+    )
+  })
+
+  it("keeps the reporting tool generic, read-only, and free of personal fields", () => {
+    const reportingTool = VOLTAGE_ADMIN_TOOLS.find(
+      (tool) => tool.name === "execute_readonly_sql"
+    )
+
+    expect(reportingTool).toBeDefined()
+    expect(reportingTool?.annotations).toEqual({
+      readOnlyHint: true,
+      untrustedContentHint: true,
+    })
+    expect(JSON.stringify(reportingTool?.inputSchema)).not.toMatch(
+      /customerName|email|address|phone|account|cardNumber|payment/i
     )
   })
 

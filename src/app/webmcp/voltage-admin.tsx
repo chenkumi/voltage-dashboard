@@ -38,7 +38,11 @@ import {
   type VoltageAdminInventory,
 } from "./voltage-admin-data"
 import { voltageProductById } from "./voltage-market-data"
-import { SqliteReportingRuntime } from "./reporting/sqlite-runtime"
+import {
+  EXECUTE_READONLY_SQL_TOOL,
+  EXECUTE_READONLY_SQL_TOOL_NAME,
+  ReportingRuntimeController,
+} from "./reporting/reporting-tools"
 import "./voltage-admin.css"
 
 type VoltageAdminView =
@@ -83,6 +87,7 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
     inputSchema: noInput,
     annotations: { readOnlyHint: true },
   },
+  EXECUTE_READONLY_SQL_TOOL,
   {
     name: "search_voltage_admin_products",
     description:
@@ -210,7 +215,10 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
 
 const useVoltageAdminWebMcpTools = (
   toolDefinitions: WebMcpRegisteredTool[],
-  executeTool: (name: string, args: Record<string, unknown>) => Promise<unknown>,
+  executeTool: (
+    name: string,
+    args: Record<string, unknown>
+  ) => Promise<unknown>,
   prepareProvider?: () => Promise<void>
 ) => {
   const executeRef = useRef(executeTool)
@@ -305,21 +313,18 @@ const DataTable = ({ children }: { children: React.ReactNode }) => (
 )
 
 export const VoltageAdminDemo = () => {
-  const reportingRuntimeRef = useRef<SqliteReportingRuntime | null>(null)
+  const reportingControllerRef = useRef<ReportingRuntimeController | null>(null)
+  if (reportingControllerRef.current == null) {
+    reportingControllerRef.current = new ReportingRuntimeController()
+  }
   const prepareReportingRuntime = useCallback(async () => {
-    let runtime = reportingRuntimeRef.current
-    if (!runtime) {
-      runtime = new SqliteReportingRuntime()
-      reportingRuntimeRef.current = runtime
-    }
-    await runtime.initialize()
+    await reportingControllerRef.current?.prepare()
   }, [])
 
   useEffect(() => {
     return () => {
-      const runtime = reportingRuntimeRef.current
-      reportingRuntimeRef.current = null
-      void runtime?.dispose()
+      const controller = reportingControllerRef.current
+      void controller?.dispose()
     }
   }, [])
 
@@ -348,6 +353,13 @@ export const VoltageAdminDemo = () => {
   )
 
   const executeTool = async (name: string, args: Record<string, unknown>) => {
+    if (name === EXECUTE_READONLY_SQL_TOOL_NAME) {
+      const controller = reportingControllerRef.current
+      if (!controller) {
+        throw new Error("SQLite reporting runtime is not ready.")
+      }
+      return controller.execute(args)
+    }
     if (name === "agent_instructions") {
       return {
         text: "目標：協助 Voltage Market 商家查閱 Dashboard、Products、Orders、Customers 與 Inventory。可查詢匿名化營運資料，並在管理者明確指定商品與非負整數存量時更新庫存。不得在 Chat 索取、接收、重述或輸出姓名、Email、地址、電話、帳戶或付款資料；不得建立、確認或取消訂單。需要流程細節時，載入對應 skill。",
