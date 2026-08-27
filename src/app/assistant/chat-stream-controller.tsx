@@ -27,7 +27,14 @@ export const ChatStreamController = ({
   }), [session, threadId])
   const persistedAssistantIds = useRef(new Set<string>())
   const messagesRef = useRef<UIMessage[]>([])
-  const setMessagesRef = useRef<((messages: UIMessage[] | ((messages: UIMessage[]) => UIMessage[])) => void)>()
+  const setMessagesRef = useRef<
+    | ((
+        messages:
+          | UIMessage[]
+          | ((messages: UIMessage[]) => UIMessage[])
+      ) => void)
+    | undefined
+  >(undefined)
   const activeRef = useRef(true)
   const discardIncompleteAssistants = useCallback(() => {
     const incompleteIds = messagesRef.current
