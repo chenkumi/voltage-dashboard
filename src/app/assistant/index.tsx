@@ -116,7 +116,7 @@ const ChatSession = ({ thread, site, target, messageIds }: {
     useEffect(() => () => session.dispose(), [session])
 
     const createNewThread = useCallback(async () => {
-        void stop()
+        void stop().catch(() => {})
         discardIncompleteAssistants()
         session.dispose()
         const nextThread = createEmptyThread(site)
@@ -126,7 +126,7 @@ const ChatSession = ({ thread, site, target, messageIds }: {
 
     const switchSite = useCallback(async (nextSite: WebMcpSite) => {
         if (nextSite.id === site.id) return
-        void stop()
+        void stop().catch(() => {})
         discardIncompleteAssistants()
         session.dispose()
         const nextThread = await createOrOpenSiteThread(nextSite)
@@ -134,7 +134,7 @@ const ChatSession = ({ thread, site, target, messageIds }: {
     }, [discardIncompleteAssistants, navigate, session, site.id, stop])
 
     const cancel = useCallback(() => {
-        void stop()
+        void stop().catch(() => {})
         discardIncompleteAssistants()
     }, [discardIncompleteAssistants, stop])
 
@@ -145,12 +145,16 @@ const ChatSession = ({ thread, site, target, messageIds }: {
             parts: [{ type: "text", text }],
         }
         void (async () => {
-            await saveUserMessage(thread.id, userMessage)
-            await sendMessage(userMessage)
+            try {
+                await saveUserMessage(thread.id, userMessage)
+                await sendMessage(userMessage)
+            } catch (error) {
+                if (!(error instanceof Error && error.name === "AbortError")) discardIncompleteAssistants()
+            }
         })()
-    }, [generateId, sendMessage, thread.id])
+    }, [discardIncompleteAssistants, generateId, sendMessage, thread.id])
 
-    useEffect(() => () => { void stop() }, [stop])
+    useEffect(() => () => { void stop().catch(() => {}) }, [stop])
 
     return (
         <div className="flex h-full w-full min-w-0 overflow-hidden bg-[#101417]">
