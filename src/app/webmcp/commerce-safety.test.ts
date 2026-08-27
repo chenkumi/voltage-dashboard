@@ -87,6 +87,25 @@ describe("commerce privacy boundaries", () => {
     )
   })
 
+  it("keeps SQL and report authoring capabilities exclusive to Admin", () => {
+    const reportingToolNames = [
+      "execute_readonly_sql",
+      "create_report",
+      "get_report_state",
+      "add_report_widget",
+      "update_report_widget",
+      "move_report_widget",
+      "remove_report_widget",
+    ]
+    const marketToolNames = VOLTAGE_TOOLS.map((tool) => tool.name)
+    const adminToolNames = VOLTAGE_ADMIN_TOOLS.map((tool) => tool.name)
+
+    for (const toolName of reportingToolNames) {
+      expect(marketToolNames).not.toContain(toolName)
+      expect(adminToolNames).toContain(toolName)
+    }
+  })
+
   it("instructs the Agent to keep personal data and final confirmation in the iframe", () => {
     const instructions = buildInstructions({
       frameVersion: 1,

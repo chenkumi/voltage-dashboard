@@ -37,9 +37,9 @@ Agent 根據使用者目標載入所需的領域 skill，自行規劃 SQL、分�
 - 不由 Agent 發布、寄送或對外分享報表。
 - 不為所有可能的業務問題預先設計固定 Dashboard 或專用查詢 API。
 
-## 3.1 第一階段實作狀態（2026-08-28）
+## 3.1 實作狀態（2026-08-28）
 
-已完成的基礎垂直切片：
+已完成的 Smart Dashboard 垂直切片：
 
 - Voltage Market Admin iframe 內的 SQLite3 WASM module Worker 與 `:memory:`
   database；不使用 OPFS，也不跨 iframe/session 共用。
@@ -54,10 +54,17 @@ Agent 根據使用者目標載入所需的領域 skill，自行規劃 SQL、分�
 - 原生 `registerTool()` 與 same-origin fallback provider 共用相同 executor；
   `__webmcpReady` 會等待 database 初始化，StrictMode、初始化失敗及 unmount 均會
   dispose runtime。
+- `voltage-sales-data`、`voltage-inventory-data` 與
+  `voltage-report-authoring` 三個按需載入 skills。
+- iframe-local immutable query cache；成功 SQL 回傳 ULID `queryId`，上限 32 筆／
+  8 MiB，超限時保留既有 evidence 並安全拒絕新結果。
+- 單一 memory-only active report，以及 create/get/add/update/move/remove 六個
+  report-authoring tools。
+- 可共同編輯的 Reports Canvas，支援 KPI、table、restricted Markdown text 與 bar；
+  使用者與 Agent 修改同一份 report state。
 
-尚未實作：data/analysis/report-authoring skills、query result cache／`queryId`、Report
-Canvas、widgets、report state 與 capability inspector。現階段是「安全資料探索基礎」，
-不是完整智慧報表產品。
+Capability inspector 尚未實作；目前 `/chat` 的 session log 可用來確認 discovered tools，
+但不把它包裝成獨立產品功能。
 
 ## 4. 整體架構
 
@@ -166,22 +173,23 @@ Skills 提供 Agent 正確使用資料與製作報表所需的知識：
 Skills 是使用指引，不是安全執行邊界。即使 Agent 未載入或誤解 skill，SQL executor
 與 Agent database 仍必須阻擋越權或危險操作。
 
-### 6.2 Skill 分組
+### 6.2 目前實作的 skill 分組
 
 依分析領域分組，避免每張 table 各自成為過度碎片化的 skill：
 
 ```text
 voltage-sales-data
 voltage-inventory-data
-voltage-order-data
-voltage-executive-analysis
-voltage-inventory-risk-analysis
 voltage-report-authoring
-voltage-data-safety
 ```
 
 `skill_list({})` 每次 user input 前重新取得當下可用 skills；只有需要詳細內容時，
 Agent 才呼叫 `load_skill({ name })`。
+
+Admin 另保留既有的 `voltage-admin-inventory` 與 `voltage-admin-order-safety`，分別處理
+明確庫存更新及匿名訂單安全界線。`voltage-order-data`、executive analysis、inventory
+risk analysis 與獨立 data-safety skill 都只是後續可拆分的構想，目前不會由
+`skill_list` 回傳。
 
 ### 6.3 Data skill 範例
 
@@ -195,8 +203,7 @@ Agent 才呼叫 `load_skill({ name })`。
 - `sale_date`：銷售日期，Asia/Taipei。
 - `product_id`：可連接 `agent_products.product_id`。
 - `quantity`：銷售數量，單位為件。
-- `net_revenue`：折扣後、不含運費的營收，單位 USD。
-- `channel`：`web`、`mobile` 或 `store`。
+- `net_revenue_usd`：折扣後、不含運費的營收，單位 USD。
 
 規則：
 
@@ -206,9 +213,9 @@ Agent 才呼叫 `load_skill({ name })`。
 - 資料期間不完整時必須在報表中標示。
 ```
 
-### 6.4 Analysis skill 範例
+### 6.4 Deferred analysis skill 範例
 
-`voltage-inventory-risk-analysis` 可要求 Agent：
+未來若新增 `voltage-inventory-risk-analysis`，可要求 Agent：
 
 1. 先確認報告期間與受眾。
 2. 同時考慮目前庫存和最近 30 天銷量。
@@ -256,6 +263,7 @@ Agent 才呼叫 `load_skill({ name })`。
 
 ```ts
 type SqlQueryResult = {
+  queryId: string
   columns: Array<{
     name: string
     type: "string" | "number" | "boolean" | "null"
@@ -267,9 +275,10 @@ type SqlQueryResult = {
 }
 ```
 
-第一階段直接回傳受限結果，不建立 query cache。`queryId` 是 Report Canvas 階段的
-deferred contract；屆時應讓它對應 iframe 記憶體中的 query result，建立 widget 時只傳
-`queryId` 與欄位 mapping，不必讓模型再次回傳整批資料。
+目前成功結果會同時回傳受限資料與 `queryId`。`queryId` 對應目前 Admin iframe
+workspace 內的 immutable query result；建立資料 widget 時只傳 `queryId` 與明確欄位
+mapping，不需讓模型再次回傳整批資料。cache 最多 32 筆／8 MiB，不設 TTL；iframe
+dispose、reload、context replay 或網站切換後，舊 `queryId` 立即失效且不會落入新 context。
 
 ### 7.2 報表操作工具
 
@@ -331,15 +340,11 @@ type ReportWidget =
     }
   | {
       id: string
-      type: "chart"
+      type: "bar"
       title: string
-      chartType: "line" | "bar" | "stacked-bar" | "pie"
       queryId: string
-      mapping: {
-        x: string
-        y: string | string[]
-        series?: string
-      }
+      categoryColumn: string
+      valueColumn: string
     }
   | {
       id: string
@@ -351,9 +356,9 @@ type ReportWidget =
   | {
       id: string
       type: "text"
-      title?: string
+      title: string
       markdown: string
-      evidenceQueryIds?: string[]
+      evidenceQueryIds: string[]
     }
 ```
 
@@ -434,7 +439,26 @@ Agent：
 > 把營收圖改成依分類堆疊，移除客戶區塊，再加一個優先補貨商品表。
 
 Agent 取得目前 report state，執行新的 SQL 或重用既有 `queryId`，再更新、移動或移除
-widgets。使用者在 iframe 中立即看到同一份結構化報表的變化，並可直接繼續編輯。
+widgets。第一版只支援 bar，不支援 stacked bar；Agent 應說明限制，並以分類 bar 或 table
+回應。使用者在 iframe 中立即看到同一份結構化報表的變化，並可直接繼續編輯。
+
+### 11.1 可重現 demo 流程
+
+1. 在 `/chat` 選擇 Voltage Market Admin，確認 session log discovery 到 21 個 tools。
+2. 請 Agent 列出並載入 sales、inventory、report-authoring 三個 skills。
+3. 查詢 `agent_dataset_status`，確認 `2026-08-21` 至 `2026-08-27`、
+   `Asia/Taipei`、更新時間與完整度。
+4. 查詢本週總營收、以營收降冪排序且 `LIMIT 3` 的前三分類，以及 stock 小於或等於
+   12 的低庫存商品；保留每次成功結果的 `queryId`。
+5. 建立期間為上述七天的 report，加入營收 KPI、分類 bar、低庫存 table 與引用三組
+   evidence 的 restricted Markdown 摘要。
+6. 在 Reports Canvas 直接修改 report/widget 標題、移除或排序 widget，再要求 Agent
+   先讀取 `get_report_state`，延續修改同一份 report。
+7. 切到 Market，確認 SQL 與 report tools 消失；切回 Admin 或 reload iframe 時，舊
+   `queryId`／report state 不得被新 context 接受。
+
+Demo 中若要展示截斷狀態，可用核准資料做大於 100 列的唯讀查詢；Canvas 必須顯示
+`truncated` 提示，不得宣稱結果代表完整資料集。
 
 ## 12. Hackathon 展示重點
 
@@ -462,22 +486,21 @@ Demo 應讓「同一個 Agent 核心」這件事在畫面上可見：
 
 ## 13. 分階段範圍
 
-第一階段已完成：
+第一版已完成：
 
 - SQLite3 WASM memory database 與 4 個 curated datasets。
 - `agent_dataset_status`。
 - 一個安全的 `execute_readonly_sql`。
 - SQL 安全、資料隔離、runtime lifecycle、skill pairing 基線與 iframe executor 綁定測試。
-
-下一階段才加入：
-
 - sales、inventory、report-authoring 三組 skills。
-- KPI、bar/line chart、table、Markdown text 四種 widget。
+- KPI、bar、table、restricted Markdown text 四種 widget。
 - 建立、修改、移動、刪除與讀取 report state。
 - 一個可在兩分鐘內完成的營運報表 demo scenario。
 - query result cache、`queryId` 與 report state 自動化測試。
 
-不在第一版加入任意程式碼 widget、跨來源資料匯入、多人協作、報表寄送或外部發布。
+後續才考慮多份報表與持久化、分享／發布、更多圖表、自由 layout 與 capability
+inspector。不在第一版加入任意程式碼 widget、跨來源資料匯入、多人協作、報表寄送或
+外部發布。
 
 ## 14. 驗證狀態與待確認事項
 
@@ -488,14 +511,27 @@ Demo 應讓「同一個 Agent 核心」這件事在畫面上可見：
 - production Chromium fallback provider 已實際 discovery `execute_readonly_sql`，並通過
   schema discovery、參數化 join/aggregation、CTE、100-row 截斷、mutation 拒絕與
   Market/Admin 切換隔離。
+- fallback provider 已完成一條 dataset status → 三組分析 SQL → query IDs →
+  KPI/table/text/bar → 人工修改 → Agent 延續修改流程；Canvas 與 report tools 讀寫
+  同一份 iframe-local state。
+- 375、768、1024 與 1440 px 已驗證無 body overflow；窄 viewport 的 table 由自身
+  容器水平捲動，bar label、具名輸入與鍵盤操作可用。
+- Market 不暴露 SQL/reporting capabilities；Admin reload、網站／thread 切換不會把舊
+  query IDs、report、skills 或 executor 綁到新 iframe context。
 - 自動化 Chromium 沒有原生 `document.modelContext`；不可把 fallback 結果宣稱為原生
-  WebMCP 驗證。需在啟用 WebMCP 的 Chrome 或 ChatGPT in-app browser 人工確認：開啟
-  `/chat`、切換 Admin、確認原生 discovery 包含 SQL tool、執行一個唯讀 aggregation，
-  再切回 Market 確認 SQL tool 消失。
+  WebMCP 驗證。
 
-仍待後續設計：
+原生 WebMCP 實機驗證步驟（待支援環境執行）：
 
-- query result cache 的容量、TTL 與 invalidation 規則。
-- report state 是否只存在記憶體，或另以 IndexedDB 持久化。
-- widget layout schema 與人類直接編輯時的同步模型。
-- Capability inspector 在正式產品 UI 中的呈現方式。
+1. 在已啟用 WebMCP 的 Chrome 或 ChatGPT in-app browser 開啟 `/chat` 並切換 Admin。
+2. 確認原生 `document.modelContext` discovery 包含 `skill_list`／`load_skill`、SQL tool
+   與六個 report tools；再呼叫 `skill_list({})`，確認結果包含三個 Smart Dashboard
+   skills。不得依賴 `__webmcpTestProvider`。
+3. 執行 dataset status 與一個 aggregation，使用回傳 `queryId` 建立 KPI 與 text widget，
+   再直接於 Canvas 修改標題。
+4. 切到 Market，確認 reporting capabilities 消失；切回 Admin，確認建立的是新 iframe
+   context，舊 query ID 不可用。
+5. 記錄 Chrome 版本、WebMCP flag/origin-trial 狀態、console 與畫面證據。
+
+目前自動化環境沒有原生 API，因此上述狀態明確標記為「待實機」，不以 fallback 結果
+冒充原生驗證。
