@@ -299,11 +299,10 @@ describe("ReportingRuntimeController", () => {
 
     await controller.prepare()
     await controller.prepare()
-    await expect(controller.execute({ sql: "SELECT 1" })).resolves.toEqual(
-      result
-    )
+    const actual = await controller.execute({ sql: "SELECT 1" })
     await controller.dispose()
 
+    expect(actual).toEqual({ ...result, queryId: expect.any(String) })
     expect(runtime.initialize).toHaveBeenCalledTimes(2)
     expect(runtime.execute).toHaveBeenCalledOnce()
     expect(runtime.dispose).toHaveBeenCalledOnce()
@@ -339,11 +338,158 @@ describe("ReportingRuntimeController", () => {
     await expect(controller.execute({ sql: "SELECT 1" })).resolves.toEqual({
       ...result,
       rows: [{ category: "Beauty" }],
+      queryId: expect.any(String),
     })
     expect(createRuntime).toHaveBeenCalledTimes(2)
     expect(first.dispose).toHaveBeenCalledOnce()
     expect(second.initialize).toHaveBeenCalledOnce()
     expect(first.execute).not.toHaveBeenCalled()
     expect(second.execute).toHaveBeenCalledOnce()
+  })
+
+  it("does not let an old initialization failure dispose the replayed context", async () => {
+    let rejectFirstInitialization: ((reason: Error) => void) | undefined
+    const firstInitialization = new Promise<void>((_resolve, reject) => {
+      rejectFirstInitialization = reject
+    })
+    const first = {
+      initialize: vi.fn(() => firstInitialization),
+      execute: vi.fn(async () => result),
+      dispose: vi.fn(async () => undefined),
+    }
+    const second = {
+      initialize: vi.fn(async () => undefined),
+      execute: vi.fn(async () => result),
+      dispose: vi.fn(async () => undefined),
+    }
+    const createRuntime = vi
+      .fn<() => typeof first | typeof second>()
+      .mockReturnValueOnce(first)
+      .mockReturnValueOnce(second)
+    const controller = new ReportingRuntimeController(createRuntime)
+    const stalePreparation = controller.prepare()
+
+    void controller.dispose()
+    await controller.prepare()
+    rejectFirstInitialization?.(new Error("Stale initialization failed."))
+
+    await expect(stalePreparation).rejects.toThrow(
+      "Stale initialization failed."
+    )
+    await expect(controller.execute({ sql: "SELECT 1" })).resolves.toEqual({
+      ...result,
+      queryId: expect.any(String),
+    })
+    expect(controller.getQueryCacheStatus()).toMatchObject({
+      state: "active",
+      entryCount: 1,
+    })
+  })
+
+  it("does not cache a stale query that finishes after context replay", async () => {
+    let resolveStaleQuery: ((value: typeof result) => void) | undefined
+    const staleQueryResult = new Promise<typeof result>((resolve) => {
+      resolveStaleQuery = resolve
+    })
+    const first = {
+      initialize: vi.fn(async () => undefined),
+      execute: vi.fn(() => staleQueryResult),
+      dispose: vi.fn(async () => undefined),
+    }
+    const second = {
+      initialize: vi.fn(async () => undefined),
+      execute: vi.fn(async () => result),
+      dispose: vi.fn(async () => undefined),
+    }
+    const createRuntime = vi
+      .fn<() => typeof first | typeof second>()
+      .mockReturnValueOnce(first)
+      .mockReturnValueOnce(second)
+    const controller = new ReportingRuntimeController(createRuntime)
+    await controller.prepare()
+    const staleQuery = controller.execute({ sql: "SELECT 1" })
+
+    void controller.dispose()
+    await controller.prepare()
+    resolveStaleQuery?.(result)
+
+    await expect(staleQuery).rejects.toMatchObject({
+      category: "SQLITE_NOT_READY",
+    })
+    expect(controller.getQueryCacheStatus().entryCount).toBe(0)
+    await expect(controller.execute({ sql: "SELECT 1" })).resolves.toEqual({
+      ...result,
+      queryId: expect.any(String),
+    })
+  })
+
+  it("caches only a result that passed the output privacy guard", async () => {
+    const runtime = {
+      initialize: vi.fn(async () => undefined),
+      execute: vi
+        .fn()
+        .mockResolvedValueOnce(result)
+        .mockResolvedValueOnce({
+          ...result,
+          columns: [{ name: "customerEmail", type: "string" as const }],
+          rows: [{ customerEmail: "private@example.com" }],
+        }),
+      dispose: vi.fn(async () => undefined),
+    }
+    const controller = new ReportingRuntimeController(() => runtime)
+    await controller.prepare()
+
+    const safe = await controller.execute({
+      sql: "SELECT category FROM agent_products",
+    })
+    await expect(
+      controller.execute({ sql: "SELECT category FROM agent_products" })
+    ).rejects.toMatchObject({ category: "SQL_PRIVACY_ERROR" })
+
+    expect(controller.getQueryResult(safe.queryId).rows).toEqual(result.rows)
+    expect(controller.getQueryCacheStatus().entryCount).toBe(1)
+  })
+
+  it("does not cache a failed query", async () => {
+    const runtime = {
+      initialize: vi.fn(async () => undefined),
+      execute: vi.fn(async () =>
+        Promise.reject(
+          new SqliteReportingRuntimeError(
+            "SQL_EXECUTION_ERROR",
+            "The read-only SQL query could not be executed."
+          )
+        )
+      ),
+      dispose: vi.fn(async () => undefined),
+    }
+    const controller = new ReportingRuntimeController(() => runtime)
+    await controller.prepare()
+
+    await expect(
+      controller.execute({ sql: "SELECT category FROM agent_products" })
+    ).rejects.toMatchObject({ category: "SQL_EXECUTION_ERROR" })
+    expect(controller.getQueryCacheStatus().entryCount).toBe(0)
+  })
+
+  it("invalidates cached query IDs on dispose and creates a fresh cache", async () => {
+    const runtime = {
+      initialize: vi.fn(async () => undefined),
+      execute: vi.fn(async () => result),
+      dispose: vi.fn(async () => undefined),
+    }
+    const controller = new ReportingRuntimeController(() => runtime)
+    await controller.prepare()
+    const first = await controller.execute({ sql: "SELECT 1" })
+    await controller.dispose()
+
+    expect(() => controller.getQueryResult(first.queryId)).toThrowError(
+      expect.objectContaining({ category: "QUERY_CACHE_DISPOSED" })
+    )
+
+    await controller.prepare()
+    expect(() => controller.getQueryResult(first.queryId)).toThrowError(
+      expect.objectContaining({ category: "QUERY_CACHE_NOT_FOUND" })
+    )
   })
 })

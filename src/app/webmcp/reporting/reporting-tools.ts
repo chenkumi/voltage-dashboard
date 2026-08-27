@@ -10,14 +10,22 @@ import {
   SqliteReportingRuntime,
   SqliteReportingRuntimeError,
 } from "./sqlite-runtime"
-import type { SqlQueryInput, SqlQueryResult, SqlScalar } from "./types"
+import { QueryResultCache } from "./query-cache"
+import type {
+  QueryCacheStatus,
+  QueryId,
+  SqlQueryInput,
+  SqlQueryResult,
+  SqlQueryResultWithId,
+  SqlScalar,
+} from "./types"
 
 export const EXECUTE_READONLY_SQL_TOOL_NAME = "execute_readonly_sql"
 
 export const EXECUTE_READONLY_SQL_TOOL: WebMcpRegisteredTool = {
   name: EXECUTE_READONLY_SQL_TOOL_NAME,
   description:
-    "Execute one read-only SQLite SELECT or WITH query against the curated agent_products, agent_sales_daily, agent_inventory, and agent_dataset_status datasets. Use parameters for values; string filters must come from the curated data or be ISO dates, date modifiers, or date formats. Results include columns, rows, rowCount, truncated, and executionTimeMs; output is limited to 100 rows and long strings are truncated. Use sqlite_schema to discover table definitions. Personal, account, and payment data, writes, PRAGMA, filesystem access, extensions, and unapproved schemas are rejected.",
+    "Execute one read-only SQLite SELECT or WITH query against the curated agent_products, agent_sales_daily, agent_inventory, and agent_dataset_status datasets. Use parameters for values; string filters must come from the curated data or be ISO dates, date modifiers, or date formats. Successful results include a workspace-local queryId plus columns, rows, rowCount, truncated, and executionTimeMs; output is limited to 100 rows and long strings are truncated. Use sqlite_schema to discover table definitions. Personal, account, and payment data, writes, PRAGMA, filesystem access, extensions, and unapproved schemas are rejected.",
   inputSchema: {
     type: "object",
     properties: {
@@ -57,6 +65,11 @@ export interface ManagedReadonlySqlRuntime extends ReadonlySqlRuntime {
 }
 
 type RuntimeFactory = () => ManagedReadonlySqlRuntime
+type QueryCacheFactory = () => QueryResultCache
+type ReportingRuntimeContext = {
+  runtime: ManagedReadonlySqlRuntime
+  queryCache: QueryResultCache
+}
 
 const isSqlScalar = (value: unknown): value is SqlScalar =>
   value === null ||
@@ -308,40 +321,79 @@ export const executeReadonlySqlTool = async (
 }
 
 export class ReportingRuntimeController {
-  private runtime: ManagedReadonlySqlRuntime | null = null
+  private context: ReportingRuntimeContext | null = null
   private readonly createRuntime: RuntimeFactory
+  private queryCache: QueryResultCache
+  private readonly createQueryCache: QueryCacheFactory
 
   constructor(
-    createRuntime: RuntimeFactory = () => new SqliteReportingRuntime()
+    createRuntime: RuntimeFactory = () => new SqliteReportingRuntime(),
+    createQueryCache: QueryCacheFactory = () => new QueryResultCache()
   ) {
     this.createRuntime = createRuntime
+    this.createQueryCache = createQueryCache
+    this.queryCache = createQueryCache()
   }
 
   async prepare() {
-    const runtime = this.runtime ?? this.createRuntime()
-    this.runtime = runtime
+    let context = this.context
+    if (!context) {
+      if (this.queryCache.getStatus().state === "disposed")
+        this.queryCache = this.createQueryCache()
+      context = {
+        runtime: this.createRuntime(),
+        queryCache: this.queryCache,
+      }
+      this.context = context
+    }
     try {
-      await runtime.initialize()
+      await context.runtime.initialize()
     } catch (error) {
-      if (this.runtime === runtime) this.runtime = null
-      await runtime.dispose()
+      if (this.context === context) this.context = null
+      context.queryCache.dispose()
+      await context.runtime.dispose()
       throw error
     }
-  }
-
-  async execute(args: unknown) {
-    if (!this.runtime) {
+    if (this.context !== context) {
       throw new SqliteReportingRuntimeError(
         "SQLITE_NOT_READY",
         "SQLite reporting runtime is not ready."
       )
     }
-    return executeReadonlySqlTool(this.runtime, args)
+  }
+
+  async execute(args: unknown): Promise<SqlQueryResultWithId> {
+    const context = this.context
+    if (!context) {
+      throw new SqliteReportingRuntimeError(
+        "SQLITE_NOT_READY",
+        "SQLite reporting runtime is not ready."
+      )
+    }
+    const result = await executeReadonlySqlTool(context.runtime, args)
+    if (this.context !== context) {
+      throw new SqliteReportingRuntimeError(
+        "SQLITE_NOT_READY",
+        "SQLite reporting runtime is not ready."
+      )
+    }
+    const queryId = context.queryCache.add(result)
+    return { ...result, queryId }
+  }
+
+  getQueryResult(queryId: QueryId) {
+    return this.queryCache.get(queryId)
+  }
+
+  getQueryCacheStatus(): QueryCacheStatus {
+    return this.queryCache.getStatus()
   }
 
   async dispose() {
-    const runtime = this.runtime
-    this.runtime = null
-    await runtime?.dispose()
+    const context = this.context
+    this.context = null
+    const queryCache = context?.queryCache ?? this.queryCache
+    queryCache.dispose()
+    await context?.runtime.dispose()
   }
 }

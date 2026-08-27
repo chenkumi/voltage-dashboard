@@ -18,6 +18,33 @@ export type SqlQueryResult = {
   executionTimeMs: number
 }
 
+export type QueryId = string
+
+export type CachedQueryResult = Readonly<SqlQueryResult> & {
+  readonly columns: readonly Readonly<SqlColumn>[]
+  readonly rows: readonly Readonly<Record<string, SqlScalar>>[]
+}
+
+export type SqlQueryResultWithId = SqlQueryResult & {
+  queryId: QueryId
+}
+
+export type QueryCacheState = "active" | "disposed"
+
+export type QueryCacheStatus = {
+  state: QueryCacheState
+  entryCount: number
+  totalBytes: number
+  maxEntries: number
+  maxTotalBytes: number
+}
+
+export type QueryCacheErrorCategory =
+  | "QUERY_CACHE_DISPOSED"
+  | "QUERY_CACHE_ENTRY_TOO_LARGE"
+  | "QUERY_CACHE_LIMIT_EXCEEDED"
+  | "QUERY_CACHE_NOT_FOUND"
+
 export type ReportingWorkerRequest =
   | { id: string; type: "init" }
   | ({ id: string; type: "execute" } & SqlQueryInput)
@@ -45,5 +72,8 @@ export interface ReportingWorkerPort {
     type: "message",
     listener: (event: MessageEvent<ReportingWorkerResponse>) => void
   ): void
-  removeEventListener(type: "error", listener: (event: ErrorEvent) => void): void
+  removeEventListener(
+    type: "error",
+    listener: (event: ErrorEvent) => void
+  ): void
 }
