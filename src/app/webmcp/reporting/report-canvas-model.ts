@@ -1,9 +1,34 @@
 import type {
   BarReportWidget,
   CachedQueryResult,
+  MetricCurrencyCode,
+  MetricValueFormat,
   QueryCacheStatus,
   ReportWidget,
+  SqlScalar,
 } from "./types"
+
+const metricNumberFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+})
+
+const metricPercentFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 2,
+  style: "percent",
+})
+
+const metricCurrencyFormatters = {
+  TWD: new Intl.NumberFormat("en-US", {
+    currency: "TWD",
+    maximumFractionDigits: 0,
+    style: "currency",
+  }),
+  USD: new Intl.NumberFormat("en-US", {
+    currency: "USD",
+    maximumFractionDigits: 2,
+    style: "currency",
+  }),
+}
 
 export const getCacheLimitMessage = (status: QueryCacheStatus) => {
   if (!status.limitReached) return null
@@ -14,6 +39,24 @@ export const getCacheLimitMessage = (status: QueryCacheStatus) => {
 
 export const shouldCommitTitleOnBlur = (cancelPending: boolean) =>
   !cancelPending
+
+export const toggleWidgetEditor = (
+  activeWidgetId: string | null,
+  widgetId: string
+) => (activeWidgetId === widgetId ? null : widgetId)
+
+export const formatMetricValue = (
+  value: SqlScalar | undefined,
+  format: MetricValueFormat | undefined,
+  currencyCode: MetricCurrencyCode | undefined
+) => {
+  if (value === null || value === undefined) return "—"
+  if (typeof value !== "number") return String(value)
+  if (format === "percent") return metricPercentFormatter.format(value)
+  if (format === "currency")
+    return metricCurrencyFormatters[currencyCode ?? "USD"].format(value)
+  return metricNumberFormatter.format(value)
+}
 
 type QueryResultGetter = (queryId: string) => CachedQueryResult
 
@@ -35,13 +78,8 @@ export const resolveReportWidget = (
     const columns = new Map(
       result.columns.map((column) => [column.name, column.type])
     )
-    if (
-      widget.type === "kpi" &&
-      (columns.get(widget.valueColumn) !== "number" ||
-        (widget.comparisonColumn !== undefined &&
-          columns.get(widget.comparisonColumn) !== "number"))
-    )
-      return { status: "error", message: "KPI column mapping is unavailable." }
+    if (widget.type === "metric" && columns.get(widget.valueColumn) !== "number")
+      return { status: "error", message: "Metric column mapping is unavailable." }
     if (
       widget.type === "table" &&
       widget.columns.some((column) => !columns.has(column))

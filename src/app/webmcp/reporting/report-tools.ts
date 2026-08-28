@@ -29,10 +29,19 @@ const reportWidgetSchema = {
   oneOf: [
     schema(
       {
-        type: { type: "string", const: "kpi" },
+        type: { type: "string", const: "metric" },
         ...dataWidgetFields,
         valueColumn: { type: "string" },
-        comparisonColumn: { type: "string" },
+        valueFormat: {
+          type: "string",
+          enum: ["number", "currency", "percent"],
+        },
+        currencyCode: { type: "string", enum: ["USD", "TWD"] },
+        detail: { type: "string", maxLength: 120 },
+        detailTone: {
+          type: "string",
+          enum: ["neutral", "positive", "negative"],
+        },
       },
       ["type", "title", "queryId", "valueColumn"]
     ),
@@ -130,7 +139,7 @@ export const REPORT_AUTHORING_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "add_report_widget",
     description:
-      "Add one validated KPI, table, Markdown, bar, or space widget to the active report. Every widget uses xSpace (1 to 6 columns) and ySpace (a positive row span); a space widget only reserves layout area and has no data fields. Markdown may use ordinary business formats such as $49,722.51, 12 items, YYYY-MM-DD, and IANA time zones, plus standard Markdown and Mermaid fences. Never include personal contact, account, payment data, links, HTML, or JavaScript. The root input must contain only widget; put type, title, queryId, columns, layout, and other widget fields inside widget. Do not include reportId.",
+      "Add one validated Metric, table, Markdown, bar, or space widget to the active report. A Metric shows one numeric value as a number, currency, or percentage, with optional colored detail text. Every widget uses xSpace (1 to 6 columns) and ySpace (a positive row span); a space widget only reserves layout area and has no data fields. Markdown may use ordinary business formats such as $49,722.51, 12 items, YYYY-MM-DD, and IANA time zones, plus standard Markdown and Mermaid fences. Never include personal contact, account, payment data, links, HTML, or JavaScript. The root input must contain only widget; put type, title, queryId, columns, layout, and other widget fields inside widget. Do not include reportId.",
     inputSchema: withCompletionVerifier({
       ...schema({ widget: reportWidgetSchema }, ["widget"]),
       description:
@@ -420,9 +429,30 @@ const assertColumnName = (value: unknown) => {
   return value
 }
 
+const assertMetricValueFormat = (value: unknown) => {
+  if (value === undefined) return "number" as const
+  if (value === "number" || value === "currency" || value === "percent")
+    return value
+  return throwArgumentError("Metric value format is invalid.")
+}
+
+const assertMetricCurrencyCode = (value: unknown, format: string) => {
+  if (value === undefined) return undefined
+  if (format !== "currency" || (value !== "USD" && value !== "TWD"))
+    return throwArgumentError("Metric currency code is invalid.")
+  return value
+}
+
+const assertMetricDetailTone = (value: unknown) => {
+  if (value === undefined) return "neutral" as const
+  if (value === "neutral" || value === "positive" || value === "negative")
+    return value
+  return throwArgumentError("Metric detail tone is invalid.")
+}
+
 const assertWidgetLayout = (input: JsonObject, type: unknown) => {
   const defaults =
-    type === "kpi"
+    type === "metric"
       ? { xSpace: 2, ySpace: 1 }
       : type === "markdown"
         ? { xSpace: 6, ySpace: 2 }
@@ -522,7 +552,7 @@ const parseWidget = (
 
   const queryId = assertQueryId(input.queryId)
   const result = queryCache.get(queryId)
-  if (type === "kpi") {
+  if (type === "metric") {
     assertKeys(
       input,
       [
@@ -530,20 +560,42 @@ const parseWidget = (
         "title",
         "queryId",
         "valueColumn",
-        "comparisonColumn",
+        "valueFormat",
+        "currencyCode",
+        "detail",
+        "detailTone",
         "xSpace",
         "ySpace",
       ],
-      "KPI widget"
+      "Metric widget"
     )
     const valueColumn = assertColumnName(input.valueColumn)
     assertColumn(result, valueColumn, true)
-    const comparisonColumn =
-      input.comparisonColumn === undefined
+    const valueFormat = assertMetricValueFormat(input.valueFormat)
+    const currencyCode = assertMetricCurrencyCode(
+      input.currencyCode,
+      valueFormat
+    )
+    const detail =
+      input.detail === undefined
         ? undefined
-        : assertColumnName(input.comparisonColumn)
-    if (comparisonColumn) assertColumn(result, comparisonColumn, true)
-    return { type, title, queryId, valueColumn, comparisonColumn, ...layout }
+        : assertDisplayText(input.detail, "Metric detail", 120)
+    if (detail === undefined && input.detailTone !== undefined)
+      throwArgumentError("Metric detail tone requires detail text.")
+    const detailTone = detail
+      ? assertMetricDetailTone(input.detailTone)
+      : undefined
+    return {
+      type,
+      title,
+      queryId,
+      valueColumn,
+      valueFormat,
+      currencyCode,
+      detail,
+      detailTone,
+      ...layout,
+    }
   }
   if (type === "table") {
     assertKeys(

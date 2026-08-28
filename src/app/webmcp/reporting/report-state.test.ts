@@ -43,7 +43,7 @@ describe("ReportStateStore", () => {
     const store = createStore()
     store.createReport({ title: "Operations" })
     const first = store.addWidget({
-      type: "kpi",
+      type: "metric",
       title: "Revenue",
       queryId: "query-1",
       valueColumn: "revenue",
@@ -56,7 +56,7 @@ describe("ReportStateStore", () => {
     })
 
     store.replaceWidget(first.id, {
-      type: "kpi",
+      type: "metric",
       title: "Net revenue",
       queryId: "query-1",
       valueColumn: "revenue",

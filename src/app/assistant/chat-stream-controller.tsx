@@ -16,6 +16,7 @@ import {
   type ChatStreamActions,
   ChatStreamRuntime,
 } from "./chat-stream-runtime"
+import { sendPersistedUserMessage } from "./chat-send-lifecycle"
 
 export const ChatStreamController = memo(function ChatStreamController({
   threadId,
@@ -45,6 +46,7 @@ export const ChatStreamController = memo(function ChatStreamController({
     | undefined
   >(undefined)
   const activeRef = useRef(true)
+  const turnVersionRef = useRef(0)
   const discardIncompleteAssistants = useCallback(() => {
     const incompleteIds = messagesRef.current
       .filter(
@@ -104,6 +106,7 @@ export const ChatStreamController = memo(function ChatStreamController({
     })
   const send = useCallback(
     (text: string) => {
+      const turnVersion = turnVersionRef.current
       const userMessage: UIMessage = {
         id: generateId(),
         role: "user",
@@ -112,8 +115,12 @@ export const ChatStreamController = memo(function ChatStreamController({
 
       void (async () => {
         try {
-          await saveUserMessage(threadId, userMessage)
-          await sendMessage(userMessage)
+          await sendPersistedUserMessage({
+            persist: () => saveUserMessage(threadId, userMessage),
+            send: () => sendMessage(userMessage),
+            isActive: () =>
+              activeRef.current && turnVersionRef.current === turnVersion,
+          })
         } catch (error) {
           if (!(error instanceof Error && error.name === "AbortError"))
             discardIncompleteAssistants()
@@ -123,6 +130,7 @@ export const ChatStreamController = memo(function ChatStreamController({
     [discardIncompleteAssistants, generateId, sendMessage, threadId]
   )
   const cancel = useCallback(() => {
+    turnVersionRef.current += 1
     void stop().catch(() => {})
     discardIncompleteAssistants()
   }, [discardIncompleteAssistants, stop])
@@ -156,6 +164,7 @@ export const ChatStreamController = memo(function ChatStreamController({
     activeRef.current = true
     return () => {
       activeRef.current = false
+      turnVersionRef.current += 1
       void stop().catch(() => {})
       runtime.clear()
     }

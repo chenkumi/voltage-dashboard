@@ -244,16 +244,19 @@ describe("report authoring WebMCP tools", () => {
     })
   })
 
-  it("adds KPI, table, Markdown, and bar widgets with validated evidence mappings", () => {
+  it("adds Metric, table, Markdown, and bar widgets with validated evidence mappings", () => {
     const { cache, state } = createWorkspace()
     createReport(cache, state)
     const widgets = [
       {
-        type: "kpi",
+        type: "metric",
         title: "Net revenue",
         queryId,
         valueColumn: "revenue",
-        comparisonColumn: "stock",
+        valueFormat: "currency",
+        currencyCode: "USD",
+        detail: "Up 12.4% from last week",
+        detailTone: "positive",
       },
       {
         type: "table",
@@ -285,11 +288,91 @@ describe("report authoring WebMCP tools", () => {
     }
 
     expect(state.getSnapshot()?.widgets.map((widget) => widget.type)).toEqual([
-      "kpi",
+      "metric",
       "table",
       "markdown",
       "bar",
     ])
+  })
+
+  it("stores percent format and negative detail tone for a Metric", () => {
+    const { cache, state } = createWorkspace()
+    createReport(cache, state)
+
+    expect(
+      executeReportAuthoringTool(cache, state, "add_report_widget", {
+        widget: {
+          type: "metric",
+          title: "Conversion rate",
+          queryId,
+          valueColumn: "revenue",
+          valueFormat: "percent",
+          detail: "Down 2.1% from last week",
+          detailTone: "negative",
+        },
+      })
+    ).toMatchObject({
+      status: "OK",
+      widget: {
+        type: "metric",
+        valueFormat: "percent",
+        detail: "Down 2.1% from last week",
+        detailTone: "negative",
+      },
+    })
+
+  })
+
+  it("rejects unknown Metric value formats", () => {
+    const { cache, state } = createWorkspace()
+    createReport(cache, state)
+
+    expect(() =>
+      executeReportAuthoringTool(cache, state, "add_report_widget", {
+        widget: {
+          type: "metric",
+          title: "Invalid metric",
+          queryId,
+          valueColumn: "revenue",
+          valueFormat: "ratio",
+        },
+      })
+    ).toThrowError(/Metric value format is invalid/)
+  })
+
+  it("rejects a currency code for non-currency Metrics", () => {
+    const { cache, state } = createWorkspace()
+    createReport(cache, state)
+
+    expect(() =>
+      executeReportAuthoringTool(cache, state, "add_report_widget", {
+        widget: {
+          type: "metric",
+          title: "Revenue",
+          queryId,
+          valueColumn: "revenue",
+          valueFormat: "number",
+          currencyCode: "USD",
+        },
+      })
+    ).toThrowError(/Metric currency code is invalid/)
+  })
+
+  it("requires detail text when a Metric detail tone is specified", () => {
+    const { cache, state } = createWorkspace()
+    createReport(cache, state)
+
+    expect(() =>
+      executeReportAuthoringTool(cache, state, "add_report_widget", {
+        widget: {
+          type: "metric",
+          title: "Revenue",
+          queryId,
+          valueColumn: "revenue",
+          detailTone: "positive",
+        },
+      })
+    ).toThrowError(/Metric detail tone requires detail text/)
   })
 
   it("adds a six-column grid layout and a data-free space widget", () => {
@@ -311,7 +394,7 @@ describe("report authoring WebMCP tools", () => {
     expect(
       executeReportAuthoringTool(cache, state, "add_report_widget", {
         widget: {
-          type: "kpi",
+          type: "metric",
           title: "Revenue",
           queryId,
           valueColumn: "revenue",
@@ -321,7 +404,7 @@ describe("report authoring WebMCP tools", () => {
       })
     ).toMatchObject({
       status: "OK",
-      widget: { type: "kpi", xSpace: 4, ySpace: 2 },
+      widget: { type: "metric", xSpace: 4, ySpace: 2 },
     })
   })
 
@@ -347,7 +430,7 @@ describe("report authoring WebMCP tools", () => {
     createReport(cache, state)
     executeReportAuthoringTool(cache, state, "add_report_widget", {
       widget: {
-        type: "kpi",
+        type: "metric",
         title: "Revenue",
         queryId,
         valueColumn: "revenue",
@@ -365,7 +448,7 @@ describe("report authoring WebMCP tools", () => {
     executeReportAuthoringTool(cache, state, "update_report_widget", {
       widgetId: "widget-1",
       widget: {
-        type: "kpi",
+        type: "metric",
         title: "Net revenue",
         queryId,
         valueColumn: "revenue",
@@ -387,7 +470,7 @@ describe("report authoring WebMCP tools", () => {
   it.each([
     {
       widget: {
-        type: "kpi",
+        type: "metric",
         title: "Missing evidence",
         queryId: missingQueryId,
         valueColumn: "revenue",
@@ -405,7 +488,7 @@ describe("report authoring WebMCP tools", () => {
     },
     {
       widget: {
-        type: "kpi",
+        type: "metric",
         title: "Wrong type",
         queryId,
         valueColumn: "category",
@@ -526,7 +609,7 @@ describe("report authoring WebMCP tools", () => {
     createReport(cache, state)
     executeReportAuthoringTool(cache, state, "add_report_widget", {
       widget: {
-        type: "kpi",
+        type: "metric",
         title: "Revenue",
         queryId,
         valueColumn: "revenue",
@@ -581,7 +664,7 @@ describe("report authoring WebMCP tools", () => {
     {
       name: "add_report_widget",
       args: {
-        type: "kpi",
+        type: "metric",
         title: "Revenue",
         queryId,
         valueColumn: "revenue",
@@ -600,7 +683,7 @@ describe("report authoring WebMCP tools", () => {
       args: {
         reportId: "report-1",
         widget: {
-          type: "kpi",
+          type: "metric",
           title: "Revenue",
           queryId,
           valueColumn: "revenue",
@@ -654,7 +737,7 @@ describe("report authoring WebMCP tools", () => {
         "add_report_widget",
         {
           widget: {
-            type: "kpi",
+            type: "metric",
             title: "Cross workspace",
             queryId,
             valueColumn: "revenue",

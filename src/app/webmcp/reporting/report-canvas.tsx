@@ -4,8 +4,10 @@ import {
   Database,
   FileChartColumn,
   FolderOpen,
+  Pencil,
   Plus,
   Trash2,
+  X,
 } from "lucide-react"
 import {
   useCallback,
@@ -18,9 +20,11 @@ import { Button } from "@/components/ui/button"
 import { Markdown } from "@/components/ui/markdown"
 import {
   createBarDisplayRows,
+  formatMetricValue,
   getCacheLimitMessage,
   resolveReportWidget,
   shouldCommitTitleOnBlur,
+  toggleWidgetEditor,
 } from "./report-canvas-model"
 import {
   deleteSavedReport,
@@ -54,11 +58,13 @@ const EditableTitle = ({
   label,
   className,
   onCommit,
+  readOnly = false,
 }: {
   value: string
   label: string
   className: string
   onCommit: (value: string) => void
+  readOnly?: boolean
 }) => {
   const [draft, setDraft] = useState(value)
   const [error, setError] = useState("")
@@ -82,6 +88,7 @@ const EditableTitle = ({
         aria-invalid={error ? true : undefined}
         className={className}
         maxLength={120}
+        readOnly={readOnly}
         rows={className === "report-title-input" ? 1 : 2}
         value={draft}
         onBlur={() => {
@@ -124,19 +131,27 @@ const QueryNotice = ({ result }: { result: CachedQueryResult }) => (
   </>
 )
 
-const KpiWidget = ({
+const MetricWidget = ({
   result,
   widget,
 }: {
   result: CachedQueryResult
-  widget: Extract<ReportWidget, { type: "kpi" }>
+  widget: Extract<ReportWidget, { type: "metric" }>
 }) => {
   const row = result.rows[0]
   return (
-    <div className="report-kpi">
-      <strong>{formatScalar(row?.[widget.valueColumn])}</strong>
-      {widget.comparisonColumn ? (
-        <span>Comparison: {formatScalar(row?.[widget.comparisonColumn])}</span>
+    <div className="report-metric">
+      <strong>
+        {formatMetricValue(
+          row?.[widget.valueColumn],
+          widget.valueFormat,
+          widget.currencyCode
+        )}
+      </strong>
+      {widget.detail ? (
+        <span data-tone={widget.detailTone ?? "neutral"}>
+          {widget.detail}
+        </span>
       ) : null}
       <QueryNotice result={result} />
     </div>
@@ -252,7 +267,7 @@ const WidgetLayoutControls = ({
   controller: ReportingRuntimeController
   widget: ReportWidget
 }) => {
-  const xSpace = widget.xSpace ?? (widget.type === "kpi" ? 2 : 6)
+  const xSpace = widget.xSpace ?? (widget.type === "metric" ? 2 : 6)
   const ySpace = widget.ySpace ?? 1
   const [draftYSpace, setDraftYSpace] = useState(String(ySpace))
 
@@ -455,6 +470,7 @@ export const ReportCanvas = ({
     controller.getWorkspaceSnapshot
   )
   const { report, cacheStatus } = workspace
+  const [editingWidgetId, setEditingWidgetId] = useState<string | null>(null)
 
   if (!report)
     return (
@@ -515,7 +531,7 @@ export const ReportCanvas = ({
       {report.widgets.length === 0 ? (
         <div className="report-widget-empty">
           The report exists, but it has no widgets yet. Ask the Agent to add a
-          KPI, table, evidence note, or bar chart.
+          Metric, table, evidence note, or bar chart.
         </div>
       ) : (
         <div className="report-widget-grid">
@@ -524,15 +540,78 @@ export const ReportCanvas = ({
               widget,
               controller.getQueryResult
             )
+            const isEditing = editingWidgetId === widget.id
+            const widgetLabel =
+              widget.type === "space" ? "space" : widget.title
+            const editorId = `report-widget-editor-${widget.id}`
             return (
               <article
-                className={`report-widget report-widget-${widget.type}`}
+                className={`report-widget report-widget-${widget.type}${
+                  isEditing ? " report-widget-editing" : ""
+                }`}
                 key={widget.id}
                 style={{
                   gridColumn: `span ${widget.xSpace ?? 6}`,
                   gridRow: `span ${widget.ySpace ?? 1}`,
                 }}
               >
+                {isEditing ? (
+                  <div className="report-widget-editor" id={editorId}>
+                    <WidgetLayoutControls
+                      controller={controller}
+                      key={`${widget.id}-${widget.xSpace}-${widget.ySpace}`}
+                      widget={widget}
+                    />
+                    <div className="report-widget-editor-actions">
+                      <Button
+                        aria-label={`Move ${widgetLabel} earlier`}
+                        className="cursor-pointer"
+                        disabled={index === 0}
+                        size="icon-sm"
+                        title="Move earlier"
+                        variant="ghost"
+                        onClick={() =>
+                          controller.moveReportWidget(widget.id, index - 1)
+                        }
+                      >
+                        <ArrowUp />
+                      </Button>
+                      <Button
+                        aria-label={`Move ${widgetLabel} later`}
+                        className="cursor-pointer"
+                        disabled={index === report.widgets.length - 1}
+                        size="icon-sm"
+                        title="Move later"
+                        variant="ghost"
+                        onClick={() =>
+                          controller.moveReportWidget(widget.id, index + 1)
+                        }
+                      >
+                        <ArrowDown />
+                      </Button>
+                      <Button
+                        aria-label={`Remove ${widgetLabel}`}
+                        className="cursor-pointer"
+                        size="icon-sm"
+                        title="Remove widget"
+                        variant="destructive"
+                        onClick={() => controller.removeReportWidget(widget.id)}
+                      >
+                        <Trash2 />
+                      </Button>
+                      <Button
+                        aria-label={`Close ${widgetLabel} editor`}
+                        className="cursor-pointer"
+                        size="icon-sm"
+                        title="Close widget editor"
+                        variant="ghost"
+                        onClick={() => setEditingWidgetId(null)}
+                      >
+                        <X />
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
                 <header>
                   <div>
                     <span>{widget.type}</span>
@@ -544,55 +623,33 @@ export const ReportCanvas = ({
                         value={widget.title}
                         label={`${widget.type} widget title`}
                         className="report-widget-title-input"
+                        readOnly={!isEditing}
                         onCommit={(title) =>
                           controller.updateReportWidgetTitle(widget.id, title)
                         }
                       />
                     )}
                   </div>
-                  <div className="report-widget-actions">
-                    <WidgetLayoutControls
-                      controller={controller}
-                      key={`${widget.id}-${widget.xSpace}-${widget.ySpace}`}
-                      widget={widget}
-                    />
-                    <Button
-                      aria-label={`Move ${widget.type === "space" ? "space" : widget.title} earlier`}
-                      className="cursor-pointer"
-                      disabled={index === 0}
-                      size="icon-sm"
-                      title="Move earlier"
-                      variant="ghost"
-                      onClick={() =>
-                        controller.moveReportWidget(widget.id, index - 1)
-                      }
-                    >
-                      <ArrowUp />
-                    </Button>
-                    <Button
-                      aria-label={`Move ${widget.type === "space" ? "space" : widget.title} later`}
-                      className="cursor-pointer"
-                      disabled={index === report.widgets.length - 1}
-                      size="icon-sm"
-                      title="Move later"
-                      variant="ghost"
-                      onClick={() =>
-                        controller.moveReportWidget(widget.id, index + 1)
-                      }
-                    >
-                      <ArrowDown />
-                    </Button>
-                    <Button
-                      aria-label={`Remove ${widget.type === "space" ? "space" : widget.title}`}
-                      className="cursor-pointer"
-                      size="icon-sm"
-                      title="Remove widget"
-                      variant="destructive"
-                      onClick={() => controller.removeReportWidget(widget.id)}
-                    >
-                      <Trash2 />
-                    </Button>
-                  </div>
+                  {isEditing ? null : (
+                    <div className="report-widget-actions">
+                      <Button
+                        aria-controls={editorId}
+                        aria-expanded={false}
+                        aria-label={`Edit ${widgetLabel}`}
+                        className="cursor-pointer"
+                        size="icon-sm"
+                        title="Edit widget"
+                        variant="ghost"
+                        onClick={() =>
+                          setEditingWidgetId((activeWidgetId) =>
+                            toggleWidgetEditor(activeWidgetId, widget.id)
+                          )
+                        }
+                      >
+                        <Pencil />
+                      </Button>
+                    </div>
+                  )}
                 </header>
 
                 {widget.type === "space" ? (
@@ -606,8 +663,8 @@ export const ReportCanvas = ({
                   </div>
                 ) : widget.type === "markdown" || widget.type === "text" ? (
                   <MarkdownWidget widget={widget} />
-                ) : widget.type === "kpi" && resolved.result ? (
-                  <KpiWidget result={resolved.result} widget={widget} />
+                ) : widget.type === "metric" && resolved.result ? (
+                  <MetricWidget result={resolved.result} widget={widget} />
                 ) : widget.type === "table" && resolved.result ? (
                   <TableWidget result={resolved.result} widget={widget} />
                 ) : widget.type === "bar" && resolved.result ? (

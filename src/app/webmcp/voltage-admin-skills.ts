@@ -63,7 +63,15 @@ SQL 負責探索與聚合資料；本 skill 負責報表品質與語意。只有
 
 execute_readonly_sql 與 create_report 沒有固定先後，兩種順序都有效；但 add_report_widget 必須在 active report 存在後，使用同一 workspace 中成功 SQL 回傳的有效 queryId。每次報表 mutation 成功後都要再呼叫 discovery 到的唯讀 report-state verifier；只有最新 verifier 結果包含預期 report 與 widgets 時才能回報完成。
 
-建立前可用 \`SELECT dataset_name, updated_at, time_zone, period_start, period_end, completeness FROM agent_dataset_status ORDER BY dataset_name\` 確認狀態。建立 widget 時必須依 type 使用正確欄位：KPI 用 \`{type,title,queryId,valueColumn}\`；bar 用 \`{type,title,queryId,categoryColumn,valueColumn}\`；table 用 \`{type,title,queryId,columns}\`；markdown 用 \`{type:"markdown",title,markdown,evidenceQueryIds}\`；space 用 \`{type:"space",xSpace,ySpace}\` 且不含資料或文字。markdown 字串可以可選的 \`<markdown>...</markdown>\` 包裝，並支援標準 Markdown 與 \`mermaid\` fenced block；禁止連結、HTML、JavaScript 及其他程式碼 fenced block。所有 widget 均可選填 \`xSpace\`（1 到 6 欄）及 \`ySpace\`（正整數列高，沒有產品上限）；沒有填時會使用各類型的預設尺寸。這些欄位都放在 add_report_widget 的 \`widget\` 物件內。不得把 table 的 \`columns\` 用於 bar，也不得在 create_report 成功前新增 widget。
+建立前可用 \`SELECT dataset_name, updated_at, time_zone, period_start, period_end, completeness FROM agent_dataset_status ORDER BY dataset_name\` 確認狀態。建立 widget 時必須依 type 使用正確欄位：Metric 用 \`{type:"metric",title,queryId,valueColumn,valueFormat?,currencyCode?,detail?,detailTone?}\`；bar 用 \`{type,title,queryId,categoryColumn,valueColumn}\`；table 用 \`{type,title,queryId,columns}\`；markdown 用 \`{type:"markdown",title,markdown,evidenceQueryIds}\`；space 用 \`{type:"space",xSpace,ySpace}\` 且不含資料或文字。Metric 適合顯示營收、價格、轉換率、庫存量、訂單數或其他單一數值訊號：\`valueFormat\` 可為 \`number\`、\`currency\` 或 \`percent\`；currency 可選 \`currencyCode:"USD"\` 或 \`"TWD"\`；\`detail\` 可加入例如「較上週 +12.4%」的輔助文字，並以 \`detailTone:"positive"\`、\`"negative"\` 或 \`"neutral"\` 指定顏色。百分比值應使用比例（例如 \`0.124\` 顯示為 \`12.4%\`）。markdown 字串可以可選的 \`<markdown>...</markdown>\` 包裝，並支援標準 Markdown 與 \`mermaid\` fenced block；禁止連結、HTML、JavaScript 及其他程式碼 fenced block。所有 widget 均可選填 \`xSpace\`（1 到 6 欄）及 \`ySpace\`（正整數列高，沒有產品上限）；沒有填時會使用各類型的預設尺寸。這些欄位都放在 add_report_widget 的 \`widget\` 物件內。不得把 table 的 \`columns\` 用於 bar，也不得在 create_report 成功前新增 widget。
+
+## Grid 佈局
+
+Report Canvas 是由 6 欄構成的 CSS grid，widget 按建立／排列順序從左到右、由上到下自動放置。\`xSpace\` 是橫跨的欄數（1 到 6），\`ySpace\` 是橫跨的列數（即 UI 的 Rows，正整數）；一個 grid row 的最小高度為 5rem，實際高度會由該列中最高的內容決定。
+
+一般報表的預設是 \`ySpace: 1\`。同一排並列的 widgets 應使用相同的 \`ySpace\`，避免例如一個 Metric 為 \`ySpace: 1\`、旁邊 Bar 為 \`ySpace: 2\`，造成沒有必要的空白、底部不齊或後續元件難以對齊。單純要放 Metric 與 Bar 時，優先令兩者都是 \`ySpace: 1\`，只透過 \`xSpace\` 分配寬度，例如 Metric \`xSpace: 2\`、Bar \`xSpace: 4\`。
+
+只有需要刻意建立兩列高的版面時才使用 \`ySpace: 2\` 或更高：例如依序建立「左上小 Metric \`xSpace: 2, ySpace: 1\`」、「右側大 Bar \`xSpace: 4, ySpace: 2\`」、「左下小 Metric \`xSpace: 2, ySpace: 1\`」，才能讓兩個左側小 widgets 垂直堆疊，右側 Bar 恰好等高。不要僅為了讓單一 widget 看起來較大而增加 \`ySpace\`；內容本身不需要高度時，會製造空白。
 
 任何 tool error 都代表該動作未完成。若部分 widgets 成功、部分失敗，或 verifier 失敗／缺少，不得宣稱整份報表已建立；最終回覆必須明確標示 PARTIALLY_COMPLETED 或 FAILED，列出已確認成果與尚未確認項目，不得把「將建立」寫成「已建立」。
 

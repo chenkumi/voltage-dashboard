@@ -30,7 +30,7 @@ export class ReportStateError extends Error {
 }
 
 const DEFAULT_WIDGET_LAYOUT = {
-  kpi: { xSpace: 2, ySpace: 1 },
+  metric: { xSpace: 2, ySpace: 1 },
   table: { xSpace: 6, ySpace: 3 },
   markdown: { xSpace: 6, ySpace: 2 },
   text: { xSpace: 6, ySpace: 2 },

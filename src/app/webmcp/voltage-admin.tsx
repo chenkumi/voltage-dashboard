@@ -353,7 +353,7 @@ const SectionTitle = ({
 )
 
 const DataTable = ({ children }: { children: React.ReactNode }) => (
-  <div className="overflow-x-auto rounded-2xl border border-[#cfd3cb] bg-[#f5f6f1]">
+  <div className="voltage-admin-data-table overflow-x-auto border border-[#cfd3cb] bg-[#f5f6f1]">
     {children}
   </div>
 )
@@ -674,15 +674,17 @@ export const VoltageAdminDemo = () => {
                   title="Products, kept focused."
                   detail={`${products.length} matching products in the current preview.`}
                 />
-                <label className="voltage-admin-search">
-                  <Search className="size-4" />
-                  <span className="sr-only">Search products</span>
-                  <input
-                    value={productQuery}
-                    onChange={(event) => setProductQuery(event.target.value)}
-                    placeholder="Search product, category, brand…"
-                  />
-                </label>
+                <div className="voltage-admin-toolbar">
+                  <label className="voltage-admin-search">
+                    <Search className="size-4" />
+                    <span className="sr-only">Search products</span>
+                    <input
+                      value={productQuery}
+                      onChange={(event) => setProductQuery(event.target.value)}
+                      placeholder="Search product, category, brand…"
+                    />
+                  </label>
+                </div>
                 <DataTable>
                   <table>
                     <thead>
@@ -806,8 +808,8 @@ export const VoltageAdminDemo = () => {
                   title="Keep the shelf in view."
                   detail="Changes update this local Demo3 workspace only."
                 />
-                <div className="mb-4 flex flex-col gap-3 sm:flex-row">
-                  <label className="voltage-admin-search flex-1">
+                <div className="voltage-admin-toolbar">
+                  <label className="voltage-admin-search">
                     <Search className="size-4" />
                     <span className="sr-only">Search inventory</span>
                     <input
@@ -821,7 +823,7 @@ export const VoltageAdminDemo = () => {
                   <Button
                     type="button"
                     variant={lowStockOnly ? "default" : "outline"}
-                    className="cursor-pointer"
+                    className="voltage-admin-toolbar-action cursor-pointer"
                     onClick={() => setLowStockOnly((current) => !current)}
                   >
                     Low stock only

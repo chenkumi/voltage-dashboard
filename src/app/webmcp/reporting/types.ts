@@ -65,11 +65,20 @@ type ReportWidgetBase = {
   ySpace?: number
 }
 
-export type KpiReportWidget = ReportWidgetBase & {
-  type: "kpi"
+export type MetricValueFormat = "number" | "currency" | "percent"
+
+export type MetricCurrencyCode = "USD" | "TWD"
+
+export type MetricDetailTone = "neutral" | "positive" | "negative"
+
+export type MetricReportWidget = ReportWidgetBase & {
+  type: "metric"
   queryId: QueryId
   valueColumn: string
-  comparisonColumn?: string
+  valueFormat?: MetricValueFormat
+  currencyCode?: MetricCurrencyCode
+  detail?: string
+  detailTone?: MetricDetailTone
 }
 
 export type TableReportWidget = ReportWidgetBase & {
@@ -107,7 +116,7 @@ export type SpaceReportWidget = {
 }
 
 export type ReportWidget =
-  | KpiReportWidget
+  | MetricReportWidget
   | TableReportWidget
   | MarkdownReportWidget
   | LegacyTextReportWidget
@@ -115,7 +124,7 @@ export type ReportWidget =
   | SpaceReportWidget
 
 export type NewReportWidget =
-  | Omit<KpiReportWidget, "id">
+  | Omit<MetricReportWidget, "id">
   | Omit<TableReportWidget, "id">
   | Omit<MarkdownReportWidget, "id">
   | Omit<BarReportWidget, "id">

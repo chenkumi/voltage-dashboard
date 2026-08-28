@@ -86,7 +86,7 @@ const addWidgets = (
 ) => {
   controller.executeReportTool("add_report_widget", {
     widget: {
-      type: "kpi",
+      type: "metric",
       title: "本週總營收",
       queryId: evidence.revenue.queryId,
       valueColumn: "total_revenue_usd",
@@ -138,7 +138,7 @@ const expectCompleteReport = (
       period: PERIOD,
       widgets: [
         {
-          type: "kpi",
+          type: "metric",
           queryId: evidence.revenue.queryId,
           valueColumn: "total_revenue_usd",
         },
@@ -255,7 +255,7 @@ describe("Smart Dashboard report workflow", () => {
 
     controller.executeReportTool("add_report_widget", {
       widget: {
-        type: "kpi",
+        type: "metric",
         title: "本週總營收",
         queryId: evidence.revenue.queryId,
         valueColumn: "total_revenue_usd",
@@ -278,7 +278,7 @@ describe("Smart Dashboard report workflow", () => {
     const state = controller.executeReportTool("get_report_state", {})
     expect(state).toMatchObject({
       status: "OK",
-      report: { widgets: [{ type: "kpi" }] },
+      report: { widgets: [{ type: "metric" }] },
     })
     expect(
       "report" in state && state.report

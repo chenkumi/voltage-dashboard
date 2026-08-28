@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest"
 import {
   createBarDisplayRows,
+  formatMetricValue,
   getCacheLimitMessage,
   resolveReportWidget,
   shouldCommitTitleOnBlur,
+  toggleWidgetEditor,
 } from "./report-canvas-model"
 import type { CachedQueryResult, ReportWidget } from "./types"
 
@@ -26,8 +28,8 @@ const queryId = "01K00000000000000000000000"
 describe("Report Canvas mapping", () => {
   it.each<ReportWidget>([
     {
-      id: "kpi",
-      type: "kpi",
+      id: "metric",
+      type: "metric",
       title: "Revenue",
       queryId,
       valueColumn: "revenue",
@@ -68,8 +70,8 @@ describe("Report Canvas mapping", () => {
 
   it("shows a safe error when evidence is missing", () => {
     const widget: ReportWidget = {
-      id: "kpi",
-      type: "kpi",
+      id: "metric",
+      type: "metric",
       title: "Revenue",
       queryId,
       valueColumn: "revenue",
@@ -167,5 +169,19 @@ describe("Report Canvas mapping", () => {
   it("does not commit a title when Escape marks the next blur as cancelled", () => {
     expect(shouldCommitTitleOnBlur(true)).toBe(false)
     expect(shouldCommitTitleOnBlur(false)).toBe(true)
+  })
+
+  it("opens the selected widget editor and closes it when selected again", () => {
+    expect(toggleWidgetEditor(null, "revenue-table")).toBe("revenue-table")
+    expect(toggleWidgetEditor("revenue-table", "orders-bar")).toBe(
+      "orders-bar"
+    )
+    expect(toggleWidgetEditor("revenue-table", "revenue-table")).toBeNull()
+  })
+
+  it("formats Metric values as numbers, currencies, or percentages", () => {
+    expect(formatMetricValue(1234.5, "number", undefined)).toBe("1,234.5")
+    expect(formatMetricValue(42.5, "currency", "USD")).toBe("$42.50")
+    expect(formatMetricValue(0.124, "percent", undefined)).toBe("12.4%")
   })
 })

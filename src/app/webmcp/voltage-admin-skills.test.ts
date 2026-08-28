@@ -98,6 +98,15 @@ describe("Voltage Admin skills", () => {
     expect(text).toMatch(
       /agent_dataset_status[\s\S]*categoryColumn[\s\S]*不得把 table 的 `columns` 用於 bar/
     )
+    expect(text).toMatch(
+      /6 欄構成[\s\S]*xSpace[\s\S]*ySpace[\s\S]*最小高度為 5rem/
+    )
+    expect(text).toMatch(
+      /一般報表的預設是 `ySpace: 1`[\s\S]*同一排並列[\s\S]*避免/
+    )
+    expect(text).toMatch(
+      /兩個左側小 widgets 垂直堆疊[\s\S]*右側 Bar 恰好等高/
+    )
   })
 
   it("requires verifier-backed completion in shared Admin instructions", () => {
