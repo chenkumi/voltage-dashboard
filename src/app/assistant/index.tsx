@@ -7,10 +7,10 @@ import {
   useEffect,
   memo,
   useMemo,
-  useRef,
   useSyncExternalStore,
+  useRef,
+  useState,
 } from "react"
-import { useNavigate, useParams } from "react-router-dom"
 import { monotonicFactory } from "ulid"
 import type { ChatThread, ThreadSiteTarget } from "../types"
 import { WebMcpSession } from "../webmcp/session"
@@ -18,6 +18,7 @@ import {
   createThreadSiteTarget,
   defaultWebMcpSite,
   resolveThreadSite,
+  webMcpSites,
 } from "../webmcp/sites"
 import type { WebMcpSite } from "../webmcp/types"
 import { WebMcpWorkspace } from "../webmcp/workspace"
@@ -25,13 +26,13 @@ import { AssistantChatHeader } from "./chat-header"
 import { AssistantChatInput } from "./chat-input"
 import { ChatStreamController } from "./chat-stream-controller"
 import {
-  createChatThread,
-  getChatThread,
-  getLastChatThread,
-  touchSiteLastThread,
+  createAndActivateThread,
+  clearStaleSiteLastThread,
+  getSiteThread,
 } from "./chat-store"
 import { ChatStreamRuntime } from "./chat-stream-runtime"
 import { AssistantChatWindow } from "./chat-window"
+import { getSiteProfileByUrl, getSiteProfiles } from "./site-profile-store"
 
 const createId = monotonicFactory()
 
@@ -53,23 +54,14 @@ const createEmptyThread = (site: WebMcpSite): ChatThread => {
 }
 
 const createOrOpenSiteThread = async (site: WebMcpSite) => {
-  const lastThread = await getLastChatThread(site.id)
-  if (lastThread) {
-    await touchSiteLastThread(lastThread)
-    return lastThread
+  const siteThread = await getSiteThread(site.id)
+  if (siteThread.thread) return siteThread.thread
+  if (siteThread.lastThread) {
+    await clearStaleSiteLastThread(site.id, siteThread.lastThread)
   }
 
   const thread = createEmptyThread(site)
-  await createChatThread(thread)
-  return thread
-}
-
-const InvalidThread = () => {
-  const navigate = useNavigate()
-  useEffect(() => {
-    void navigate("/chat", { replace: true })
-  }, [navigate])
-  return <Loading />
+  return createAndActivateThread(thread)
 }
 
 const ChatWorkspace = memo(function ChatWorkspace({
@@ -108,12 +100,13 @@ const ChatSession = memo(
     thread,
     site,
     target,
+    onSiteChange,
   }: {
     thread: ChatThread
     site: WebMcpSite
     target: ThreadSiteTarget
+    onSiteChange: (site: WebMcpSite) => void
   }) {
-    const navigate = useNavigate()
     const { theme } = useTheme()
     const session = useMemo(() => new WebMcpSession(), [])
     const runtime = useMemo(() => new ChatStreamRuntime(), [])
@@ -124,19 +117,18 @@ const ChatSession = memo(
     const createNewThread = useCallback(async () => {
       runtime.cancel()
       const nextThread = createEmptyThread(site)
-      await createChatThread(nextThread)
-      await navigate(`/chat/${nextThread.id}`)
-    }, [navigate, runtime, site])
+      await createAndActivateThread(nextThread)
+    }, [runtime, site])
 
     const switchSite = useCallback(
       async (nextSite: WebMcpSite) => {
         if (nextSite.id === site.id) return
         runtime.cancel()
         session.dispose()
-        const nextThread = await createOrOpenSiteThread(nextSite)
-        await navigate(`/chat/${nextThread.id}`)
+        await createOrOpenSiteThread(nextSite)
+        onSiteChange(nextSite)
       },
-      [navigate, runtime, session, site.id]
+      [onSiteChange, runtime, session, site.id]
     )
 
     return (
@@ -186,42 +178,59 @@ const ChatSession = memo(
     previous.target.url === next.target.url
 )
 
-const ChatPage = ({ threadId }: { threadId: string }) => {
-  const thread = useLiveQuery(() => getChatThread(threadId), [threadId])
-  const threadSiteId = thread?.siteId
-  const threadUrl = thread?.url
-  const resolvedSite = useMemo(
+export const Assistant = () => {
+  const [activeSiteUrl, setActiveSiteUrl] = useState(defaultWebMcpSite.url)
+  const profiles = useLiveQuery(() => getSiteProfiles(), [])
+  const profile = useLiveQuery(
+    () => getSiteProfileByUrl(activeSiteUrl),
+    [activeSiteUrl]
+  )
+  const siteThread = useLiveQuery(
+    () => (profile ? getSiteThread(profile.siteId) : undefined),
+    [profile?.siteId]
+  )
+  const creationKeyRef = useRef<string | null>(null)
+
+  const site = useMemo(
     () =>
-      threadSiteId && threadUrl
-        ? resolveThreadSite({ siteId: threadSiteId, url: threadUrl })
+      profile
+        ? webMcpSites.find((candidate) => candidate.id === profile.siteId)
         : undefined,
-    [threadSiteId, threadUrl]
+    [profile]
   )
 
-  if (thread === undefined) return <Loading />
-  if (!thread || !resolvedSite) return <InvalidThread />
+  useEffect(() => {
+    if (!profile || !site || !siteThread) return
+
+    const creationKey = `${profile.siteId}:${siteThread.lastThread?.threadId ?? "new"}`
+    if (creationKeyRef.current === creationKey) return
+    creationKeyRef.current = creationKey
+
+    if (siteThread.thread) return
+
+    if (siteThread.lastThread) {
+      void clearStaleSiteLastThread(profile.siteId, siteThread.lastThread)
+    }
+    void createOrOpenSiteThread(site)
+  }, [profile, site, siteThread])
+
+  const handleSiteChange = useCallback((nextSite: WebMcpSite) => {
+    setActiveSiteUrl(nextSite.url)
+  }, [])
+
+  if (!profiles || !profile || !site || !siteThread?.thread) return <Loading />
+
+  const thread = siteThread.thread
+  const resolvedSite = resolveThreadSite({ siteId: thread.siteId, url: thread.url })
+  if (!resolvedSite) return <Loading />
+
   return (
     <ChatSession
+      key={thread.id}
       thread={thread}
       site={resolvedSite.site}
       target={resolvedSite.target}
+      onSiteChange={handleSiteChange}
     />
   )
-}
-
-export const Assistant = () => {
-  const { threadId } = useParams()
-  const navigate = useNavigate()
-  const creatingRef = useRef(false)
-
-  useEffect(() => {
-    if (threadId || creatingRef.current) return
-    creatingRef.current = true
-    void createOrOpenSiteThread(defaultWebMcpSite).then((thread) =>
-      navigate(`/chat/${thread.id}`, { replace: true })
-    )
-  }, [navigate, threadId])
-
-  if (!threadId) return <Loading />
-  return <ChatPage threadId={threadId} />
 }

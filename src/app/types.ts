@@ -5,6 +5,12 @@ export type ThreadSiteTarget = {
   url: string
 }
 
+export type SiteProfile = {
+  siteId: string
+  url: string
+  name: string
+}
+
 export type ChatThread = ThreadSiteTarget & {
   id: string
   title: string

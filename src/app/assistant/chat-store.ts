@@ -1,7 +1,7 @@
 import type { UIMessage } from "ai"
 import { Dexie } from "dexie"
 import { chatDb } from "@/app/db"
-import type { ChatThread, StoredMessage } from "@/app/types"
+import type { ChatThread, SiteLastThread, StoredMessage } from "@/app/types"
 import {
   isPersistableAssistantCompletion,
   type AssistantCompletionStatus,
@@ -10,7 +10,7 @@ import {
 
 const now = () => Date.now()
 
-export const createChatThread = async (thread: ChatThread) => {
+export const createAndActivateThread = async (thread: ChatThread) => {
   await chatDb.transaction("rw", chatDb.threads, chatDb.siteLastThreads, async () => {
     await chatDb.threads.put(thread)
     await chatDb.siteLastThreads.put({
@@ -19,30 +19,29 @@ export const createChatThread = async (thread: ChatThread) => {
       updatedAt: thread.updatedAt,
     })
   })
-}
-
-export const getChatThread = async (threadId: string) => {
-  return chatDb.threads.get(threadId)
-}
-
-export const getLastChatThread = async (siteId: string) => {
-  const lastThread = await chatDb.siteLastThreads.get(siteId)
-  if (!lastThread) return undefined
-
-  const thread = await chatDb.threads.get(lastThread.threadId)
-  if (!thread || thread.siteId !== siteId) {
-    await chatDb.siteLastThreads.delete(siteId)
-    return undefined
-  }
-
   return thread
 }
 
-export const touchSiteLastThread = async (thread: ChatThread) => {
-  await chatDb.siteLastThreads.put({
-    siteId: thread.siteId,
-    threadId: thread.id,
-    updatedAt: Date.now(),
+export const getSiteThread = async (siteId: string) => {
+  const lastThread = await chatDb.siteLastThreads.get(siteId)
+  if (!lastThread) return { lastThread: undefined, thread: undefined }
+
+  const thread = await chatDb.threads.get(lastThread.threadId)
+  if (!thread || thread.siteId !== siteId)
+    return { lastThread, thread: undefined }
+
+  return { lastThread, thread }
+}
+
+export const clearStaleSiteLastThread = async (
+  siteId: string,
+  expected: SiteLastThread
+) => {
+  await chatDb.transaction("rw", chatDb.siteLastThreads, async () => {
+    const current = await chatDb.siteLastThreads.get(siteId)
+    if (current?.threadId === expected.threadId) {
+      await chatDb.siteLastThreads.delete(siteId)
+    }
   })
 }
 

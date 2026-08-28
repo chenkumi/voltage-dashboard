@@ -126,7 +126,7 @@ export const WebMcpWorkspace = ({
                 >
                     {webMcpSites.map((item, index) => {
                         const active = item.id === site.id
-                        const Icon = item.id === "shop-c" ? LayoutDashboard : ShoppingBag
+                        const Icon = item.id === "dashboard" ? LayoutDashboard : ShoppingBag
 
                         return (
                             <button

@@ -1,20 +1,32 @@
-import type { ThreadSiteTarget } from "@/app/types"
+import type { SiteProfile, ThreadSiteTarget } from "@/app/types"
 import type { WebMcpSite } from "./types"
 
-export const webMcpSites: WebMcpSite[] = [
+export const siteProfileSeeds: SiteProfile[] = [
   {
-    id: "shop-b",
+    siteId: "market",
     name: "Voltage Market",
-    url: "/webmcp-demo/shop-b",
+    url: "/market",
   },
   {
-    id: "shop-c",
+    siteId: "dashboard",
     name: "Voltage Dashboard",
-    url: "/webmcp-demo/shop-c",
+    url: "/dashboard",
   },
 ]
 
-export const defaultWebMcpSite = webMcpSites[0]
+export const webMcpSites: WebMcpSite[] = siteProfileSeeds.map((profile) => ({
+  id: profile.siteId,
+  name: profile.name,
+  url: profile.url,
+}))
+
+export const defaultWebMcpSite = webMcpSites[0]!
+
+export const getSiteProfileByUrl = (url: string) =>
+  siteProfileSeeds.find((profile) => profile.url === url)
+
+export const getSiteProfile = (siteId: string) =>
+  siteProfileSeeds.find((profile) => profile.siteId === siteId)
 
 export const getWebMcpSite = (siteId: string) => {
   return webMcpSites.find((site) => site.id === siteId)

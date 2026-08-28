@@ -1,28 +1,35 @@
 import { describe, expect, it } from "vitest"
-import { defaultWebMcpSite, resolveThreadSite, webMcpSites } from "./sites"
+import {
+  defaultWebMcpSite,
+  getSiteProfileByUrl,
+  resolveThreadSite,
+  webMcpSites,
+} from "./sites"
 
 describe("resolveThreadSite", () => {
-  it("only exposes Voltage Market and its admin demo", () => {
-    expect(webMcpSites.map((site) => site.id)).toEqual(["shop-b", "shop-c"])
-    expect(defaultWebMcpSite.id).toBe("shop-b")
+  it("exposes the market and dashboard demos", () => {
+    expect(webMcpSites.map((site) => site.id)).toEqual(["market", "dashboard"])
+    expect(defaultWebMcpSite.id).toBe("market")
+    expect(getSiteProfileByUrl("/market")?.siteId).toBe("market")
+    expect(getSiteProfileByUrl("/dashboard")?.siteId).toBe("dashboard")
   })
 
   it("keeps a thread's persisted URL when the registry URL has changed", () => {
     const resolved = resolveThreadSite({
-      siteId: "shop-b",
+      siteId: "market",
       url: "/webmcp-demo/legacy-shop-b",
     })
 
-    expect(resolved?.site.id).toBe("shop-b")
-    expect(resolved?.site.url).toBe("/webmcp-demo/shop-b")
+    expect(resolved?.site.id).toBe("market")
+    expect(resolved?.site.url).toBe("/market")
     expect(resolved?.target.url).toBe("/webmcp-demo/legacy-shop-b")
   })
 
-  it("rejects a persisted Cinder Studio thread after removal", () => {
+  it("rejects an unknown persisted site thread", () => {
     expect(
       resolveThreadSite({
-        siteId: "shop-a",
-        url: "/webmcp-demo/shop-a",
+        siteId: "unknown",
+        url: "/unknown",
       })
     ).toBeUndefined()
   })
