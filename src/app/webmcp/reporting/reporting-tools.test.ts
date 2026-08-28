@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest"
+import { normalizeWebMcpToolError } from "../tool-error"
 import { REPORTING_SCHEMA_SQL } from "./reporting-data"
 import { QueryResultCache } from "./query-cache"
 import {
@@ -8,6 +9,7 @@ import {
   type ReadonlySqlRuntime,
 } from "./reporting-tools"
 import { SqliteReportingRuntimeError } from "./sqlite-runtime"
+import { SqliteReportingDatabase } from "./sqlite-database"
 
 const result = {
   columns: [{ name: "category", type: "string" as const }],
@@ -85,27 +87,70 @@ describe("execute_readonly_sql WebMCP tool", () => {
   )
 
   it.each([
-    {
-      sql: "SELECT ? AS email",
-      parameters: ["private@example.com"],
-    },
-    { sql: "SELECT '4111 1111 1111 1111' AS value" },
-    { sql: "SELECT 1 AS cardNumber" },
-    { sql: "SELECT ? AS category", parameters: ["+886912345678"] },
-    { sql: "SELECT ? AS category", parameters: ["123 Main Street"] },
-    { sql: "SELECT ? AS category", parameters: ["John Smith"] },
-    { sql: "SELECT ? AS category", parameters: [912345678] },
-  ])("rejects restricted SQL input before runtime execution", async (args) => {
-    const execute = vi.fn(async () => result)
+    [
+      { sql: "SELECT ? AS email", parameters: ["private@example.com"] },
+      "SQL_SENSITIVE_FIELD_ERROR",
+      "curated reporting fields",
+    ],
+    [
+      { sql: "SELECT '4111 1111 1111 1111' AS value" },
+      "SQL_SENSITIVE_VALUE_ERROR",
+      "Remove personal, account, or payment values",
+    ],
+    [
+      { sql: "SELECT 1 AS cardNumber" },
+      "SQL_SENSITIVE_FIELD_ERROR",
+      "curated reporting fields",
+    ],
+    [
+      { sql: "SELECT ? AS category", parameters: ["+886912345678"] },
+      "SQL_SENSITIVE_VALUE_ERROR",
+      "Remove personal, account, or payment values",
+    ],
+    [
+      { sql: "SELECT ? AS category", parameters: ["123 Main Street"] },
+      "SQL_LITERAL_ERROR",
+      "curated reporting data",
+    ],
+    [
+      { sql: "SELECT ? AS category", parameters: ["John Smith"] },
+      "SQL_LITERAL_ERROR",
+      "curated reporting data",
+    ],
+    [
+      { sql: "SELECT ? AS category", parameters: [912345678] },
+      "SQL_IDENTIFIER_ERROR",
+      "suspicious numeric identifier",
+    ],
+  ])(
+    "classifies restricted SQL input as %s",
+    async (args, category, guidance) => {
+      const execute = vi.fn(async () => result)
 
-    await expect(executeReadonlySqlTool({ execute }, args)).rejects.toEqual(
-      new SqliteReportingRuntimeError(
-        "SQL_PRIVACY_ERROR",
-        "Personal, account, or payment data is not allowed in reporting queries."
-      )
-    )
-    expect(execute).not.toHaveBeenCalled()
-  })
+      try {
+        await executeReadonlySqlTool({ execute }, args)
+        throw new Error("Expected SQL input to be rejected.")
+      } catch (error) {
+        expect(error).toMatchObject({ category })
+        const normalized = normalizeWebMcpToolError(
+          EXECUTE_READONLY_SQL_TOOL.name,
+          error
+        )
+        expect(normalized).toMatchObject({ category, retryable: true })
+        expect(normalized.message).toContain(guidance)
+        for (const restrictedValue of [
+          "private@example.com",
+          "4111 1111 1111 1111",
+          "+886912345678",
+          "123 Main Street",
+          "John Smith",
+          "912345678",
+        ])
+          expect(normalized.message).not.toContain(restrictedValue)
+      }
+      expect(execute).not.toHaveBeenCalled()
+    }
+  )
 
   it.each([
     "customerEmail",
@@ -125,7 +170,7 @@ describe("execute_readonly_sql WebMCP tool", () => {
         { execute },
         { sql: "SELECT category FROM agent_products" }
       )
-    ).rejects.toMatchObject({ category: "SQL_PRIVACY_ERROR" })
+    ).rejects.toMatchObject({ category: "SQL_OUTPUT_PRIVACY_ERROR" })
   })
 
   it("allows sqlite_schema name discovery for approved reporting tables", async () => {
@@ -172,23 +217,21 @@ describe("execute_readonly_sql WebMCP tool", () => {
   )
 
   it.each([
-    "SELECT printf('%c%c%c%c%c%c%c%c%c%c', 74, 111, 104, 110, 32, 83, 109, 105, 116, 104) AS category",
-    "SELECT printf('%c%c%c%c%c%c%c%c%c%c%c%c%c%c%c', 49, 50, 51, 32, 77, 97, 105, 110, 32, 83, 116, 114, 101, 101, 116) AS category",
-    "SELECT 912345678 AS category",
-  ])("rejects a computed restricted result: %s", async (sql) => {
-    const computedValue = sql.includes("912345678")
-      ? 912345678
-      : sql.includes("49, 50, 51")
-        ? "123 Main Street"
-        : "John Smith"
+    ["computed name", "John Smith"],
+    ["computed address", "123 Main Street"],
+    ["computed numeric identifier", 912345678],
+  ])("rejects a restricted runtime result: %s", async (_, computedValue) => {
     const execute = vi.fn(async () => ({
       ...result,
       rows: [{ category: computedValue }],
     }))
 
     await expect(
-      executeReadonlySqlTool({ execute }, { sql })
-    ).rejects.toMatchObject({ category: "SQL_PRIVACY_ERROR" })
+      executeReadonlySqlTool(
+        { execute },
+        { sql: "SELECT category FROM agent_products" }
+      )
+    ).rejects.toMatchObject({ category: "SQL_OUTPUT_PRIVACY_ERROR" })
   })
 
   it.each(["private@example.com", "John Smith", "123 Main Street", 912345678])(
@@ -215,7 +258,7 @@ describe("execute_readonly_sql WebMCP tool", () => {
         )
       ).rejects.toEqual(
         new SqliteReportingRuntimeError(
-          "SQL_PRIVACY_ERROR",
+          "SQL_OUTPUT_PRIVACY_ERROR",
           "The reporting query result contains restricted data."
         )
       )
@@ -254,7 +297,7 @@ describe("execute_readonly_sql WebMCP tool", () => {
           parameters: ["agent_products"],
         }
       )
-    ).rejects.toMatchObject({ category: "SQL_PRIVACY_ERROR" })
+    ).rejects.toMatchObject({ category: "SQL_OUTPUT_PRIVACY_ERROR" })
   })
 
   it("does not allow curated search fragments as result values", async () => {
@@ -268,7 +311,7 @@ describe("execute_readonly_sql WebMCP tool", () => {
         { execute },
         { sql: "SELECT category FROM agent_products" }
       )
-    ).rejects.toMatchObject({ category: "SQL_PRIVACY_ERROR" })
+    ).rejects.toMatchObject({ category: "SQL_OUTPUT_PRIVACY_ERROR" })
   })
 })
 
@@ -445,10 +488,51 @@ describe("ReportingRuntimeController", () => {
     })
     await expect(
       controller.execute({ sql: "SELECT category FROM agent_products" })
-    ).rejects.toMatchObject({ category: "SQL_PRIVACY_ERROR" })
+    ).rejects.toMatchObject({ category: "SQL_OUTPUT_PRIVACY_ERROR" })
 
     expect(controller.getQueryResult(safe.queryId).rows).toEqual(result.rows)
     expect(controller.getQueryCacheStatus().entryCount).toBe(1)
+  })
+
+  it("executes and caches the parameterized low-stock reporting query", async () => {
+    const sql = `
+      SELECT p.title, p.category, i.stock, i.updated_at
+      FROM agent_inventory AS i
+      JOIN agent_products AS p ON p.product_id = i.product_id
+      WHERE i.stock <= ?
+      ORDER BY i.stock ASC, p.title ASC
+    `
+    const database = await SqliteReportingDatabase.create()
+    try {
+      const lowStockResult = database.execute({ sql, parameters: [12] })
+      expect(lowStockResult.rows.length).toBeGreaterThan(0)
+      expect(lowStockResult.rows.every((row) => Number(row.stock) <= 12)).toBe(
+        true
+      )
+      expect(lowStockResult.rows.map((row) => row.stock)).toEqual(
+        [...lowStockResult.rows.map((row) => row.stock)].sort(
+          (left, right) => Number(left) - Number(right)
+        )
+      )
+
+      const runtime = {
+        initialize: vi.fn(async () => undefined),
+        execute: vi.fn(async () => lowStockResult),
+        dispose: vi.fn(async () => undefined),
+      }
+      const controller = new ReportingRuntimeController(() => runtime)
+      await controller.prepare()
+      const cached = await controller.execute({ sql, parameters: [12] })
+
+      expect(cached).toMatchObject({
+        ...lowStockResult,
+        queryId: expect.any(String),
+      })
+      expect(runtime.execute).toHaveBeenCalledWith({ sql, parameters: [12] })
+      expect(controller.getQueryResult(cached.queryId)).toEqual(lowStockResult)
+    } finally {
+      database.close()
+    }
   })
 
   it("does not cache a failed query", async () => {

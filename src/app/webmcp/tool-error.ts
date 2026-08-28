@@ -18,6 +18,30 @@ const ERROR_CONTRACTS = {
     "Report tool arguments are invalid. Inspect the tool schema and retry with only supported fields.",
     true,
   ],
+  REPORT_CREATE_ARGUMENT_ERROR: [
+    "create_report accepts only title, audience, and period at the root. Inspect the schema and retry.",
+    true,
+  ],
+  REPORT_STATE_ARGUMENT_ERROR: [
+    "get_report_state accepts no input fields. Retry with an empty object.",
+    true,
+  ],
+  REPORT_ADD_WIDGET_ARGUMENT_ERROR: [
+    "add_report_widget accepts only widget at the root. Nest all widget fields inside widget and do not include reportId.",
+    true,
+  ],
+  REPORT_UPDATE_WIDGET_ARGUMENT_ERROR: [
+    "update_report_widget accepts only widgetId and widget at the root.",
+    true,
+  ],
+  REPORT_MOVE_WIDGET_ARGUMENT_ERROR: [
+    "move_report_widget accepts only widgetId and toIndex at the root.",
+    true,
+  ],
+  REPORT_REMOVE_WIDGET_ARGUMENT_ERROR: [
+    "remove_report_widget accepts only widgetId at the root.",
+    true,
+  ],
   REPORT_NOT_FOUND: ["No active report exists. Create a report and retry.", true],
   REPORT_STATE_DISPOSED: ["The report state is no longer available.", false],
   REPORT_WIDGET_NOT_FOUND: [
@@ -33,11 +57,11 @@ const ERROR_CONTRACTS = {
     true,
   ],
   SQL_IDENTIFIER_ERROR: [
-    "The SQL query contains a disallowed identifier. Use only curated reporting fields.",
+    "The SQL query contains a suspicious numeric identifier. Remove it and use aggregate or curated reporting values.",
     true,
   ],
   SQL_LITERAL_ERROR: [
-    "The SQL query contains a disallowed literal. Use query parameters for values.",
+    "A SQL string value is not in curated reporting data or supported date formats. Use a curated value, a supported date, or remove the filter.",
     true,
   ],
   SQL_OUTPUT_PRIVACY_ERROR: [
@@ -57,12 +81,12 @@ const ERROR_CONTRACTS = {
     true,
   ],
   SQL_SENSITIVE_FIELD_ERROR: [
-    "The SQL query references a restricted field and cannot be executed.",
-    false,
+    "The SQL query references a restricted field. Remove it and use only aggregate or curated reporting fields.",
+    true,
   ],
   SQL_SENSITIVE_VALUE_ERROR: [
-    "The SQL query contains a restricted value and cannot be executed.",
-    false,
+    "The SQL query contains a restricted value. Remove personal, account, or payment values and retry with curated reporting data.",
+    true,
   ],
   SQLITE_ERROR: [
     "SQLite could not execute the read-only query. Revise the query and retry.",

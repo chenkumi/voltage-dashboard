@@ -102,8 +102,12 @@ export const REPORT_AUTHORING_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "add_report_widget",
     description:
-      "Add one validated KPI, table, safe Markdown text, or bar widget to the active report.",
-    inputSchema: schema({ widget: reportWidgetSchema }, ["widget"]),
+      "Add one validated KPI, table, safe Markdown text, or bar widget to the active report. The root input must contain only widget; put type, title, queryId, columns, and other widget fields inside widget. Do not include reportId.",
+    inputSchema: {
+      ...schema({ widget: reportWidgetSchema }, ["widget"]),
+      description:
+        "Root input: { widget: {...} }. Do not flatten widget fields or include reportId.",
+    },
     annotations: reversibleAnnotations,
   },
   {
@@ -146,30 +150,95 @@ export const isReportAuthoringTool = (name: string) => reportToolNames.has(name)
 
 type JsonObject = Record<string, unknown>
 
-const throwArgumentError = (message: string): never => {
-  throw new ReportStateError("REPORT_ARGUMENT_ERROR", message)
+type ReportArgumentErrorCategory =
+  | "REPORT_ARGUMENT_ERROR"
+  | "REPORT_CREATE_ARGUMENT_ERROR"
+  | "REPORT_STATE_ARGUMENT_ERROR"
+  | "REPORT_ADD_WIDGET_ARGUMENT_ERROR"
+  | "REPORT_UPDATE_WIDGET_ARGUMENT_ERROR"
+  | "REPORT_MOVE_WIDGET_ARGUMENT_ERROR"
+  | "REPORT_REMOVE_WIDGET_ARGUMENT_ERROR"
+
+const throwArgumentError = (
+  message: string,
+  category: ReportArgumentErrorCategory = "REPORT_ARGUMENT_ERROR"
+): never => {
+  throw new ReportStateError(category, message)
 }
 
-const assertObject = (value: unknown, label: string): JsonObject => {
+const assertObject = (
+  value: unknown,
+  label: string,
+  category: ReportArgumentErrorCategory = "REPORT_ARGUMENT_ERROR"
+): JsonObject => {
   if (value === null || typeof value !== "object" || Array.isArray(value))
-    return throwArgumentError(`${label} must be an object.`)
+    return throwArgumentError(`${label} must be an object.`, category)
   return value as JsonObject
 }
 
 const assertKeys = (
   input: JsonObject,
   allowed: readonly string[],
-  label: string
+  label: string,
+  category: ReportArgumentErrorCategory = "REPORT_ARGUMENT_ERROR"
 ) => {
   if (Object.keys(input).some((key) => !allowed.includes(key)))
-    throwArgumentError(`${label} contains unsupported fields.`)
+    throwArgumentError(
+      `${label} contains unsupported fields. Allowed fields: ${
+        allowed.length > 0 ? allowed.join(", ") : "none"
+      }.`,
+      category
+    )
 }
 
-const EMAIL_TEXT_PATTERN = /[^\s@]+@[^\s@]+\.[^\s@]+/
-const PAYMENT_TEXT_PATTERN = /(?:\d[ -]?){13,19}/
-const PHONE_TEXT_PATTERN = /\+?[\d ()-]{8,}/g
-const SENSITIVE_TERM_PATTERN =
-  /customer\s*name|first\s*name|last\s*name|e-?mail|address|phone|account|card\s*number|payment|姓名|電子郵件|地址|電話|帳戶|卡號|付款/i
+const EMAIL_VALUE_PATTERN = /[^\s@]+@[^\s@]+\.[^\s@]+/
+const PAYMENT_CARD_VALUE_PATTERN = /(?:\d[ -]?){13,19}/
+const PHONE_VALUE_PATTERN = /\+?[\d ()-]{8,}/g
+const ISO_DATE_IN_TEXT_PATTERN = /\b\d{4}-\d{2}-\d{2}\b/g
+const COLON_LABELED_VALUE_PATTERN =
+  /\b(?:customer\s*(?:id|name)|first\s*name|last\s*name|full\s*name|name|e-?mail|address|phone|account(?:\s*id)?|card\s*number)\b\s*[:：#]\s*([^\n;；]+)/gi
+const STRONG_LABELED_VALUE_PATTERN =
+  /\b(?:customer\s*(?:id|name)|first\s*name|last\s*name|full\s*name|name|e-?mail|address|phone|account(?:\s*id)?|card\s*number)\b\s+([^\n;；]+)/gi
+const CJK_LABELED_VALUE_PATTERN =
+  /(?:姓名|電子郵件|地址|電話|帳戶(?:識別(?:號|碼)?)?|帳號|卡號)\s*(?:[:：#]\s*|\s+)([^\n；;]+)/g
+const STREET_ADDRESS_PATTERN =
+  /\b\d{1,6}\s+[A-Za-z0-9.'-]+(?:\s+[A-Za-z0-9.'-]+){0,4}\s+(?:street|st|road|rd|avenue|ave|lane|ln|boulevard|blvd)\b|[一-龥]{1,16}(?:路|街|巷|弄)\d{1,5}(?:號)?/i
+const BUSINESS_CONTEXT_WORDS = new Set([
+  "account",
+  "address",
+  "analysis",
+  "business",
+  "coverage",
+  "customer",
+  "data",
+  "first",
+  "full",
+  "inventory",
+  "last",
+  "market",
+  "metrics",
+  "name",
+  "operations",
+  "overview",
+  "performance",
+  "phone",
+  "product",
+  "report",
+  "revenue",
+  "sales",
+  "summary",
+  "team",
+  "weekly",
+])
+const SAFE_CJK_BUSINESS_CONTEXTS = new Set([
+  "資料",
+  "資料說明",
+  "營運",
+  "營運團隊",
+  "團隊",
+  "說明",
+  "不在本報表範圍內",
+])
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const HTML_PATTERN = /[<>]/
 const MARKDOWN_LINK_PATTERN =
@@ -177,16 +246,41 @@ const MARKDOWN_LINK_PATTERN =
 const UNSAFE_MARKDOWN_SYNTAX_PATTERN =
   /(?:\[|\])|```|~~~|&(?:#[0-9]+|#x[0-9a-f]+|[a-z][a-z0-9]+);|\b(?:html|script|javascript|mermaid)\b/i
 
-const containsSensitiveText = (value: string) => {
+const containsRestrictedDataValue = (value: string) => {
+  const valueWithoutDates = value.replaceAll(ISO_DATE_IN_TEXT_PATTERN, "")
   if (
-    EMAIL_TEXT_PATTERN.test(value) ||
-    PAYMENT_TEXT_PATTERN.test(value) ||
-    SENSITIVE_TERM_PATTERN.test(value)
+    EMAIL_VALUE_PATTERN.test(value) ||
+    PAYMENT_CARD_VALUE_PATTERN.test(valueWithoutDates) ||
+    containsRestrictedLabeledValue(value) ||
+    STREET_ADDRESS_PATTERN.test(valueWithoutDates)
   )
     return true
-  return [...value.matchAll(PHONE_TEXT_PATTERN)].some(
-    (match) => !ISO_DATE_PATTERN.test(match[0].trim())
+  return [...valueWithoutDates.matchAll(PHONE_VALUE_PATTERN)].length > 0
+}
+
+const isSafeBusinessContext = (value: string) => {
+  const normalized = value.trim().replace(/[.!?。！？，,]+$/g, "").trim()
+  if (SAFE_CJK_BUSINESS_CONTEXTS.has(normalized.replaceAll(" ", ""))) return true
+  const normalizedEnglish = normalized.toLowerCase().replace(/\s+/g, " ")
+  const words = normalizedEnglish.match(/[a-z]+/g)
+  return Boolean(
+    words?.length &&
+      words.join(" ") === normalizedEnglish &&
+      words.every((word) => BUSINESS_CONTEXT_WORDS.has(word))
   )
+}
+
+const containsRestrictedLabeledValue = (value: string) => {
+  const values = [
+    ...[...value.matchAll(COLON_LABELED_VALUE_PATTERN)].map(
+      (match) => match[1]
+    ),
+    ...[...value.matchAll(STRONG_LABELED_VALUE_PATTERN)].map(
+      (match) => match[1]
+    ),
+    ...[...value.matchAll(CJK_LABELED_VALUE_PATTERN)].map((match) => match[1]),
+  ]
+  return values.some((candidate) => !isSafeBusinessContext(candidate))
 }
 
 const containsUnsupportedControl = (value: string) =>
@@ -195,33 +289,57 @@ const containsUnsupportedControl = (value: string) =>
     return code < 32 && code !== 9 && code !== 10 && code !== 13
   })
 
-const assertSafeString = (value: unknown, label: string, maxLength: number) => {
+const assertText = (value: unknown, label: string, maxLength: number) => {
   if (
     typeof value !== "string" ||
     value.trim().length === 0 ||
     value.length > maxLength ||
     containsUnsupportedControl(value) ||
-    containsSensitiveText(value) ||
     HTML_PATTERN.test(value)
   )
     return throwArgumentError(`${label} contains unsupported content.`)
   return value.trim()
 }
 
+const assertDisplayText = (
+  value: unknown,
+  label: string,
+  maxLength: number
+) => {
+  const text = assertText(value, label, maxLength)
+  if (containsRestrictedDataValue(text))
+    return throwArgumentError(`${label} contains restricted data.`)
+  return text
+}
+
 export const validateReportTitle = (value: unknown) =>
-  assertSafeString(value, "Report title", 120)
+  assertDisplayText(value, "Report title", 120)
+
+const validateReportAudience = (value: unknown) =>
+  assertDisplayText(value, "Report audience", 120)
 
 export const validateReportWidgetTitle = (value: unknown) =>
-  assertSafeString(value, "Widget title", 120)
+  assertDisplayText(value, "Widget title", 120)
 
 const assertMarkdown = (value: unknown) => {
-  const markdown = assertSafeString(value, "Widget markdown", 4_000)
+  const markdown = assertDisplayText(value, "Widget markdown", 4_000)
   if (
     MARKDOWN_LINK_PATTERN.test(markdown) ||
     UNSAFE_MARKDOWN_SYNTAX_PATTERN.test(markdown)
   )
     throwArgumentError("Widget markdown contains unsupported content.")
   return markdown
+}
+
+const assertWidgetId = (value: unknown) => {
+  if (
+    typeof value !== "string" ||
+    value.length === 0 ||
+    value.length > 128 ||
+    !/^[A-Za-z0-9_-]+$/.test(value)
+  )
+    return throwArgumentError("Widget ID is invalid.")
+  return value
 }
 
 const assertQueryId = (value: unknown) => {
@@ -346,9 +464,13 @@ const parseWidget = (
   return throwArgumentError("Widget type is not supported.")
 }
 
-const assertRootInput = (args: unknown, allowed: readonly string[]) => {
-  const input = assertObject(args, "Report tool input")
-  assertKeys(input, allowed, "Report tool input")
+const assertRootInput = (
+  args: unknown,
+  allowed: readonly string[],
+  category: ReportArgumentErrorCategory
+) => {
+  const input = assertObject(args, "Report tool input", category)
+  assertKeys(input, allowed, "Report tool input", category)
   return input
 }
 
@@ -359,20 +481,24 @@ export const executeReportAuthoringTool = (
   args: unknown
 ) => {
   if (name === "create_report") {
-    const input = assertRootInput(args, ["title", "audience", "period"])
+    const input = assertRootInput(
+      args,
+      ["title", "audience", "period"],
+      "REPORT_CREATE_ARGUMENT_ERROR"
+    )
     const report = reportState.createReport({
       title: validateReportTitle(input.title),
       audience:
         input.audience === undefined
           ? undefined
-          : assertSafeString(input.audience, "Report audience", 120),
+          : validateReportAudience(input.audience),
       period:
         input.period === undefined ? undefined : assertPeriod(input.period),
     })
     return { status: "OK", report }
   }
   if (name === "get_report_state") {
-    assertRootInput(args, [])
+    assertRootInput(args, [], "REPORT_STATE_ARGUMENT_ERROR")
     return {
       status: "OK",
       report: reportState.getSnapshot(),
@@ -380,13 +506,21 @@ export const executeReportAuthoringTool = (
     }
   }
   if (name === "add_report_widget") {
-    const input = assertRootInput(args, ["widget"])
+    const input = assertRootInput(
+      args,
+      ["widget"],
+      "REPORT_ADD_WIDGET_ARGUMENT_ERROR"
+    )
     const widget = reportState.addWidget(parseWidget(input.widget, queryCache))
     return { status: "OK", widget, report: reportState.getSnapshot() }
   }
   if (name === "update_report_widget") {
-    const input = assertRootInput(args, ["widgetId", "widget"])
-    const widgetId = assertSafeString(input.widgetId, "Widget ID", 128)
+    const input = assertRootInput(
+      args,
+      ["widgetId", "widget"],
+      "REPORT_UPDATE_WIDGET_ARGUMENT_ERROR"
+    )
+    const widgetId = assertWidgetId(input.widgetId)
     const widget = reportState.replaceWidget(
       widgetId,
       parseWidget(input.widget, queryCache)
@@ -394,8 +528,12 @@ export const executeReportAuthoringTool = (
     return { status: "OK", widget, report: reportState.getSnapshot() }
   }
   if (name === "move_report_widget") {
-    const input = assertRootInput(args, ["widgetId", "toIndex"])
-    const widgetId = assertSafeString(input.widgetId, "Widget ID", 128)
+    const input = assertRootInput(
+      args,
+      ["widgetId", "toIndex"],
+      "REPORT_MOVE_WIDGET_ARGUMENT_ERROR"
+    )
+    const widgetId = assertWidgetId(input.widgetId)
     if (!Number.isInteger(input.toIndex))
       throwArgumentError("Widget position must be an integer.")
     return {
@@ -404,8 +542,12 @@ export const executeReportAuthoringTool = (
     }
   }
   if (name === "remove_report_widget") {
-    const input = assertRootInput(args, ["widgetId"])
-    const widgetId = assertSafeString(input.widgetId, "Widget ID", 128)
+    const input = assertRootInput(
+      args,
+      ["widgetId"],
+      "REPORT_REMOVE_WIDGET_ARGUMENT_ERROR"
+    )
+    const widgetId = assertWidgetId(input.widgetId)
     return { status: "OK", report: reportState.removeWidget(widgetId) }
   }
   return throwArgumentError("Unknown report tool.")

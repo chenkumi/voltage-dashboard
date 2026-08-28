@@ -224,24 +224,38 @@ const assertSafeReportingInput = (
       (value): value is string => typeof value === "string"
     ) ?? []),
   ]
+  if (containsStrongSensitiveFieldName(sql)) {
+    throw new SqliteReportingRuntimeError(
+      "SQL_SENSITIVE_FIELD_ERROR",
+      "The query references a restricted field. Use only curated reporting fields."
+    )
+  }
   if (
-    containsStrongSensitiveFieldName(sql) ||
     containsSensitiveValue(sql) ||
+    parameters?.some((value) => containsSensitiveValue(value))
+  )
+    throw new SqliteReportingRuntimeError(
+      "SQL_SENSITIVE_VALUE_ERROR",
+      "The query contains a restricted value. Remove personal, account, or payment values."
+    )
+  if (
     SUSPICIOUS_NUMERIC_IDENTIFIER_PATTERN.test(sql) ||
     parameters?.some(
       (value) =>
-        containsSensitiveValue(value) ||
-        (typeof value === "number" &&
-          Number.isInteger(value) &&
-          Math.abs(value) >= 10_000_000)
-    ) ||
-    stringValues.some((value) => !isSafeReportingInputString(value))
-  ) {
-    throw new SqliteReportingRuntimeError(
-      "SQL_PRIVACY_ERROR",
-      "Personal, account, or payment data is not allowed in reporting queries."
+        typeof value === "number" &&
+        Number.isInteger(value) &&
+        Math.abs(value) >= 10_000_000
     )
-  }
+  )
+    throw new SqliteReportingRuntimeError(
+      "SQL_IDENTIFIER_ERROR",
+      "The query contains a suspicious numeric identifier. Use aggregate or curated reporting values only."
+    )
+  if (stringValues.some((value) => !isSafeReportingInputString(value)))
+    throw new SqliteReportingRuntimeError(
+      "SQL_LITERAL_ERROR",
+      "The query contains an unapproved string value. Use parameters with curated dataset values or supported dates."
+    )
 }
 
 const assertSafeReportingResult = (result: SqlQueryResult) => {
@@ -278,7 +292,7 @@ const assertSafeReportingResult = (result: SqlQueryResult) => {
   )
   if (hasSensitiveColumn || hasSensitiveRow) {
     throw new SqliteReportingRuntimeError(
-      "SQL_PRIVACY_ERROR",
+      "SQL_OUTPUT_PRIVACY_ERROR",
       "The reporting query result contains restricted data."
     )
   }
