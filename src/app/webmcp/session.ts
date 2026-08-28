@@ -1,5 +1,10 @@
 import { dynamicTool, jsonSchema } from "ai"
 import type { ToolSet } from "ai"
+import {
+  createWebMcpProviderUnavailableError,
+  isAbortError,
+  normalizeWebMcpToolError,
+} from "./tool-error"
 import type {
   WebMcpDocument,
   WebMcpModelContext,
@@ -42,8 +47,8 @@ const normalizeSchema = (schema: unknown) => {
 }
 
 const normalizeError = (error: unknown) => {
-  if (error instanceof Error) return error.message
-  return typeof error === "string" ? error : "WebMCP tool execution failed."
+  if (isAbortError(error)) return "WebMCP operation was aborted."
+  return "WebMCP operation failed."
 }
 
 const logNavigationDebug = (event: string, detail: Record<string, unknown>) => {
@@ -191,7 +196,7 @@ export class WebMcpSession {
       toolName,
     })
 
-    const result = await this.executeRegisteredTool(
+    const result = await this.executeNavigationTool(
       navigationTool,
       {},
       undefined,
@@ -237,7 +242,7 @@ export class WebMcpSession {
 
     const [instructions, skills] = await Promise.all([
       instructionTool
-        ? this.executeRegisteredTool(
+        ? this.executeOptionalRegisteredTool(
             instructionTool,
             {},
             signal,
@@ -245,7 +250,7 @@ export class WebMcpSession {
           ).then((result) => this.readInstructionText(result))
         : Promise.resolve(null),
       skillListTool && skillPairIsAvailable
-        ? this.executeRegisteredTool(
+        ? this.executeOptionalRegisteredTool(
             skillListTool,
             {},
             signal,
@@ -414,8 +419,7 @@ export class WebMcpSession {
     signal: AbortSignal | undefined,
     frameWindow: Window
   ) {
-    if (signal?.aborted)
-      return { status: "ERROR", message: "WebMCP turn was aborted." }
+    if (signal?.aborted) throw createAbortError()
 
     try {
       const modelContext = readModelContext(frameWindow)
@@ -431,12 +435,39 @@ export class WebMcpSession {
         return await testProvider.executeTool(tool, args)
       }
 
-      return {
-        status: "ERROR",
-        message: "WebMCP provider is no longer available.",
-      }
+      throw createWebMcpProviderUnavailableError(tool.name)
     } catch (error) {
-      return { status: "ERROR", message: normalizeError(error) }
+      if (isAbortError(error)) throw error
+      throw normalizeWebMcpToolError(tool.name, error)
+    }
+  }
+
+  private async executeOptionalRegisteredTool(
+    tool: WebMcpRegisteredTool,
+    args: Record<string, unknown>,
+    signal: AbortSignal | undefined,
+    frameWindow: Window
+  ) {
+    try {
+      return await this.executeRegisteredTool(tool, args, signal, frameWindow)
+    } catch (error) {
+      if (isAbortError(error)) throw error
+      return null
+    }
+  }
+
+  private async executeNavigationTool(
+    tool: WebMcpRegisteredTool,
+    args: Record<string, unknown>,
+    signal: AbortSignal | undefined,
+    frameWindow: Window
+  ) {
+    try {
+      return await this.executeRegisteredTool(tool, args, signal, frameWindow)
+    } catch (error) {
+      if (isAbortError(error)) throw error
+      const normalized = normalizeWebMcpToolError(tool.name, error)
+      return { status: "ERROR", message: normalized.message }
     }
   }
 
@@ -517,7 +548,7 @@ export class WebMcpSession {
       return null
     }
 
-    const result = await this.executeRegisteredTool(
+    const result = await this.executeNavigationTool(
       navigationTool,
       {},
       undefined,

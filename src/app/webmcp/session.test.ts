@@ -296,6 +296,114 @@ describe("WebMcpSession", () => {
     expect(executeB).not.toHaveBeenCalled()
   })
 
+  it("rejects agent-facing tool failures with a normalized cross-realm error", async () => {
+    const session = new WebMcpSession()
+    await session.attach(
+      createFrame([reportAuthoringTool], async () =>
+        Promise.reject({
+          name: "ReportStateError",
+          category: "REPORT_ARGUMENT_ERROR",
+          message: "Report tool input contains unsupported fields.",
+        })
+      )
+    )
+    const turn = await session.prepareTurn()
+    const execute = turn.tools.create_report.execute
+    if (!execute) throw new Error("Prepared report tool must be executable.")
+
+    await expect(
+      execute(
+        { title: "Weekly operations", reportId: "unsupported" },
+        { toolCallId: "report-call", messages: [], context: {} }
+      )
+    ).rejects.toMatchObject({
+      name: "WebMcpToolExecutionError",
+      toolName: "create_report",
+      category: "REPORT_ARGUMENT_ERROR",
+      retryable: true,
+      message:
+        "[REPORT_ARGUMENT_ERROR] Report tool arguments are invalid. Inspect the tool schema and retry with only supported fields.",
+    })
+  })
+
+  it("does not expose unknown provider exceptions to agent-facing tools", async () => {
+    const session = new WebMcpSession()
+    await session.attach(
+      createFrame([reportAuthoringTool], async () =>
+        Promise.reject({ stack: "secret stack", value: "private@example.com" })
+      )
+    )
+    const turn = await session.prepareTurn()
+    const execute = turn.tools.create_report.execute
+    if (!execute) throw new Error("Prepared report tool must be executable.")
+
+    await expect(
+      execute(
+        { title: "Weekly operations" },
+        { toolCallId: "report-call", messages: [], context: {} }
+      )
+    ).rejects.toMatchObject({
+      category: "WEBMCP_TOOL_ERROR",
+      message: "[WEBMCP_TOOL_ERROR] WebMCP tool execution failed.",
+    })
+  })
+
+  it("keeps failures from optional special-context tools out of the turn lifecycle", async () => {
+    const session = new WebMcpSession()
+    await session.attach(
+      createFrame(
+        [searchTool, instructionTool, skillListTool, loadSkillTool],
+        async (tool) => {
+          if (tool.name === "agent_instructions" || tool.name === "skill_list")
+            throw {
+              category: "SPECIAL_CONTEXT_ERROR",
+              message: "Optional context unavailable.",
+            }
+          return { status: "OK" }
+        }
+      )
+    )
+
+    await expect(session.prepareTurn()).resolves.toMatchObject({
+      specialPrompt: expect.not.stringContaining("Optional context unavailable"),
+    })
+  })
+
+  it("does not swallow aborts from optional special-context tools", async () => {
+    const session = new WebMcpSession()
+    await session.attach(
+      createFrame([instructionTool], async () =>
+        Promise.reject({ name: "AbortError", message: "aborted" })
+      )
+    )
+
+    await expect(session.prepareTurn()).rejects.toMatchObject({
+      name: "AbortError",
+    })
+  })
+
+  it("rejects an agent-facing executor when its abort signal is already aborted", async () => {
+    const session = new WebMcpSession()
+    await session.attach(createFrame([searchTool], async () => ({ status: "OK" })))
+    const turn = await session.prepareTurn()
+    const execute = turn.tools.search_catalog.execute
+    if (!execute) throw new Error("Prepared iframe tool must be executable.")
+    const controller = new AbortController()
+    controller.abort()
+
+    await expect(
+      execute(
+        {},
+        {
+          toolCallId: "search-call",
+          messages: [],
+          context: {},
+          abortSignal: controller.signal,
+        }
+      )
+    ).rejects.toMatchObject({ name: "AbortError" })
+  })
+
   it("keeps optional navigation tools host-only and tracks navigation state", async () => {
     const executeTool = vi.fn(async (tool: WebMcpRegisteredTool) => {
       if (tool.name === "navigate_state") {
@@ -334,5 +442,38 @@ describe("WebMcpSession", () => {
       expect.objectContaining({ name: "navigate_back" }),
       "{}"
     )
+  })
+
+  it("returns a safe error result when host-only navigation fails", async () => {
+    const session = new WebMcpSession()
+    await session.attach(
+      createFrame(
+        [navigationStateTool, navigateBackTool],
+        async (tool) => {
+          if (tool.name === "navigate_state")
+            return {
+              status: "OK",
+              page: "catalog",
+              canGoBack: true,
+              canGoForward: false,
+            }
+          throw {
+            category: "REPORT_ARGUMENT_ERROR",
+            message: "Navigation failed for private@example.com.",
+          }
+        }
+      )
+    )
+
+    await expect(session.navigate("back")).resolves.toEqual({
+      status: "ERROR",
+      message:
+        "[REPORT_ARGUMENT_ERROR] Report tool arguments are invalid. Inspect the tool schema and retry with only supported fields.",
+    })
+    expect(session.getSnapshot().navigation).toEqual({
+      page: "catalog",
+      canGoBack: true,
+      canGoForward: false,
+    })
   })
 })
