@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import { COMPLETION_VERIFIER_SCHEMA_KEY } from "../completion-policy"
 import { QueryResultCache } from "./query-cache"
 import { ReportStateStore } from "./report-state"
 import {
@@ -64,6 +65,10 @@ describe("report authoring WebMCP tools", () => {
         readOnlyHint: false,
         destructiveHint: false,
         openWorldHint: false,
+        completionVerifier: "get_report_state",
+      })
+      expect(tool.inputSchema).toMatchObject({
+        [COMPLETION_VERIFIER_SCHEMA_KEY]: "get_report_state",
       })
     }
     expect(

@@ -20,6 +20,26 @@ const reportAuthoringTool: WebMcpRegisteredTool = {
   inputSchema: { type: "object", properties: {} },
 }
 
+const verifiedReportAuthoringTool: WebMcpRegisteredTool = {
+  ...reportAuthoringTool,
+  annotations: {
+    readOnlyHint: false,
+    completionVerifier: "get_report_state",
+  },
+}
+
+const reportStateTool: WebMcpRegisteredTool = {
+  name: "get_report_state",
+  description: "Read report state.",
+  inputSchema: {
+    type: "object",
+    properties: {},
+    required: [],
+    additionalProperties: false,
+  },
+  annotations: { readOnlyHint: true },
+}
+
 const instructionTool: WebMcpRegisteredTool = {
   name: "agent_instructions",
   inputSchema: { type: "object", properties: {} },
@@ -294,6 +314,44 @@ describe("WebMcpSession", () => {
       '{"title":"Weekly operations"}'
     )
     expect(executeB).not.toHaveBeenCalled()
+  })
+
+  it("captures only a safe same-turn completion verifier mapping", async () => {
+    const session = new WebMcpSession()
+    await session.attach(
+      createFrame(
+        [verifiedReportAuthoringTool, reportStateTool],
+        async () => ({ status: "OK" })
+      )
+    )
+
+    const turn = await session.prepareTurn()
+
+    expect(turn.completionVerifiers).toEqual({
+      create_report: "get_report_state",
+    })
+    expect(Object.isFrozen(turn.completionVerifiers)).toBe(true)
+  })
+
+  it("does not carry a completion verifier across iframe turns", async () => {
+    const session = new WebMcpSession()
+    await session.attach(
+      createFrame(
+        [verifiedReportAuthoringTool, reportStateTool],
+        async () => ({ status: "OK" })
+      )
+    )
+    const turnA = await session.prepareTurn()
+
+    await session.attach(
+      createFrame([reportAuthoringTool], async () => ({ status: "OK" }))
+    )
+    const turnB = await session.prepareTurn()
+
+    expect(turnA.completionVerifiers).toEqual({
+      create_report: "get_report_state",
+    })
+    expect(turnB.completionVerifiers).toEqual({})
   })
 
   it("rejects agent-facing tool failures with a normalized cross-realm error", async () => {

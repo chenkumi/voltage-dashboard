@@ -1,5 +1,7 @@
 import { dynamicTool, jsonSchema } from "ai"
 import type { ToolSet } from "ai"
+import { createCompletionVerifierMap } from "./completion-policy"
+import type { CompletionVerifierMap } from "./completion-policy"
 import {
   createWebMcpProviderUnavailableError,
   isAbortError,
@@ -93,6 +95,7 @@ export type PreparedWebMcpTurn = Readonly<{
   tools: ToolSet
   toolDescriptions: string
   specialPrompt: string
+  completionVerifiers: CompletionVerifierMap
 }>
 
 type SpecialContext = {
@@ -381,6 +384,7 @@ export class WebMcpSession {
         )
         .join("\n"),
       specialPrompt: this.createSpecialPrompt(specialContext),
+      completionVerifiers: createCompletionVerifierMap(agentTools),
     })
   }
 

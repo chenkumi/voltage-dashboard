@@ -112,6 +112,7 @@ describe("commerce privacy boundaries", () => {
       tools: {},
       toolDescriptions: "",
       specialPrompt: "",
+      completionVerifiers: {},
     })
 
     expect(instructions).toContain("Never ask the user to provide")
@@ -125,6 +126,7 @@ describe("commerce privacy boundaries", () => {
       tools: {},
       toolDescriptions: "",
       specialPrompt: "",
+      completionVerifiers: {},
     })
 
     expect(Object.keys(agent.tools)).toEqual(["wait_for"])

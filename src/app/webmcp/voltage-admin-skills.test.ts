@@ -81,7 +81,23 @@ describe("Voltage Admin skills", () => {
       /先查詢 `agent_dataset_status`[\s\S]*資料期間[\s\S]*Asia\/Taipei[\s\S]*更新時間[\s\S]*截斷/
     )
     expect(text).toMatch(/實際 discovery[\s\S]*不得宣稱已建立 Report Canvas/)
+    expect(text).toMatch(
+      /execute_readonly_sql[\s\S]*create_report[\s\S]*沒有固定先後/
+    )
+    expect(text).toMatch(
+      /add_report_widget[\s\S]*active report[\s\S]*queryId/
+    )
+    expect(text).toMatch(
+      /tool error[\s\S]*PARTIALLY_COMPLETED[\s\S]*FAILED/
+    )
+    expect(text).toMatch(/最新 verifier 結果[\s\S]*才能回報完成/)
     expect(text).toMatch(/先讀取其 state[\s\S]*不要反覆建立新 report/)
+  })
+
+  it("requires verifier-backed completion in shared Admin instructions", () => {
+    expect(VOLTAGE_ADMIN_AGENT_INSTRUCTIONS).toMatch(
+      /tool error[\s\S]*未完成[\s\S]*state verifier[\s\S]*(?:PARTIALLY_COMPLETED|FAILED)/
+    )
   })
 
   it("keeps instructions and skills free of personal or payment data capabilities", () => {

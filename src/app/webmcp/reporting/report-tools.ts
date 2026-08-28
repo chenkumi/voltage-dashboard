@@ -1,4 +1,5 @@
 import type { WebMcpRegisteredTool } from "../types"
+import { COMPLETION_VERIFIER_SCHEMA_KEY } from "../completion-policy"
 import { QueryResultCache } from "./query-cache"
 import { ReportStateError, ReportStateStore } from "./report-state"
 import type { CachedQueryResult, NewReportWidget, ReportPeriod } from "./types"
@@ -75,20 +76,28 @@ const reversibleAnnotations = {
   readOnlyHint: false,
   destructiveHint: false,
   openWorldHint: false,
+  completionVerifier: "get_report_state",
 }
+
+const withCompletionVerifier = <T extends Record<string, unknown>>(value: T) => ({
+  ...value,
+  [COMPLETION_VERIFIER_SCHEMA_KEY]: "get_report_state",
+})
 
 export const REPORT_AUTHORING_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "create_report",
     description:
       "Create or replace the single editable report in this Admin workspace. Use verified period metadata and then add widgets that reference queryIds from this workspace.",
-    inputSchema: schema(
+    inputSchema: withCompletionVerifier(
+      schema(
       {
         title: { type: "string", maxLength: 120 },
         audience: { type: "string", maxLength: 120 },
         period: reportPeriodSchema,
       },
-      ["title"]
+        ["title"]
+      )
     ),
     annotations: reversibleAnnotations,
   },
@@ -103,23 +112,25 @@ export const REPORT_AUTHORING_TOOLS: WebMcpRegisteredTool[] = [
     name: "add_report_widget",
     description:
       "Add one validated KPI, table, safe Markdown text, or bar widget to the active report. The root input must contain only widget; put type, title, queryId, columns, and other widget fields inside widget. Do not include reportId.",
-    inputSchema: {
+    inputSchema: withCompletionVerifier({
       ...schema({ widget: reportWidgetSchema }, ["widget"]),
       description:
         "Root input: { widget: {...} }. Do not flatten widget fields or include reportId.",
-    },
+    }),
     annotations: reversibleAnnotations,
   },
   {
     name: "update_report_widget",
     description:
       "Replace one existing report widget with a newly validated declarative widget while preserving its ID.",
-    inputSchema: schema(
+    inputSchema: withCompletionVerifier(
+      schema(
       {
         widgetId: { type: "string" },
         widget: reportWidgetSchema,
       },
-      ["widgetId", "widget"]
+        ["widgetId", "widget"]
+      )
     ),
     annotations: reversibleAnnotations,
   },
@@ -127,19 +138,23 @@ export const REPORT_AUTHORING_TOOLS: WebMcpRegisteredTool[] = [
     name: "move_report_widget",
     description:
       "Move an existing widget to a zero-based position in the active report.",
-    inputSchema: schema(
+    inputSchema: withCompletionVerifier(
+      schema(
       {
         widgetId: { type: "string" },
         toIndex: { type: "integer", minimum: 0 },
       },
-      ["widgetId", "toIndex"]
+        ["widgetId", "toIndex"]
+      )
     ),
     annotations: reversibleAnnotations,
   },
   {
     name: "remove_report_widget",
     description: "Remove one widget from the active in-memory report.",
-    inputSchema: schema({ widgetId: { type: "string" } }, ["widgetId"]),
+    inputSchema: withCompletionVerifier(
+      schema({ widgetId: { type: "string" } }, ["widgetId"])
+    ),
     annotations: reversibleAnnotations,
   },
 ]

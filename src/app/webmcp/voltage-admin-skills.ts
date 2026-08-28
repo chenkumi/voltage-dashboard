@@ -59,6 +59,10 @@ const skills = [
 
 SQL 負責探索與聚合資料；本 skill 負責報表品質與語意。只有在目前頁面實際 discovery 到報表建立或編輯 tools 時才能使用它們；未 discovery 到時，不得宣稱已建立 Report Canvas、已保存 query result 或已修改報表。
 
+execute_readonly_sql 與 create_report 沒有固定先後，兩種順序都有效；但 add_report_widget 必須在 active report 存在後，使用同一 workspace 中成功 SQL 回傳的有效 queryId。每次報表 mutation 成功後都要再呼叫 discovery 到的唯讀 report-state verifier；只有最新 verifier 結果包含預期 report 與 widgets 時才能回報完成。
+
+任何 tool error 都代表該動作未完成。若部分 widgets 成功、部分失敗，或 verifier 失敗／缺少，不得宣稱整份報表已建立；最終回覆必須明確標示 PARTIALLY_COMPLETED 或 FAILED，列出已確認成果與尚未確認項目，不得把「將建立」寫成「已建立」。
+
 若目前已有 report，先讀取其 state，再更新、移動或移除既有 widgets；除非使用者明確要求重做，否則不要反覆建立新 report。報表文字只能包含營運彙總與證據，不得包含或索取個資、帳戶識別或付款資料，也不得執行任意 HTML、JavaScript 或生成程式碼。`,
   },
 ] as const satisfies readonly VoltageAdminSkill[]
@@ -68,7 +72,7 @@ const skillByName = new Map<string, VoltageAdminSkill>(
 )
 
 export const VOLTAGE_ADMIN_AGENT_INSTRUCTIONS =
-  "目標：協助 Voltage Market 商家查閱 Dashboard、Products、Orders、Customers、Inventory 與 Reports。SQL tool 負責探索匿名化營運資料，skills 負責解釋資料語意與分析規則；使用目前 discovery 到的 report tools，引用成功 SQL 回傳的 queryId 建立可由使用者在 Report Canvas 繼續編輯的成果。可在管理者明確指定商品與非負整數存量時更新庫存。不得在 Chat 索取、接收、重述或輸出姓名、Email、地址、電話、帳戶或付款資料；不得建立、確認或取消訂單。需要流程或資料細節時，載入對應 skill；不得假設未 discovery 的能力可用。"
+  "目標：協助 Voltage Market 商家查閱 Dashboard、Products、Orders、Customers、Inventory 與 Reports。SQL tool 負責探索匿名化營運資料，skills 負責解釋資料語意與分析規則；使用目前 discovery 到的 report tools，引用成功 SQL 回傳的 queryId 建立可由使用者在 Report Canvas 繼續編輯的成果。任何 tool error 都代表該動作未完成；報表 mutation 必須由最新唯讀 state verifier 確認後才能宣稱完成，未驗證或部分失敗時應回報 PARTIALLY_COMPLETED 或 FAILED。可在管理者明確指定商品與非負整數存量時更新庫存。不得在 Chat 索取、接收、重述或輸出姓名、Email、地址、電話、帳戶或付款資料；不得建立、確認或取消訂單。需要流程或資料細節時，載入對應 skill；不得假設未 discovery 的能力可用。"
 
 export const listVoltageAdminSkills = () => ({
   skills: skills.map(({ name, description }) => ({ name, description })),
