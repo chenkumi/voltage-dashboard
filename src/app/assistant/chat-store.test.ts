@@ -6,10 +6,12 @@ import { siteProfileSeeds } from "@/app/webmcp/sites"
 import {
   createThreadTargetFromProfile,
   getSiteProfileByUrl,
+  getMostRecentlyActiveSiteProfile,
   initializeSiteProfiles,
 } from "./site-profile-store"
 import {
   clearStaleSiteLastThread,
+  activateSiteThread,
   createAndActivateThread,
   getSiteThread,
   saveUserMessage,
@@ -179,5 +181,54 @@ describe("chat persistence", () => {
 
     const target = createThreadTargetFromProfile(profile!)
     expect(target).toEqual({ siteId: "market", url: "/market" })
+  })
+
+  it("restores the site with the most recently active thread", async () => {
+    await initializeSiteProfiles()
+    await createAndActivateThread(thread("market-thread", "market", "/market"))
+    await createAndActivateThread(
+      thread("dashboard-thread", "dashboard", "/dashboard")
+    )
+    await chatDb.siteLastThreads.update("market", { updatedAt: 10 })
+    await chatDb.siteLastThreads.update("dashboard", { updatedAt: 20 })
+
+    expect(await getMostRecentlyActiveSiteProfile()).toEqual(
+      siteProfileSeeds[1]
+    )
+  })
+
+  it("ignores stale mappings when restoring the most recently active site", async () => {
+    await initializeSiteProfiles()
+    await createAndActivateThread(thread("market-thread", "market", "/market"))
+    await chatDb.siteLastThreads.put({
+      siteId: "dashboard",
+      threadId: "missing-thread",
+      updatedAt: Number.MAX_SAFE_INTEGER,
+    })
+
+    expect(await getMostRecentlyActiveSiteProfile()).toEqual(siteProfileSeeds[0])
+  })
+
+  it("uses strictly increasing activity timestamps across sites", async () => {
+    await createAndActivateThread(thread("market-thread", "market", "/market"))
+    const marketActivity = (await chatDb.siteLastThreads.get("market"))!.updatedAt
+
+    await createAndActivateThread(
+      thread("dashboard-thread", "dashboard", "/dashboard")
+    )
+    const dashboardActivity = (await chatDb.siteLastThreads.get("dashboard"))!
+      .updatedAt
+
+    expect(dashboardActivity).toBeGreaterThan(marketActivity)
+  })
+
+  it("marks an existing site thread active when it is selected", async () => {
+    await initializeSiteProfiles()
+    await createAndActivateThread(thread("market-thread", "market", "/market"))
+    await chatDb.siteLastThreads.update("market", { updatedAt: 10 })
+
+    await activateSiteThread(thread("market-thread", "market", "/market"))
+
+    expect((await chatDb.siteLastThreads.get("market"))?.updatedAt).toBeGreaterThan(10)
   })
 })

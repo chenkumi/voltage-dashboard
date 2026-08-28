@@ -1,6 +1,7 @@
 import { useTheme } from "@/app/theme-context"
 import { Toaster } from "@/components/ui/sonner"
 import { Spinner } from "@/components/ui/spinner"
+import { Button } from "@/components/ui/button"
 import { useLiveQuery } from "dexie-react-hooks"
 import {
   useCallback,
@@ -26,17 +27,25 @@ import { AssistantChatInput } from "./chat-input"
 import { ChatStreamController } from "./chat-stream-controller"
 import {
   createAndActivateThread,
+  activateSiteThread,
   clearStaleSiteLastThread,
   getSiteThread,
 } from "./chat-store"
 import { ChatStreamRuntime } from "./chat-stream-runtime"
 import { AssistantChatWindow } from "./chat-window"
 import {
+  resolveAssistantSiteUrl,
+  shouldReportAssistantLifecycleError,
+  shouldCreateAssistantThread,
+} from "./lifecycle"
+import {
   createThreadTargetFromProfile,
   getSiteProfileById,
   getSiteProfileByUrl,
   getSiteProfiles,
+  getMostRecentlyActiveSiteProfile,
 } from "./site-profile-store"
+import { toast } from "sonner"
 
 const createId = monotonicFactory()
 
@@ -45,6 +54,11 @@ const Loading = () => (
     <Spinner className="size-10" />
   </div>
 )
+
+const errorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Unable to restore the chat."
+
+type SiteSwitchResult = "changed" | "stale" | "failed"
 
 const createEmptyThread = (profile: SiteProfile): ChatThread => {
   const timestamp = Date.now()
@@ -59,7 +73,10 @@ const createEmptyThread = (profile: SiteProfile): ChatThread => {
 
 const createOrOpenSiteThread = async (profile: SiteProfile) => {
   const siteThread = await getSiteThread(profile.siteId)
-  if (siteThread.thread) return siteThread.thread
+  if (siteThread.thread) {
+    await activateSiteThread(siteThread.thread)
+    return siteThread.thread
+  }
   if (siteThread.lastThread) {
     await clearStaleSiteLastThread(profile.siteId, siteThread.lastThread)
   }
@@ -111,7 +128,7 @@ const ChatSession = memo(
     site: WebMcpSite
     target: ThreadSiteTarget
     profile: SiteProfile
-    onSiteChange: (site: WebMcpSite) => Promise<void>
+    onSiteChange: (site: WebMcpSite) => Promise<SiteSwitchResult>
   }) {
     const { theme } = useTheme()
     const session = useMemo(() => new WebMcpSession(), [])
@@ -123,15 +140,20 @@ const ChatSession = memo(
     const createNewThread = useCallback(async () => {
       runtime.cancel()
       const nextThread = createEmptyThread(profile)
-      await createAndActivateThread(nextThread)
+      try {
+        await createAndActivateThread(nextThread)
+      } catch (error: unknown) {
+        toast.error(errorMessage(error))
+      }
     }, [profile, runtime])
 
     const switchSite = useCallback(
       async (nextSite: WebMcpSite) => {
         if (nextSite.id === site.id) return
         runtime.cancel()
-        session.dispose()
-        await onSiteChange(nextSite)
+        const changed = await onSiteChange(nextSite)
+        if (changed === "changed") session.dispose()
+        if (changed === "failed") toast.error("Unable to switch websites.")
       },
       [onSiteChange, runtime, session, site.id]
     )
@@ -186,8 +208,20 @@ const ChatSession = memo(
 )
 
 export const Assistant = () => {
-  const [activeSiteUrl, setActiveSiteUrl] = useState(defaultWebMcpSite.url)
+  const [selectedSiteUrl, setSelectedSiteUrl] = useState<string | null>(null)
+  const [lifecycleError, setLifecycleError] = useState<string | null>(null)
+  const [retryNonce, setRetryNonce] = useState(0)
   const profiles = useLiveQuery(() => getSiteProfiles(), [])
+  const mostRecentlyActiveProfile = useLiveQuery(
+    () => getMostRecentlyActiveSiteProfile(),
+    [],
+    null
+  )
+  const activeSiteUrl = resolveAssistantSiteUrl(
+    selectedSiteUrl,
+    mostRecentlyActiveProfile?.url,
+    defaultWebMcpSite.url
+  )
   const profile = useLiveQuery(
     () => getSiteProfileByUrl(activeSiteUrl),
     [activeSiteUrl]
@@ -198,7 +232,9 @@ export const Assistant = () => {
   )
   const creatingSiteIdsRef = useRef(new Set<string>())
   const siteSwitchRequestRef = useRef(0)
-  const siteSwitchChainRef = useRef(Promise.resolve())
+  const siteSwitchChainRef = useRef<Promise<SiteSwitchResult>>(
+    Promise.resolve("stale")
+  )
 
   const site = useMemo(
     () =>
@@ -210,31 +246,74 @@ export const Assistant = () => {
 
   useEffect(() => {
     if (!profile || !site || !siteThread) return
-
-    if (siteThread.thread) return
-    if (creatingSiteIdsRef.current.has(profile.siteId)) return
+    if (!shouldCreateAssistantThread({
+      activeSiteUrl,
+      isCreating: creatingSiteIdsRef.current.has(profile.siteId),
+      latestProfileLoaded: mostRecentlyActiveProfile !== null,
+      latestProfileUrl: mostRecentlyActiveProfile?.url,
+      hasThread: Boolean(siteThread.thread),
+    })) return
 
     creatingSiteIdsRef.current.add(profile.siteId)
-    void createOrOpenSiteThread(profile).finally(() => {
-      creatingSiteIdsRef.current.delete(profile.siteId)
-    })
-  }, [profile, site, siteThread])
+    const requestId = siteSwitchRequestRef.current
+    void createOrOpenSiteThread(profile)
+      .catch((error: unknown) => {
+        if (shouldReportAssistantLifecycleError(requestId, siteSwitchRequestRef.current))
+          setLifecycleError(errorMessage(error))
+      })
+      .finally(() => {
+        creatingSiteIdsRef.current.delete(profile.siteId)
+      })
+  }, [
+    activeSiteUrl,
+    mostRecentlyActiveProfile,
+    profile,
+    retryNonce,
+    site,
+    siteThread,
+  ])
 
   const handleSiteChange = useCallback((nextSite: WebMcpSite) => {
     const requestId = ++siteSwitchRequestRef.current
     const switchTask = async () => {
-      const nextProfile = await getSiteProfileById(nextSite.id)
-      if (!nextProfile || requestId !== siteSwitchRequestRef.current) return
+      try {
+        const nextProfile = await getSiteProfileById(nextSite.id)
+        if (!nextProfile || requestId !== siteSwitchRequestRef.current)
+          return "stale"
 
-      await createOrOpenSiteThread(nextProfile)
-      if (requestId !== siteSwitchRequestRef.current) return
-      setActiveSiteUrl(nextProfile.url)
+        await createOrOpenSiteThread(nextProfile)
+        if (requestId !== siteSwitchRequestRef.current) return "stale"
+        setLifecycleError(null)
+        setSelectedSiteUrl(nextProfile.url)
+        return "changed"
+      } catch {
+        return requestId === siteSwitchRequestRef.current ? "failed" : "stale"
+      }
     }
 
     const nextTask = siteSwitchChainRef.current.then(switchTask, switchTask)
     siteSwitchChainRef.current = nextTask
     return nextTask
   }, [])
+
+  if (lifecycleError) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-3 text-center text-slate-300">
+        <p role="alert" className="max-w-sm text-sm">
+          {lifecycleError}
+        </p>
+        <Button
+          type="button"
+          onClick={() => {
+            setLifecycleError(null)
+            setRetryNonce((current) => current + 1)
+          }}
+        >
+          Retry
+        </Button>
+      </div>
+    )
+  }
 
   if (!profiles || !profile || !site || !siteThread?.thread) return <Loading />
 

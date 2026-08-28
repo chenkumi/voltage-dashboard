@@ -10,6 +10,11 @@ import {
 
 const now = () => Date.now()
 
+const nextSiteActivityTimestamp = async () => {
+  const latest = await chatDb.siteLastThreads.orderBy("updatedAt").last()
+  return Math.max(now(), (latest?.updatedAt ?? 0) + 1)
+}
+
 export const createAndActivateThread = async (thread: ChatThread) => {
   await chatDb.transaction("rw", chatDb.threads, chatDb.siteLastThreads, async () => {
     const existing = await chatDb.threads.get(thread.id)
@@ -21,10 +26,11 @@ export const createAndActivateThread = async (thread: ChatThread) => {
     }
 
     await chatDb.threads.put(thread)
+    const updatedAt = await nextSiteActivityTimestamp()
     await chatDb.siteLastThreads.put({
       siteId: thread.siteId,
       threadId: thread.id,
-      updatedAt: thread.updatedAt,
+      updatedAt,
     })
   })
   return thread
@@ -39,6 +45,17 @@ export const getSiteThread = async (siteId: string) => {
     return { lastThread, thread: undefined }
 
   return { lastThread, thread }
+}
+
+export const activateSiteThread = async (thread: ChatThread) => {
+  await chatDb.transaction("rw", chatDb.siteLastThreads, async () => {
+    const updatedAt = await nextSiteActivityTimestamp()
+    await chatDb.siteLastThreads.put({
+      siteId: thread.siteId,
+      threadId: thread.id,
+      updatedAt,
+    })
+  })
 }
 
 export const clearStaleSiteLastThread = async (
@@ -98,10 +115,11 @@ const persistMessage = async (threadId: string, message: UIMessage) => {
     await chatDb.threads.update(threadId, { updatedAt: timestamp })
     const activeThread = await chatDb.siteLastThreads.get(thread.siteId)
     if (!activeThread || activeThread.threadId === threadId) {
+      const updatedAt = await nextSiteActivityTimestamp()
       await chatDb.siteLastThreads.put({
         siteId: thread.siteId,
         threadId,
-        updatedAt: timestamp,
+        updatedAt,
       })
     }
   })

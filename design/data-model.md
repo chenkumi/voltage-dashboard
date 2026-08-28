@@ -4,14 +4,42 @@
 
 | 模型 | 必要欄位 | 目的 |
 | --- | --- | --- |
-| `ChatThread` | `id`、`siteId`、`url`、時間戳 | 一段對話與其 WebMCP 目標快照 |
-| `StoredMessage` | ULID、`threadId`、`UIMessage` envelope | 以建立順序保存對話 |
-| `siteLastThreads` | `siteId`、`threadId` | 每個 registry 網站最後開啟的 thread |
+| `SiteProfile` | `siteId`、`url`、`name` | registry 網站的持久化 metadata 與 URL 對應 |
+| `ChatThread` | `id`、`siteId`、`url`、`title`、時間戳、可選 `pin`/`customTitle` | 一段對話與其 WebMCP 目標快照 |
+| `StoredMessage` | ULID、`threadId`、`createdAt`、`updatedAt`、`UIMessage` envelope | 以建立順序保存對話 |
+| `siteLastThreads` | `siteId`、`threadId`、`updatedAt` | 每個 registry 網站最後開啟的 thread |
 
-`siteId` 用來取得網站名稱與 registry 預設資料；`url` 是 thread 建立當時要載入
-的目標。兩者共同形成 `ThreadSiteTarget`，不可用 registry 的 URL 覆寫既有 thread。
+`siteProfiles` 使用 `siteId` 作為 primary key，並以唯一 `url` index 支援 URL 查詢。
+目前 seed 為 `market → /market` 與 `dashboard → /dashboard`。App 啟動時以
+transaction + `bulkPut` 冪等初始化兩筆 profile；profile query 本身只讀取，避免
+在 Dexie live query 中寫入資料。
 
-本次未更動 `webmcp-agent-db-v2` 或 IndexedDB 欄位。
+`siteId` 用來取得網站名稱與 profile；建立 thread 時從 profile 複製 `url`，形成
+不可被 registry URL 覆寫的 `ThreadSiteTarget` snapshot。`siteLastThreads` 只保存
+每個 site 的最後 active thread；讀取時若 mapping 指向不存在或其他 site 的 thread，
+只回報 stale，另由明確 cleanup transaction 清理。建立 thread 以
+`createAndActivateThread` 在同一 transaction 寫入 thread 與 mapping；若 thread ID
+已屬於不同 site 或 URL，操作會拒絕覆蓋。
+
+資料庫名稱維持 `webmcp-agent-db-v2`，Dexie schema version 維持 1，既有
+`threads`、`messages`、`siteLastThreads` schema 保留並新增 `siteProfiles` table。
+本次不做舊資料 migration；部署前先刪除整個 `webmcp-agent-db-v2`，再以新 schema
+初始化。
+
+## Route 與 thread lifecycle
+
+`/` 是 Assistant host，URL 不包含 threadId。Assistant 以目前 profile URL 查到
+siteId，再透過 `siteLastThreads` 恢復該 site 最後的 thread；沒有有效 mapping 時
+建立並 activate 新 thread。New Thread 以 atomic persistence 建立；site switch 選取
+既有 thread 時以 transaction 更新 active mapping，建立缺少的 thread 時同樣使用
+atomic persistence；切換後由 live query 觸發畫面更新。每個 ChatThread 保持自己的 `siteId + url`
+target snapshot；`thread.id` 是 `ChatSession` 的 React key，因此 session、runtime、
+transport 與 iframe discovery 會隨 thread 邊界重建。
+
+`/market` 與 `/dashboard` 是可直接載入的 iframe demo route，不會渲染 Assistant；
+Assistant workspace 的 iframe 則使用 thread snapshot URL。網站切換後舊的
+`WebMcpSession` dispose，新 session 只 discovery 新 iframe 暴露的 tools、instructions
+與 skills。
 
 ## Chat message lifecycle
 
