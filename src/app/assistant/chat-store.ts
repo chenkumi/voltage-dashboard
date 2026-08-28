@@ -12,6 +12,14 @@ const now = () => Date.now()
 
 export const createAndActivateThread = async (thread: ChatThread) => {
   await chatDb.transaction("rw", chatDb.threads, chatDb.siteLastThreads, async () => {
+    const existing = await chatDb.threads.get(thread.id)
+    if (
+      existing &&
+      (existing.siteId !== thread.siteId || existing.url !== thread.url)
+    ) {
+      throw new Error("Thread id already belongs to another site target.")
+    }
+
     await chatDb.threads.put(thread)
     await chatDb.siteLastThreads.put({
       siteId: thread.siteId,
@@ -39,7 +47,11 @@ export const clearStaleSiteLastThread = async (
 ) => {
   await chatDb.transaction("rw", chatDb.siteLastThreads, async () => {
     const current = await chatDb.siteLastThreads.get(siteId)
-    if (current?.threadId === expected.threadId) {
+    if (
+      current?.siteId === expected.siteId &&
+      current.threadId === expected.threadId &&
+      current.updatedAt === expected.updatedAt
+    ) {
       await chatDb.siteLastThreads.delete(siteId)
     }
   })

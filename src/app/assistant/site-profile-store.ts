@@ -1,5 +1,5 @@
 import { chatDb } from "@/app/db"
-import type { SiteProfile } from "@/app/types"
+import type { SiteProfile, ThreadSiteTarget } from "@/app/types"
 import { siteProfileSeeds } from "@/app/webmcp/sites"
 
 export const initializeSiteProfiles = async () => {
@@ -19,3 +19,10 @@ export const getSiteProfileById = async (siteId: string) => {
 export const getSiteProfiles = async (): Promise<SiteProfile[]> => {
   return chatDb.siteProfiles.toArray()
 }
+
+export const createThreadTargetFromProfile = (
+  profile: SiteProfile
+): ThreadSiteTarget => ({
+  siteId: profile.siteId,
+  url: profile.url,
+})
