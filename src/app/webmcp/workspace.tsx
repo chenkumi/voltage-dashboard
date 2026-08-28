@@ -12,10 +12,9 @@ import {
 } from "lucide-react"
 import {
     useCallback,
-    useEffect,
     useLayoutEffect,
     useState,
-    useSyncExternalStore,
+    useSyncExternalStore
 } from "react"
 import type { WebMcpSession } from "./session"
 import { webMcpSites } from "./sites"
@@ -44,30 +43,28 @@ export const WebMcpWorkspace = ({
 }) => {
     const state = useSyncExternalStore(session.subscribe, session.getSnapshot, session.getSnapshot)
     const [navigationBusy, setNavigationBusy] = useState<"back" | "forward" | null>(null)
-    const hasNavigationStateTool = state.tools.some((tool) => tool.name === "navigate_state")
+    // useEffect(() => {
+    //     if (!import.meta.env.DEV) return
 
-    useEffect(() => {
-        if (!import.meta.env.DEV) return
-
-        const hasNavigateBack = state.tools.some((tool) => tool.name === "navigate_back")
-        const hasNavigateForward = state.tools.some((tool) => tool.name === "navigate_forward")
-        console.info("[WebMCP workspace navigation] render state", {
-            sessionStatus: state.status,
-            toolNames: state.tools.map((tool) => tool.name),
-            navigation: state.navigation,
-            hasNavigationStateTool,
-            renderBackButton: hasNavigateBack,
-            renderForwardButton: hasNavigateForward,
-            navigationControlsDisabled: disabled || navigationBusy !== null,
-        })
-    }, [
-        disabled,
-        hasNavigationStateTool,
-        navigationBusy,
-        state.navigation,
-        state.status,
-        state.tools,
-    ])
+    //     const hasNavigateBack = state.tools.some((tool) => tool.name === "navigate_back")
+    //     const hasNavigateForward = state.tools.some((tool) => tool.name === "navigate_forward")
+    //     console.info("[WebMCP workspace navigation] render state", {
+    //         sessionStatus: state.status,
+    //         toolNames: state.tools.map((tool) => tool.name),
+    //         navigation: state.navigation,
+    //         hasNavigationStateTool,
+    //         renderBackButton: hasNavigateBack,
+    //         renderForwardButton: hasNavigateForward,
+    //         navigationControlsDisabled: disabled || navigationBusy !== null,
+    //     })
+    // }, [
+    //     disabled,
+    //     hasNavigationStateTool,
+    //     navigationBusy,
+    //     state.navigation,
+    //     state.status,
+    //     state.tools,
+    // ])
 
     const hasNavigationTool = useCallback((name: string) => {
         return state.tools.some((tool) => tool.name === name)

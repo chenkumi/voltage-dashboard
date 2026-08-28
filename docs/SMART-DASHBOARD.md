@@ -60,7 +60,7 @@ Agent 根據使用者目標載入所需的領域 skill，自行規劃 SQL、分�
   8 MiB，超限時保留既有 evidence 並安全拒絕新結果。
 - 單一 memory-only active report，以及 create/get/add/update/move/remove 六個
   report-authoring tools。
-- 可共同編輯的 Reports Canvas，支援 KPI、table、restricted Markdown text 與 bar；
+- 可共同編輯的 Reports Canvas，支援 KPI、table、受限的商務 Markdown text 與 bar；
   使用者與 Agent 修改同一份 report state。
 
 Capability inspector 尚未實作；目前 `/chat` 的 session log 可用來確認 discovered tools，
@@ -310,6 +310,24 @@ load_skill
 `agent_instructions({})` 說明當下頁面的目標、SQL 限制、資料安全要求與報表協作方式。
 它不掛載給 Agent，而是在每個 user input 前執行並加入 system prompt。
 
+### 7.4 Tool error 與完成驗證協議
+
+所有 iframe tool exception 都會在 host 端正規化成安全、可修正的錯誤，保留
+`toolName`、`category`、canonical `message` 與 `retryable`，且跨 iframe realm 不依賴
+`instanceof Error`。開發模式的 tool input、response 與 error 以同一個 `callId` 輸出成
+已遮蔽的單行 JSON；Agent lifecycle 只記錄 step、tool 名稱、result/error 類型與完成
+狀態，不記錄 prompt 或任意資料內容。
+
+Report mutation 以 `completionVerifier` annotation 宣告 `get_report_state`。原生 WebMCP
+WebIDL 可能移除未知 annotation，因此 schema 同時帶有
+`x-webmcp-completion-verifier` fallback。Host 只接受同一 turn 中、`readOnlyHint: true`、
+不需參數且 schema 關閉額外欄位的 verifier。每次成功 mutation 後，下一個 Agent step
+只能執行該 verifier；最新 state 未確認前不得宣稱完成。
+
+未被後續同名成功呼叫清除的 tool error 也會進入 completion state。Agent 若提早結束，
+final answer 必須以 `PARTIALLY_COMPLETED` 或 `FAILED` 開頭；成功的 tool loop 結束本身
+不代表業務操作成功。
+
 ## 8. 報表資料模型
 
 Agent 不生成任意程式碼，而是組合頁面允許的宣告式 widget：
@@ -400,6 +418,17 @@ JavaScript 或 SQL extension。
 - 資料不足、結果截斷或查詢失敗時不得宣稱分析完整。
 - 修改查詢後，所有引用舊 query result 的 widget 必須重新整理或標示過期。
 
+### 9.4 輸入安全分組
+
+SQL、report metadata 與 report widget arguments 使用不同驗證規則。SQL 拒絕敏感欄位、
+Email／電話／付款格式、疑似長識別碼與未核准文字，但允許 ISO 日期、curated 值與最多
+3 位整數、2 位小數的短數字字串，避免模型把門檻 `12` 序列化為字串時被誤判。SQL 結果另以更嚴格的
+欄位和值 allowlist 檢查。
+
+Report root input 只檢查各 tool 支援的 keys；標題、受眾與 Markdown 依各自內容風險套用
+不同規則。Widget 再依 `type` 驗證專屬欄位，例如 bar 只接受 `categoryColumn` 與
+`valueColumn`，table 才接受 `columns`。合法中文營運標題不會再被當成個資。
+
 ## 10. 人類與 Agent 的協作邊界
 
 Agent 負責：
@@ -451,7 +480,7 @@ widgets。第一版只支援 bar，不支援 stacked bar；Agent 應說明限制
 4. 查詢本週總營收、以營收降冪排序且 `LIMIT 3` 的前三分類，以及 stock 小於或等於
    12 的低庫存商品；保留每次成功結果的 `queryId`。
 5. 建立期間為上述七天的 report，加入營收 KPI、分類 bar、低庫存 table 與引用三組
-   evidence 的 restricted Markdown 摘要。
+   evidence 的商務 Markdown 摘要。
 6. 在 Reports Canvas 直接修改 report/widget 標題、移除或排序 widget，再要求 Agent
    先讀取 `get_report_state`，延續修改同一份 report。
 7. 切到 Market，確認 SQL 與 report tools 消失；切回 Admin 或 reload iframe 時，舊
@@ -493,7 +522,7 @@ Demo 應讓「同一個 Agent 核心」這件事在畫面上可見：
 - 一個安全的 `execute_readonly_sql`。
 - SQL 安全、資料隔離、runtime lifecycle、skill pairing 基線與 iframe executor 綁定測試。
 - sales、inventory、report-authoring 三組 skills。
-- KPI、bar、table、restricted Markdown text 四種 widget。
+- KPI、bar、table、受限的商務 Markdown text 四種 widget。
 - 建立、修改、移動、刪除與讀取 report state。
 - 一個可在兩分鐘內完成的營運報表 demo scenario。
 - query result cache、`queryId` 與 report state 自動化測試。
@@ -520,6 +549,12 @@ inspector。不在第一版加入任意程式碼 widget、跨來源資料匯入�
   query IDs、report、skills 或 executor 綁到新 iframe context。
 - 自動化 Chromium 沒有原生 `document.modelContext`；不可把 fallback 結果宣稱為原生
   WebMCP 驗證。
+- 固定 workflow regression 已使用真實 SQLite WASM 驗證 SQL-first 與 create-first
+  兩種順序；兩者均可建立 KPI、bar、table、text，且部分 widget 失敗會保留已成功項目。
+- 2026-08-28 在使用者授權更換本地模型並收斂 SQL／report tool descriptions 後，原樣
+  執行代表性 prompt 兩次皆成功：Agent 只在最新 `get_report_state` 確認 KPI、bar、table、
+  text 與四筆 evidence queries 後回覆完成。此為同源 fallback provider 的 end-to-end
+  Agent 驗收，不能宣稱為原生 `document.modelContext` 驗證。
 
 原生 WebMCP 實機驗證步驟（待支援環境執行）：
 

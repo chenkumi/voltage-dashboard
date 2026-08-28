@@ -9,7 +9,7 @@ export const webMcpSites: WebMcpSite[] = [
   },
   {
     id: "shop-c",
-    name: "Voltage Market Admin",
+    name: "Voltage Dashboard",
     url: "/webmcp-demo/shop-c",
   },
 ]

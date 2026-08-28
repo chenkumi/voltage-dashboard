@@ -79,6 +79,57 @@ describe("report authoring WebMCP tools", () => {
       additionalProperties: false,
       description: expect.stringContaining("Do not flatten widget fields"),
     })
+    expect(
+      REPORT_AUTHORING_TOOLS.find((tool) => tool.name === "add_report_widget")
+        ?.description
+    ).toContain("$49,722.51, 12 items, YYYY-MM-DD, and IANA time zones")
+    expect(
+      REPORT_AUTHORING_TOOLS.find((tool) => tool.name === "add_report_widget")
+        ?.description
+    ).toContain("personal contact, account, payment data")
+    expect(
+      REPORT_AUTHORING_TOOLS.find((tool) => tool.name === "create_report")
+        ?.description
+    ).toContain("business terms and YYYY-MM-DD dates")
+    expect(
+      REPORT_AUTHORING_TOOLS.find((tool) => tool.name === "create_report")
+        ?.description
+    ).toContain("personal contact, account, or payment data")
+    expect(
+      REPORT_AUTHORING_TOOLS.find((tool) => tool.name === "add_report_widget")
+        ?.inputSchema
+    ).toMatchObject({
+      properties: {
+        widget: {
+          oneOf: expect.arrayContaining([
+            expect.objectContaining({
+              properties: expect.objectContaining({
+                markdown: expect.objectContaining({
+                  description: expect.stringContaining("$49,722.51, 12 items"),
+                }),
+              }),
+            }),
+          ]),
+        },
+      },
+    })
+    const markdownDescription = (
+      REPORT_AUTHORING_TOOLS.find((tool) => tool.name === "add_report_widget")
+        ?.inputSchema as {
+        properties: {
+          widget: {
+            oneOf: Array<{
+              properties: { markdown?: { description?: string } }
+            }>
+          }
+        }
+      }
+    ).properties.widget.oneOf.find((candidate) => candidate.properties.markdown)
+      ?.properties.markdown?.description
+    expect(markdownDescription).toContain(
+      "personal contact, account, payment data"
+    )
+    expect(markdownDescription).toContain("Mermaid fenced blocks are supported")
   })
 
   it("creates and reads one report with explicit period semantics", () => {
@@ -124,10 +175,22 @@ describe("report authoring WebMCP tools", () => {
     expect(
       executeReportAuthoringTool(cache, state, "add_report_widget", {
         widget: {
-          type: "text",
+          type: "markdown",
           title: "付款與帳戶資料說明",
           markdown:
             "資料期間為 **2026-08-21** 至 **2026-08-27**。付款與帳戶資料不在本報表範圍內。",
+          evidenceQueryIds: [queryId],
+        },
+      })
+    ).toMatchObject({ status: "OK" })
+
+    expect(
+      executeReportAuthoringTool(cache, state, "add_report_widget", {
+        widget: {
+          type: "markdown",
+          title: "營運摘要",
+          markdown:
+            "本週指標為營收、前三分類與低庫存，檢核值為 12 - 3 - 4 件。",
           evidenceQueryIds: [queryId],
         },
       })
@@ -155,7 +218,33 @@ describe("report authoring WebMCP tools", () => {
     }
   })
 
-  it("adds KPI, table, text, and bar widgets with validated evidence mappings", () => {
+  it("allows multiline report and widget titles", () => {
+    const { cache, state } = createWorkspace()
+
+    expect(
+      executeReportAuthoringTool(cache, state, "create_report", {
+        title: "Weekly operations\nExecutive summary",
+      })
+    ).toMatchObject({
+      status: "OK",
+      report: { title: "Weekly operations\nExecutive summary" },
+    })
+    expect(
+      executeReportAuthoringTool(cache, state, "add_report_widget", {
+        widget: {
+          type: "markdown",
+          title: "Evidence\nSummary",
+          markdown: "Complete data.",
+          evidenceQueryIds: [queryId],
+        },
+      })
+    ).toMatchObject({
+      status: "OK",
+      widget: { title: "Evidence\nSummary" },
+    })
+  })
+
+  it("adds KPI, table, Markdown, and bar widgets with validated evidence mappings", () => {
     const { cache, state } = createWorkspace()
     createReport(cache, state)
     const widgets = [
@@ -173,7 +262,7 @@ describe("report authoring WebMCP tools", () => {
         columns: ["title", "stock"],
       },
       {
-        type: "text",
+        type: "markdown",
         title: "Evidence",
         markdown: "Data covers **2026-08-21** through **2026-08-27**.",
         evidenceQueryIds: [queryId],
@@ -198,9 +287,59 @@ describe("report authoring WebMCP tools", () => {
     expect(state.getSnapshot()?.widgets.map((widget) => widget.type)).toEqual([
       "kpi",
       "table",
-      "text",
+      "markdown",
       "bar",
     ])
+  })
+
+  it("adds a six-column grid layout and a data-free space widget", () => {
+    const { cache, state } = createWorkspace()
+    createReport(cache, state)
+
+    expect(
+      executeReportAuthoringTool(cache, state, "add_report_widget", {
+        widget: {
+          type: "space",
+          xSpace: 2,
+          ySpace: 7,
+        },
+      })
+    ).toMatchObject({
+      status: "OK",
+      widget: { type: "space", xSpace: 2, ySpace: 7 },
+    })
+    expect(
+      executeReportAuthoringTool(cache, state, "add_report_widget", {
+        widget: {
+          type: "kpi",
+          title: "Revenue",
+          queryId,
+          valueColumn: "revenue",
+          xSpace: 4,
+          ySpace: 2,
+        },
+      })
+    ).toMatchObject({
+      status: "OK",
+      widget: { type: "kpi", xSpace: 4, ySpace: 2 },
+    })
+  })
+
+  it.each([
+    { xSpace: 0, ySpace: 1 },
+    { xSpace: 7, ySpace: 1 },
+    { xSpace: 1, ySpace: 0 },
+  ])("rejects invalid grid dimensions: %o", ({ xSpace, ySpace }) => {
+    const { cache, state } = createWorkspace()
+    createReport(cache, state)
+
+    expect(() =>
+      executeReportAuthoringTool(cache, state, "add_report_widget", {
+        widget: { type: "space", xSpace, ySpace },
+      })
+    ).toThrowError(
+      expect.objectContaining({ category: "REPORT_ARGUMENT_ERROR" })
+    )
   })
 
   it("updates, reorders, and removes widgets in the same report", () => {
@@ -299,12 +438,11 @@ describe("report authoring WebMCP tools", () => {
     "See www.example.com for details.",
     "[Open report][target]\n\n[target]: /internal/path",
     "[Open report][]",
-    "[Open report]",
     "```html\n&lt;img src=x onerror=alert(1)&gt;\n```",
-    "```mermaid\ngraph TD; A-->B\n```",
     "&lt;script&gt;alert(1)&lt;/script&gt;",
     "Contact private@example.com",
     "Call +886 912 345 678",
+    "Call 123-4567",
     "Account ID: acct-123456",
     "帳戶識別：acct-123456",
     "付款卡號：4111 1111 1111 1111",
@@ -315,7 +453,7 @@ describe("report authoring WebMCP tools", () => {
     expect(() =>
       executeReportAuthoringTool(cache, state, "add_report_widget", {
         widget: {
-          type: "text",
+          type: "markdown",
           title: "Summary",
           markdown,
           evidenceQueryIds: [queryId],
@@ -324,6 +462,28 @@ describe("report authoring WebMCP tools", () => {
     ).toThrowError(
       expect.objectContaining({ category: "REPORT_ARGUMENT_ERROR" })
     )
+  })
+
+  it("accepts a wrapped MarkdownWidget with a Mermaid diagram", () => {
+    const { cache, state } = createWorkspace()
+    createReport(cache, state)
+
+    expect(
+      executeReportAuthoringTool(cache, state, "add_report_widget", {
+        widget: {
+          type: "markdown",
+          title: "Revenue flow",
+          markdown: "<markdown>```mermaid\ngraph TD; A-->B\n```</markdown>",
+          evidenceQueryIds: [queryId],
+        },
+      })
+    ).toMatchObject({
+      status: "OK",
+      widget: {
+        type: "markdown",
+        markdown: "```mermaid\ngraph TD; A-->B\n```",
+      },
+    })
   })
 
   it.each([
@@ -399,7 +559,7 @@ describe("report authoring WebMCP tools", () => {
     expect(() =>
       executeReportAuthoringTool(cache, state, "add_report_widget", {
         widget: {
-          type: "text",
+          type: "markdown",
           title: "Summary",
           markdown: "Complete data.",
           evidenceQueryIds: [missingQueryId],

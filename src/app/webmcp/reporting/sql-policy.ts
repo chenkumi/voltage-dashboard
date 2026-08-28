@@ -138,6 +138,9 @@ const maskSqlLiteralsAndComments = (sql: string) => {
   return masked
 }
 
+export const hasPositionalSqlPlaceholder = (sql: string) =>
+  maskSqlLiteralsAndComments(sql).includes("?")
+
 export const validateReadonlySql = (input: SqlQueryInput) => {
   const sql = input.sql.trim()
   if (!sql) throw new SqlPolicyError("SQL query is required.")

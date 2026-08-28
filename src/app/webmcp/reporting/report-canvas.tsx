@@ -3,23 +3,38 @@ import {
   ArrowUp,
   Database,
   FileChartColumn,
+  FolderOpen,
+  Plus,
   Trash2,
 } from "lucide-react"
-import { useRef, useState, useSyncExternalStore } from "react"
-import ReactMarkdown from "react-markdown"
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react"
 import { Button } from "@/components/ui/button"
+import { Markdown } from "@/components/ui/markdown"
 import {
   createBarDisplayRows,
   getCacheLimitMessage,
   resolveReportWidget,
   shouldCommitTitleOnBlur,
 } from "./report-canvas-model"
+import {
+  deleteSavedReport,
+  listSavedReports,
+  readSavedReport,
+  saveReportSnapshot,
+} from "./report-library"
 import type { ReportingRuntimeController } from "./reporting-tools"
 import type {
   BarReportWidget,
   CachedQueryResult,
   QueryCacheStatus,
   ReportWidget,
+  SavedReportSummary,
   SqlScalar,
 } from "./types"
 import "./report-canvas.css"
@@ -62,11 +77,12 @@ const EditableTitle = ({
 
   return (
     <span className="report-editable-title">
-      <input
+      <textarea
         aria-label={label}
         aria-invalid={error ? true : undefined}
         className={className}
         maxLength={120}
+        rows={className === "report-title-input" ? 1 : 2}
         value={draft}
         onBlur={() => {
           if (!shouldCommitTitleOnBlur(cancelBlurRef.current)) {
@@ -77,7 +93,8 @@ const EditableTitle = ({
         }}
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={(event) => {
-          if (event.key === "Enter") event.currentTarget.blur()
+          if (event.key === "Enter" && (event.ctrlKey || event.metaKey))
+            event.currentTarget.blur()
           if (event.key === "Escape") {
             cancelBlurRef.current = true
             setDraft(value)
@@ -164,19 +181,15 @@ const TableWidget = ({
   </div>
 )
 
-const TextWidget = ({
+const MarkdownWidget = ({
   widget,
 }: {
-  widget: Extract<ReportWidget, { type: "text" }>
+  widget:
+    | Extract<ReportWidget, { type: "markdown" }>
+    | Extract<ReportWidget, { type: "text" }>
 }) => (
   <div className="report-markdown">
-    <ReactMarkdown
-      skipHtml
-      disallowedElements={["a", "img", "pre"]}
-      unwrapDisallowed
-    >
-      {widget.markdown}
-    </ReactMarkdown>
+    <Markdown fontLevel="small">{widget.markdown}</Markdown>
     <p className="report-evidence-count">
       <Database className="size-3.5" />
       {widget.evidenceQueryIds.length} evidence quer
@@ -232,6 +245,205 @@ const CacheLimitNotice = ({ status }: { status: QueryCacheStatus }) => {
   ) : null
 }
 
+const WidgetLayoutControls = ({
+  controller,
+  widget,
+}: {
+  controller: ReportingRuntimeController
+  widget: ReportWidget
+}) => {
+  const xSpace = widget.xSpace ?? (widget.type === "kpi" ? 2 : 6)
+  const ySpace = widget.ySpace ?? 1
+  const [draftYSpace, setDraftYSpace] = useState(String(ySpace))
+
+  const updateLayout = (nextXSpace: number, nextYSpace: number) => {
+    try {
+      controller.updateReportWidgetLayout(widget.id, nextXSpace, nextYSpace)
+    } catch {
+      setDraftYSpace(String(ySpace))
+    }
+  }
+
+  return (
+    <fieldset className="report-widget-layout" aria-label="Widget layout">
+      <label>
+        <span>Columns</span>
+        <select
+          aria-label={`${widget.type} widget width`}
+          value={xSpace}
+          onChange={(event) => updateLayout(Number(event.target.value), ySpace)}
+        >
+          {[1, 2, 3, 4, 5, 6].map((value) => (
+            <option key={value} value={value}>
+              {value}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label>
+        <span>Rows</span>
+        <input
+          aria-label={`${widget.type} widget height`}
+          min="1"
+          step="1"
+          type="number"
+          value={draftYSpace}
+          onBlur={() => {
+            const nextYSpace = Number(draftYSpace)
+            updateLayout(xSpace, nextYSpace)
+          }}
+          onChange={(event) => setDraftYSpace(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur()
+            if (event.key === "Escape") {
+              setDraftYSpace(String(ySpace))
+              event.currentTarget.blur()
+            }
+          }}
+        />
+      </label>
+    </fieldset>
+  )
+}
+
+const SavedReportLibrary = ({
+  controller,
+  report,
+}: {
+  controller: ReportingRuntimeController
+  report: ReportingRuntimeController["getReportSnapshot"] extends () => infer T
+    ? T
+    : never
+}) => {
+  const [savedReports, setSavedReports] = useState<
+    readonly SavedReportSummary[]
+  >([])
+  const [error, setError] = useState("")
+
+  const refresh = useCallback(async () => {
+    try {
+      setSavedReports(await listSavedReports())
+      setError("")
+    } catch {
+      setError("Saved reports are unavailable in this browser.")
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    const loadSavedReports = async () => {
+      try {
+        const saved = await listSavedReports()
+        if (!cancelled) {
+          setSavedReports(saved)
+          setError("")
+        }
+      } catch {
+        if (!cancelled)
+          setError("Saved reports are unavailable in this browser.")
+      }
+    }
+    void loadSavedReports()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    const snapshot = controller.createSavedReportSnapshot()
+    if (!snapshot) return
+    void saveReportSnapshot(snapshot)
+      .then(refresh)
+      .catch(() => {
+        setError("This report could not be saved locally.")
+      })
+  }, [controller, refresh, report])
+
+  const openReport = async (id: string) => {
+    try {
+      const savedReport = await readSavedReport(id)
+      if (!savedReport) {
+        await refresh()
+        return
+      }
+      controller.loadSavedReport(savedReport)
+    } catch {
+      setError("This saved report could not be opened.")
+    }
+  }
+
+  const removeReport = async (id: string) => {
+    if (!window.confirm("Delete this saved report? This cannot be undone."))
+      return
+    try {
+      await deleteSavedReport(id)
+      if (report?.id === id) controller.clearActiveReport()
+      await refresh()
+    } catch {
+      setError("This saved report could not be deleted.")
+    }
+  }
+
+  return (
+    <section className="report-library" aria-label="Saved reports">
+      <div className="report-library-heading">
+        <div>
+          <p>Report library</p>
+          <strong>Saved locally in this browser</strong>
+        </div>
+        <Button
+          className="cursor-pointer"
+          size="sm"
+          type="button"
+          onClick={() => controller.createNewReport()}
+        >
+          <Plus /> New report
+        </Button>
+      </div>
+      {savedReports.length === 0 ? (
+        <p className="report-library-empty">No saved reports yet.</p>
+      ) : (
+        <ul>
+          {savedReports.map((savedReport) => (
+            <li key={savedReport.id}>
+              <button
+                className="report-library-open cursor-pointer"
+                type="button"
+                onClick={() => void openReport(savedReport.id)}
+              >
+                <FolderOpen className="size-4" />
+                <span>
+                  <strong>{savedReport.title}</strong>
+                  <small>
+                    {savedReport.widgetCount} widgets · Updated{" "}
+                    {new Date(savedReport.updatedAt).toLocaleString("en-US")}
+                  </small>
+                </span>
+              </button>
+              <Button
+                aria-label={`Delete ${savedReport.title}`}
+                className="cursor-pointer"
+                size="icon-sm"
+                title="Delete saved report"
+                type="button"
+                variant="ghost"
+                onClick={() => void removeReport(savedReport.id)}
+              >
+                <Trash2 />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {error ? (
+        <p className="report-library-error" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </section>
+  )
+}
+
 export const ReportCanvas = ({
   controller,
 }: {
@@ -247,6 +459,7 @@ export const ReportCanvas = ({
   if (!report)
     return (
       <div className="report-canvas">
+        <SavedReportLibrary controller={controller} report={report} />
         <CacheLimitNotice status={cacheStatus} />
         <section className="report-empty" aria-label="Empty report canvas">
           <span>
@@ -265,6 +478,7 @@ export const ReportCanvas = ({
 
   return (
     <section className="report-canvas" aria-label="Editable report canvas">
+      <SavedReportLibrary controller={controller} report={report} />
       <header className="report-canvas-header">
         <div>
           <p>Active report · editable by you and the Agent</p>
@@ -314,23 +528,36 @@ export const ReportCanvas = ({
               <article
                 className={`report-widget report-widget-${widget.type}`}
                 key={widget.id}
+                style={{
+                  gridColumn: `span ${widget.xSpace ?? 6}`,
+                  gridRow: `span ${widget.ySpace ?? 1}`,
+                }}
               >
                 <header>
                   <div>
                     <span>{widget.type}</span>
-                    <EditableTitle
-                      key={`${widget.id}-${widget.title}`}
-                      value={widget.title}
-                      label={`${widget.type} widget title`}
-                      className="report-widget-title-input"
-                      onCommit={(title) =>
-                        controller.updateReportWidgetTitle(widget.id, title)
-                      }
-                    />
+                    {widget.type === "space" ? (
+                      <p className="report-space-title">Layout spacer</p>
+                    ) : (
+                      <EditableTitle
+                        key={`${widget.id}-${widget.title}`}
+                        value={widget.title}
+                        label={`${widget.type} widget title`}
+                        className="report-widget-title-input"
+                        onCommit={(title) =>
+                          controller.updateReportWidgetTitle(widget.id, title)
+                        }
+                      />
+                    )}
                   </div>
                   <div className="report-widget-actions">
+                    <WidgetLayoutControls
+                      controller={controller}
+                      key={`${widget.id}-${widget.xSpace}-${widget.ySpace}`}
+                      widget={widget}
+                    />
                     <Button
-                      aria-label={`Move ${widget.title} earlier`}
+                      aria-label={`Move ${widget.type === "space" ? "space" : widget.title} earlier`}
                       className="cursor-pointer"
                       disabled={index === 0}
                       size="icon-sm"
@@ -343,7 +570,7 @@ export const ReportCanvas = ({
                       <ArrowUp />
                     </Button>
                     <Button
-                      aria-label={`Move ${widget.title} later`}
+                      aria-label={`Move ${widget.type === "space" ? "space" : widget.title} later`}
                       className="cursor-pointer"
                       disabled={index === report.widgets.length - 1}
                       size="icon-sm"
@@ -356,7 +583,7 @@ export const ReportCanvas = ({
                       <ArrowDown />
                     </Button>
                     <Button
-                      aria-label={`Remove ${widget.title}`}
+                      aria-label={`Remove ${widget.type === "space" ? "space" : widget.title}`}
                       className="cursor-pointer"
                       size="icon-sm"
                       title="Remove widget"
@@ -368,12 +595,17 @@ export const ReportCanvas = ({
                   </div>
                 </header>
 
-                {resolved.status === "error" ? (
+                {widget.type === "space" ? (
+                  <div
+                    className="report-space-widget"
+                    aria-label="Layout spacer"
+                  />
+                ) : resolved.status === "error" ? (
                   <div className="report-widget-error" role="alert">
                     {resolved.message}
                   </div>
-                ) : widget.type === "text" ? (
-                  <TextWidget widget={widget} />
+                ) : widget.type === "markdown" || widget.type === "text" ? (
+                  <MarkdownWidget widget={widget} />
                 ) : widget.type === "kpi" && resolved.result ? (
                   <KpiWidget result={resolved.result} widget={widget} />
                 ) : widget.type === "table" && resolved.result ? (

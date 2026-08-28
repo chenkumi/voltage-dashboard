@@ -11,6 +11,7 @@ import {
   SqliteReportingRuntimeError,
 } from "./sqlite-runtime"
 import { QueryResultCache } from "./query-cache"
+import { hasPositionalSqlPlaceholder } from "./sql-policy"
 import {
   executeReportAuthoringTool,
   isReportAuthoringTool,
@@ -22,6 +23,7 @@ import type {
   QueryCacheStatus,
   QueryId,
   ReportingWorkspaceSnapshot,
+  SavedReport,
   SqlQueryInput,
   SqlQueryResult,
   SqlQueryResultWithId,
@@ -33,7 +35,7 @@ export const EXECUTE_READONLY_SQL_TOOL_NAME = "execute_readonly_sql"
 export const EXECUTE_READONLY_SQL_TOOL: WebMcpRegisteredTool = {
   name: EXECUTE_READONLY_SQL_TOOL_NAME,
   description:
-    "Execute one read-only SQLite SELECT or WITH query against the curated agent_products, agent_sales_daily, agent_inventory, and agent_dataset_status datasets. Use parameters for values; string filters must come from the curated data or be ISO dates, date modifiers, or date formats. Successful results include a workspace-local queryId plus columns, rows, rowCount, truncated, and executionTimeMs; output is limited to 100 rows and long strings are truncated. Use sqlite_schema to discover table definitions. Personal, account, and payment data, writes, PRAGMA, filesystem access, extensions, and unapproved schemas are rejected.",
+    "Execute one read-only SQLite SELECT or WITH query against these exact curated columns: agent_products(product_id, title, category, price_usd), agent_sales_daily(sale_date, product_id, quantity, net_revenue_usd), agent_inventory(product_id, stock, updated_at), and agent_dataset_status(dataset_name, updated_at, time_zone, period_start, period_end, completeness). Columns named total_sales, product_name, or stock_quantity do not exist; join agent_inventory to agent_products by product_id for title or category. Use parameters for values; string filters must come from the curated data or be ISO dates, short numeric values, date modifiers, or date formats. Successful results include a workspace-local queryId plus columns, rows, rowCount, truncated, and executionTimeMs; output is limited to 100 rows and long strings are truncated. Use sqlite_schema to discover table definitions. Personal, account, and payment data, writes, PRAGMA, filesystem access, extensions, and unapproved schemas are rejected.",
   inputSchema: {
     type: "object",
     properties: {
@@ -45,7 +47,7 @@ export const EXECUTE_READONLY_SQL_TOOL: WebMcpRegisteredTool = {
       parameters: {
         type: "array",
         description:
-          "Optional positional values for ? placeholders. Strings must be curated dataset values, ISO dates, SQLite date modifiers, or date formats.",
+          "Optional positional values for ? placeholders. Safe surplus values are ignored when SQL contains no ? placeholder. Strings must be curated dataset values, ISO dates, short numeric values, SQLite date modifiers, or date formats.",
         maxItems: 50,
         items: {
           anyOf: [
@@ -94,6 +96,7 @@ const ISO_DATE_VALUE_PATTERN = /^\d{4}(?:-\d{2}(?:-\d{2})?)?(?:[T ][\d:.+-]+)?$/
 const TIME_VALUE_PATTERN = /^\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?$/
 const DATE_MODIFIER_PATTERN =
   /^[+-]\d{1,3} (?:days?|months?|years?|hours?|minutes?)$/i
+const SAFE_NUMERIC_STRING_PATTERN = /^[+-]?\d{1,3}(?:\.\d{1,2})?$/
 const SUSPICIOUS_NUMERIC_IDENTIFIER_PATTERN = /(?:^|[^\d])\d{8,12}(?:[^\d]|$)/
 const SAFE_DATE_MODIFIERS = new Set([
   "start of day",
@@ -196,6 +199,7 @@ const isSafeReportingOutputString = (value: string) => {
 
 const isSafeReportingInputString = (value: string) => {
   if (isSafeReportingOutputString(value)) return true
+  if (SAFE_NUMERIC_STRING_PATTERN.test(value)) return true
 
   const searchValue = value
     .toLowerCase()
@@ -336,9 +340,16 @@ export const executeReadonlySqlTool = async (
 
   const parameters = input.parameters as SqlScalar[] | undefined
   assertSafeReportingInput(input.sql, parameters)
+  let hasPlaceholder = true
+  try {
+    hasPlaceholder = hasPositionalSqlPlaceholder(input.sql)
+  } catch {
+    // Let the runtime return the canonical SQL policy error.
+  }
+  const boundParameters = hasPlaceholder ? parameters : undefined
   const result = await runtime.execute({
     sql: input.sql,
-    parameters,
+    parameters: boundParameters,
   })
   assertSafeReportingResult(result)
   return result
@@ -462,12 +473,52 @@ export class ReportingRuntimeController {
     )
   }
 
+  updateReportWidgetLayout(widgetId: string, xSpace: number, ySpace: number) {
+    return this.requireContext().reportState.updateWidgetLayout(
+      widgetId,
+      xSpace,
+      ySpace
+    )
+  }
+
   moveReportWidget(widgetId: string, toIndex: number) {
     return this.requireContext().reportState.moveWidget(widgetId, toIndex)
   }
 
   removeReportWidget(widgetId: string) {
     return this.requireContext().reportState.removeWidget(widgetId)
+  }
+
+  createNewReport() {
+    return this.requireContext().reportState.createReport({
+      title: "Untitled report",
+    })
+  }
+
+  clearActiveReport() {
+    this.requireContext().reportState.clearReport()
+  }
+
+  createSavedReportSnapshot(): SavedReport | null {
+    const report = this.reportState.getSnapshot()
+    if (!report) return null
+    const queryIds = report.widgets.flatMap((widget) => {
+      if (widget.type === "space") return []
+      return widget.type === "markdown" || widget.type === "text"
+        ? widget.evidenceQueryIds
+        : [widget.queryId]
+    })
+    return {
+      report,
+      queryResults: this.queryCache.getEntries(queryIds),
+      savedAt: new Date().toISOString(),
+    }
+  }
+
+  loadSavedReport(savedReport: SavedReport) {
+    const context = this.requireContext()
+    context.queryCache.restore(savedReport.queryResults)
+    return context.reportState.loadReport(savedReport.report)
   }
 
   executeReportTool(name: string, args: unknown) {

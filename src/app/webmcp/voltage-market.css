@@ -69,47 +69,74 @@
   color: var(--voltage-ink);
 }
 
-.voltage-market [aria-label="Voltage Market 商品目錄"] > div:first-child {
+.voltage-market > .max-w-7xl > header nav button[aria-current="page"] {
+  background: var(--voltage-accent);
+  color: var(--voltage-surface);
+  font-weight: 700;
+  box-shadow: inset 0 -3px 0 #f4c95d;
+}
+
+.voltage-market > .max-w-7xl > header nav button[aria-current="page"]:hover {
+  background: var(--voltage-accent);
+  color: var(--voltage-surface);
+}
+
+.voltage-market > .max-w-7xl > header nav button:focus-visible {
+  outline: 3px solid #ec4899;
+  outline-offset: 3px;
+}
+
+.voltage-market [aria-label="Voltage Market catalog"] > div:first-child {
   overflow: visible;
   border: 0;
   background: transparent;
   color: var(--voltage-ink);
 }
 
-.voltage-market [aria-label="Voltage Market 商品目錄"] > div:first-child > div:first-child {
+.voltage-market
+  [aria-label="Voltage Market catalog"]
+  > div:first-child
+  > div:first-child {
   padding: 2.5rem 0;
 }
 
-.voltage-market [aria-label="Voltage Market 商品目錄"] > div:first-child h1,
-.voltage-market [aria-label="購物車"] h1,
-.voltage-market [aria-label="模擬結帳"] h1,
-.voltage-market [aria-label="訂單紀錄"] h1 {
+.voltage-market [aria-label="Voltage Market catalog"] > div:first-child h1,
+.voltage-market [aria-label="Shopping cart"] h1,
+.voltage-market [aria-label="Simulated checkout"] h1,
+.voltage-market [aria-label="Order history"] h1 {
   font-family: Georgia, "Times New Roman", serif;
   font-weight: 400;
   letter-spacing: -0.06em;
 }
 
-.voltage-market [aria-label="Voltage Market 商品目錄"] > div:first-child > div:last-child {
+.voltage-market
+  [aria-label="Voltage Market catalog"]
+  > div:first-child
+  > div:last-child {
   border-radius: 1rem;
   background: var(--voltage-surface-muted);
   color: var(--voltage-ink);
 }
 
-.voltage-market [aria-label="Voltage Market 商品目錄"] > div:first-child > div:last-child > div {
+.voltage-market
+  [aria-label="Voltage Market catalog"]
+  > div:first-child
+  > div:last-child
+  > div {
   border: 0;
   border-radius: 0.75rem;
   background: var(--voltage-surface);
   box-shadow: none;
 }
 
-.voltage-market [aria-label="Voltage Market 商品目錄"] > section {
+.voltage-market [aria-label="Voltage Market catalog"] > section {
   border: 0;
   border-top: 1px solid var(--voltage-border);
   background: transparent;
   padding: 1.25rem 0;
 }
 
-.voltage-market [aria-label="Voltage Market 商品目錄"] > section label {
+.voltage-market [aria-label="Voltage Market catalog"] > section label {
   color: var(--voltage-muted);
   font-weight: 600;
 }
@@ -130,25 +157,25 @@
   transform: scale(1.035);
 }
 
-.voltage-market [aria-label="購物車"] article,
-.voltage-market [aria-label="訂單紀錄"] article,
-.voltage-market [aria-label="模擬結帳"] form {
+.voltage-market [aria-label="Shopping cart"] article,
+.voltage-market [aria-label="Order history"] article,
+.voltage-market [aria-label="Simulated checkout"] form {
   border: 0;
   border-radius: 1rem;
   background: var(--voltage-surface);
   box-shadow: none;
 }
 
-.voltage-market [aria-label="購物車"] aside,
-.voltage-market [aria-label="模擬結帳"] aside {
+.voltage-market [aria-label="Shopping cart"] aside,
+.voltage-market [aria-label="Simulated checkout"] aside {
   border: 0;
   border-radius: 1rem;
   background: var(--voltage-surface-muted);
   box-shadow: none;
 }
 
-.voltage-market [aria-label="訂單紀錄"] article > div:first-child,
-.voltage-market [aria-label="模擬結帳"] fieldset {
+.voltage-market [aria-label="Order history"] article > div:first-child,
+.voltage-market [aria-label="Simulated checkout"] fieldset {
   border-color: var(--voltage-border);
 }
 
@@ -200,7 +227,10 @@
 }
 
 @media (max-width: 640px) {
-  .voltage-market [aria-label="Voltage Market 商品目錄"] > div:first-child > div:first-child {
+  .voltage-market
+    [aria-label="Voltage Market catalog"]
+    > div:first-child
+    > div:first-child {
     padding: 1.5rem 0;
   }
 

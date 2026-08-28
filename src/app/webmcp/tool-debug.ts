@@ -13,7 +13,7 @@ type ExecuteWebMcpToolOptions<T> = {
 
 const EMAIL_VALUE_PATTERN = /[^\s@]+@[^\s@]+\.[^\s@]+/
 const PAYMENT_CARD_VALUE_PATTERN = /(?:\d[ -]?){13,19}/
-const PHONE_VALUE_PATTERN = /\+?[\d ()-]{8,}/g
+const PHONE_VALUE_PATTERN = /\+?(?:\d[\s().-]*){8,15}/g
 const ISO_DATE_IN_TEXT_PATTERN = /\b\d{4}-\d{2}-\d{2}\b/g
 const SENSITIVE_KEY_PATTERN =
   /^(?:customername|firstname|lastname|fullname|email|address|phone|telephone|account|accountid|accountnumber|card|cardnumber|payment|paymentdata|authkey|authtoken|apikey|secret|token)$/i
@@ -78,8 +78,10 @@ const sanitizeDebugError = (toolName: string, error: unknown) => {
   }
 }
 
-const defaultLogger: WebMcpDebugLogger = (message, detail) =>
-  console.debug(message, detail)
+export const writeStructuredDebugLog: WebMcpDebugLogger = (message, detail) =>
+  console.debug(message, JSON.stringify(detail))
+
+const defaultLogger = writeStructuredDebugLog
 
 const emitDebugLog = (
   logger: WebMcpDebugLogger,

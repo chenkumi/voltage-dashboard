@@ -17,6 +17,7 @@ export type CompletionStep = {
 export type CompletionState = Readonly<{
   pendingVerifiers: readonly string[]
   failedVerifiers: readonly string[]
+  failedTools: readonly string[]
   unverified: boolean
 }>
 
@@ -82,12 +83,14 @@ export const evaluateCompletionState = (
 ): CompletionState => {
   const pending = new Set<string>()
   const failed = new Set<string>()
+  const unresolvedFailures = new Set<string>()
+  const verifierNames = new Set(Object.values(verifierMap))
 
   for (const step of steps) {
     const successfulTools = new Set(
       (step.toolResults ?? []).map((result) => result.toolName)
     )
-    const failedTools = new Set(
+    const stepFailedTools = new Set(
       (step.content ?? [])
         .filter((part) => part.type === "tool-error")
         .map((part) => part.toolName)
@@ -98,8 +101,13 @@ export const evaluateCompletionState = (
       pending.delete(verifier)
       failed.delete(verifier)
     }
-    for (const verifier of failedTools) {
-      if (pending.delete(verifier)) failed.add(verifier)
+    for (const verifier of stepFailedTools) {
+      if (
+        verifierNames.has(verifier) &&
+        (pending.delete(verifier) || failed.has(verifier))
+      )
+        failed.add(verifier)
+      else unresolvedFailures.add(verifier)
     }
     for (const mutation of successfulTools) {
       const verifier = verifierMap[mutation]
@@ -109,9 +117,11 @@ export const evaluateCompletionState = (
 
   const pendingVerifiers = Object.freeze([...pending].sort())
   const failedVerifiers = Object.freeze([...failed].sort())
+  const unresolvedFailedTools = Object.freeze([...unresolvedFailures].sort())
   return Object.freeze({
     pendingVerifiers,
     failedVerifiers,
+    failedTools: unresolvedFailedTools,
     unverified: pendingVerifiers.length > 0 || failedVerifiers.length > 0,
   })
 }

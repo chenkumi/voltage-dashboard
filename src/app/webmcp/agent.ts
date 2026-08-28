@@ -1,5 +1,13 @@
-import { stepCountIs, ToolLoopAgent } from "ai"
+import { createAnthropic } from "@ai-sdk/anthropic"
+import { createGoogle } from "@ai-sdk/google"
+import { createOpenAI } from "@ai-sdk/openai"
 import { createOpenAICompatible } from "@ai-sdk/openai-compatible"
+import {
+  stepCountIs,
+  ToolLoopAgent,
+  type LanguageModel,
+  type ToolSet,
+} from "ai"
 import { PrimaryLanguage } from "@/app/assistant/env"
 import {
   evaluateCompletionState,
@@ -7,7 +15,7 @@ import {
   type CompletionVerifierMap,
 } from "./completion-policy"
 import type { PreparedWebMcpTurn } from "./session"
-import { sanitizeDebugValue } from "./tool-debug"
+import { sanitizeDebugValue, writeStructuredDebugLog } from "./tool-debug"
 import { createWaitForTool } from "./wait-for"
 
 export const NORMAL_TOOL_STEP_COUNT = 10
@@ -15,16 +23,102 @@ export const VERIFIER_RESERVE_STEP = NORMAL_TOOL_STEP_COUNT
 export const FINAL_SUMMARY_STEP = VERIFIER_RESERVE_STEP + 1
 export const MAX_AGENT_STEPS = FINAL_SUMMARY_STEP + 1
 
-const modelName = import.meta.env.VITE_APP_LLM_MODEL || "local-model"
-const baseURL =
-  import.meta.env.VITE_APP_LLM_BASE_URL || "http://localhost:1234/v1"
-const apiKey = import.meta.env.VITE_APP_AUTH_KEY || "local"
+export const APP_PROVIDERS = [
+  "openai-compatible",
+  "openai",
+  "anthropic",
+  "gemini",
+] as const
 
-const localProvider = createOpenAICompatible({
-  name: "local",
+export type AppProvider = (typeof APP_PROVIDERS)[number]
+
+export const THINKING_LEVELS = [
+  "provider-default",
+  "none",
+  "minimal",
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+] as const
+
+export type ThinkingLevel = (typeof THINKING_LEVELS)[number]
+
+type LanguageModelSettings = {
+  provider: AppProvider
+  modelName: string
+  baseURL?: string
+  apiKey?: string
+}
+
+export const parseAppProvider = (value?: string): AppProvider => {
+  if (!value) return "openai-compatible"
+
+  if (APP_PROVIDERS.includes(value as AppProvider)) {
+    return value as AppProvider
+  }
+
+  throw new Error(
+    `Unsupported VITE_APP_PROVIDER: ${value}. Expected one of: ${APP_PROVIDERS.join(
+      ", "
+    )}.`
+  )
+}
+
+export const parseThinkingLevel = (
+  value?: string
+): ThinkingLevel | undefined => {
+  if (!value) return undefined
+
+  if (THINKING_LEVELS.includes(value as ThinkingLevel)) {
+    return value as ThinkingLevel
+  }
+
+  throw new Error(
+    `Unsupported VITE_APP_LLM_THINKING_LEVEL: ${value}. Expected one of: ${THINKING_LEVELS.join(
+      ", "
+    )}.`
+  )
+}
+
+export const createThinkingSettings = (thinkingLevel?: ThinkingLevel) =>
+  thinkingLevel ? { reasoning: thinkingLevel } : {}
+
+export const createLanguageModel = ({
+  provider,
+  modelName,
   baseURL,
   apiKey,
-})
+}: LanguageModelSettings): LanguageModel => {
+  switch (provider) {
+    case "openai-compatible":
+      return createOpenAICompatible({
+        name: "local",
+        baseURL: baseURL || "http://localhost:1234/v1",
+        apiKey: apiKey || "local",
+      })(modelName)
+    case "openai":
+      return createOpenAI({ apiKey, ...(baseURL ? { baseURL } : {}) })(
+        modelName
+      )
+    case "anthropic":
+      return createAnthropic({ apiKey, ...(baseURL ? { baseURL } : {}) })(
+        modelName
+      )
+    case "gemini":
+      return createGoogle({ apiKey, ...(baseURL ? { baseURL } : {}) })(
+        modelName
+      )
+  }
+}
+
+const provider = parseAppProvider(import.meta.env.VITE_APP_PROVIDER)
+const modelName = import.meta.env.VITE_APP_LLM_MODEL || "local-model"
+const baseURL = import.meta.env.VITE_APP_LLM_BASE_URL
+const apiKey = import.meta.env.VITE_APP_AUTH_KEY
+const thinkingLevel = parseThinkingLevel(
+  import.meta.env.VITE_APP_LLM_THINKING_LEVEL
+)
 
 const buildInstructions = (turn: PreparedWebMcpTurn) => `
 <role>
@@ -66,6 +160,13 @@ export const createAgentStepDecision = ({
   instructions,
 }: AgentStepDecisionInput) => {
   const state = evaluateCompletionState(steps, verifierMap)
+  const incompleteOperations = [
+    ...new Set([
+      ...state.failedTools,
+      ...state.failedVerifiers,
+      ...state.pendingVerifiers,
+    ]),
+  ].join(", ")
 
   if (stepNumber >= FINAL_SUMMARY_STEP) {
     return {
@@ -73,8 +174,8 @@ export const createAgentStepDecision = ({
       toolChoice: "none" as const,
       instructions: appendInstructions(
         instructions,
-        state.unverified
-          ? "This is the final no-tool summary. Report FAILED or PARTIALLY_COMPLETED because one or more mutations remain unverified. Do not claim completion."
+        state.unverified || state.failedTools.length > 0
+          ? `This is the final no-tool summary. Report FAILED or PARTIALLY_COMPLETED because these operations failed or remain unverified: ${incompleteOperations}. Identify the missing outcome and do not claim completion.`
           : "This is the final no-tool summary. Summarize only outcomes supported by successful tool results and post-mutation verification."
       ),
       state,
@@ -105,8 +206,8 @@ export const createAgentStepDecision = ({
       toolChoice: "none" as const,
       instructions: appendInstructions(
         instructions,
-        state.unverified
-          ? "No more tools are available. Give a final summary with status FAILED or PARTIALLY_COMPLETED and identify the unverified outcome without inventing state."
+        state.unverified || state.failedTools.length > 0
+          ? `No more tools are available. Give a final summary with status FAILED or PARTIALLY_COMPLETED because these operations failed or remain unverified: ${incompleteOperations}. Identify the missing outcome without inventing state.`
           : "No more tools are available. Give the final evidence-based summary now."
       ),
       state,
@@ -114,12 +215,13 @@ export const createAgentStepDecision = ({
   }
 
   return {
-    instructions: state.unverified
-      ? appendInstructions(
-          instructions,
-          "A post-mutation verifier failed. You may continue with safe corrective tools, but if you respond now the status must be FAILED or PARTIALLY_COMPLETED. Do not claim the mutation is verified."
-        )
-      : instructions,
+    instructions:
+      state.unverified || state.failedTools.length > 0
+        ? appendInstructions(
+            instructions,
+            `One or more tool operations remain failed or unverified (${incompleteOperations}). Continue with a safe corrective retry when possible. If you respond now, begin the final answer with FAILED or PARTIALLY_COMPLETED. Do not claim the failed operation completed.`
+          )
+        : instructions,
     state,
   }
 }
@@ -141,7 +243,7 @@ export const createAgentLifecycleObserver = (
 ) => {
   const steps: LifecycleStep[] = []
   const enabled = options.enabled ?? import.meta.env.DEV
-  const logger = options.logger ?? console.debug
+  const logger = options.logger ?? writeStructuredDebugLog
 
   return (step: LifecycleStep) => {
     steps.push(step)
@@ -164,6 +266,7 @@ export const createAgentLifecycleObserver = (
           resultTypes,
           pendingVerifiers: state.pendingVerifiers,
           failedVerifiers: state.failedVerifiers,
+          failedTools: state.failedTools,
           finalSummary:
             toolNames.length === 0 &&
             (hasText ||
@@ -180,11 +283,12 @@ export const createAgentLifecycleObserver = (
 export const createWebMcpAgent = (turn: PreparedWebMcpTurn) => {
   const instructions = buildInstructions(turn)
   const observeStep = createAgentLifecycleObserver(turn.completionVerifiers)
+  const tools: ToolSet = { ...turn.tools, wait_for: createWaitForTool() }
   return new ToolLoopAgent({
     id: "webmcp-agent",
-    model: localProvider(modelName),
+    model: createLanguageModel({ provider, modelName, baseURL, apiKey }),
     instructions,
-    tools: { ...turn.tools, wait_for: createWaitForTool() },
+    tools,
     stopWhen: stepCountIs(MAX_AGENT_STEPS),
     prepareStep: ({ stepNumber, steps }) =>
       createAgentStepDecision({
@@ -195,6 +299,7 @@ export const createWebMcpAgent = (turn: PreparedWebMcpTurn) => {
       }),
     onStepEnd: observeStep,
     maxOutputTokens: 16384,
+    ...createThinkingSettings(thinkingLevel),
   })
 }
 

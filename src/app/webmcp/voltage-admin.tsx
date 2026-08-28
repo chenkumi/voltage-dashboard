@@ -28,6 +28,7 @@ import type {
   WebMcpTestProvider,
   WebMcpWindow,
 } from "./types"
+import { executeWebMcpToolWithDebugLog } from "./tool-debug"
 import {
   createVoltageAdminInventory,
   getVoltageAdminDashboard,
@@ -95,7 +96,7 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "get_voltage_admin_dashboard",
     description:
-      "用途：讀取 Voltage Market 後台的營運摘要。何時呼叫：詢問營收、訂單、客戶或低庫存時。觸發例子：「今天營運如何」、「有多少訂單」、「低庫存商品」、「後台摘要」。不該呼叫：需要查單一商品細節時。",
+      "Purpose: read the Voltage Market operations summary. Call when asked about revenue, orders, customers, or low stock. Examples: ‘How is today’s operation?’, ‘How many orders?’, ‘Low-stock products’, ‘Admin summary’. Do not call when a single product’s details are needed.",
     inputSchema: noInput,
     annotations: { readOnlyHint: true },
   },
@@ -104,19 +105,25 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "search_voltage_admin_products",
     description:
-      "用途：依關鍵字搜尋後台商品與庫存。何時呼叫：需要找商品、品牌或分類時。觸發例子：「找 beauty 商品」、「查詢 mascara」、「商品庫存」、「有哪些 watches」。不該呼叫：要修改庫存時。",
+      "Purpose: search admin products and inventory by keyword. Call when looking for products, brands, or categories. Examples: ‘Find beauty products’, ‘Search mascara’, ‘Product inventory’, ‘Which watches are available?’. Do not call to modify inventory.",
     inputSchema: schema({
-      query: { type: "string", description: "商品、品牌、分類或標籤關鍵字。" },
+      query: {
+        type: "string",
+        description: "A product, brand, category, or tag keyword.",
+      },
     }),
     annotations: { readOnlyHint: true, untrustedContentHint: true },
   },
   {
     name: "get_voltage_admin_product",
     description:
-      "用途：取得一件商品的後台摘要與目前庫存。何時呼叫：使用者指定商品 ID 或需要確認單品時。觸發例子：「商品 12 的庫存」、「看商品詳情」、「查產品 42」、「這件商品還有多少」。不該呼叫：只需要整體低庫存摘要時。",
+      "Purpose: get an admin summary and current stock for one product. Call when the user specifies a product ID or needs to verify one item. Examples: ‘Stock for product 12’, ‘Show product details’, ‘Check product 42’, ‘How many remain?’. Do not call when only an overall low-stock summary is needed.",
     inputSchema: schema(
       {
-        productId: { type: "number", description: "Voltage Market 商品 ID。" },
+        productId: {
+          type: "number",
+          description: "Voltage Market product ID.",
+        },
       },
       ["productId"]
     ),
@@ -125,7 +132,7 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "list_voltage_admin_orders",
     description:
-      "用途：列出匿名化的後台訂單摘要。何時呼叫：詢問訂單量、處理中或需注意訂單時。觸發例子：「列出訂單」、「待處理訂單」、「有問題的訂單」、「最近訂單」。不該呼叫：要求建立、確認或取消訂單時。",
+      "Purpose: list anonymized admin order summaries. Call when asked about order volume, processing orders, or orders needing attention. Examples: ‘List orders’, ‘Orders in progress’, ‘Problem orders’, ‘Recent orders’. Do not call to create, confirm, or cancel an order.",
     inputSchema: schema({
       status: {
         type: "string",
@@ -137,7 +144,7 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "list_voltage_admin_customers",
     description:
-      "用途：列出匿名客戶區隔與消費摘要。何時呼叫：詢問 VIP、回訪或新客分布時。觸發例子：「列出 VIP」、「客戶區隔」、「回訪客有多少」、「新客資料」。不該呼叫：索取姓名、Email、地址或其他個資時。",
+      "Purpose: list anonymized customer segments and spending summaries. Call when asked about VIP, returning, or new-customer distribution. Examples: ‘List VIPs’, ‘Customer segments’, ‘How many returning customers?’, ‘New customer data’. Do not call to request names, contact details, locations, or other personal data.",
     inputSchema: schema({
       segment: { type: "string", enum: ["New", "Returning", "VIP"] },
     }),
@@ -146,11 +153,12 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "list_voltage_admin_inventory",
     description:
-      "用途：列出目前庫存，或只查看低庫存商品。何時呼叫：盤點、補貨或詢問庫存風險時。觸發例子：「低庫存」、「庫存清單」、「要補哪些貨」、「列出前 10 件庫存」。不該呼叫：使用者要找訂單或客戶時。",
+      "Purpose: list current inventory, optionally limited to low-stock products. Call for stocktaking, restocking, or inventory-risk questions. Examples: ‘Low stock’, ‘Inventory list’, ‘What needs restocking?’, ‘Top 10 inventory items’. Do not call when the user wants orders or customers.",
     inputSchema: schema({
       lowStockOnly: {
         type: "boolean",
-        description: "true 時只回傳庫存 12 以下且大於 0 的商品。",
+        description:
+          "When true, return only products with stock at most 12 and greater than 0.",
       },
     }),
     annotations: { readOnlyHint: true, untrustedContentHint: true },
@@ -158,11 +166,14 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "set_voltage_admin_inventory",
     description:
-      "用途：更新一件商品的後台庫存數量。何時呼叫：管理者明確要求補貨或校正存量時。觸發例子：「商品 5 改成 20 件」、「補貨到 48」、「將庫存設為 0」、「校正商品 18 存量」。不該呼叫：未指定商品與非負整數存量時。",
+      "Purpose: update the admin inventory quantity for one product. Call when an administrator explicitly requests restocking or a stock correction. Examples: ‘Set product 5 to 20’, ‘Restock to 48’, ‘Set inventory to 0’, ‘Correct product 18 stock’. Do not call without a product and a non-negative integer quantity.",
     inputSchema: schema(
       {
-        productId: { type: "number", description: "要更新的商品 ID。" },
-        stock: { type: "number", description: "新的非負整數庫存數量。" },
+        productId: { type: "number", description: "Product ID to update." },
+        stock: {
+          type: "number",
+          description: "The new non-negative integer stock quantity.",
+        },
       },
       ["productId", "stock"]
     ),
@@ -170,7 +181,7 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "open_voltage_admin_section",
     description:
-      "用途：開啟後台管理區塊。何時呼叫：使用者要切換 Dashboard、Products、Orders、Customers、Inventory 或 Reports 時。觸發例子：「開啟商品管理」、「帶我到庫存」、「查看報表」、「前往訂單」。不該呼叫：用來建立、確認或取消訂單時。",
+      "Purpose: open an admin section. Call when the user wants Dashboard, Products, Orders, Customers, Inventory, or Reports. Examples: ‘Open product management’, ‘Take me to inventory’, ‘View reports’, ‘Go to orders’. Do not call to create, confirm, or cancel orders.",
     inputSchema: schema(
       {
         section: {
@@ -191,42 +202,47 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "navigate_state",
     description:
-      "用途：讀取目前後台區塊與可用上一頁／下一頁狀態。何時呼叫：host 初始化或頁面導覽後。觸發例子：「目前在哪」、「更新導覽」、「能回上一頁嗎」。不該呼叫：不可讀取表單或個資。",
+      "Purpose: read the current admin section and available back/forward state. Call after host initialization or navigation. Examples: ‘Where am I?’, ‘Refresh navigation’, ‘Can I go back?’. Do not use to read forms or personal data.",
     inputSchema: noInput,
     annotations: { readOnlyHint: true },
   },
   {
     name: "navigate_back",
     description:
-      "用途：返回 Voltage Market Admin 的上一個區塊。何時呼叫：使用者要求上一頁或返回時。觸發例子：「上一頁」、「返回」、「回到剛才」。不該呼叫：用來變更訂單狀態時。",
+      "Purpose: return to the previous Voltage Dashboard section. Call when the user asks to go back or return. Examples: ‘Back’, ‘Return’, ‘Go back to the previous section’. Do not use to change order status.",
     inputSchema: noInput,
   },
   {
     name: "navigate_forward",
     description:
-      "用途：前往 Voltage Market Admin 的下一個區塊。何時呼叫：使用者要求下一頁或前進時。觸發例子：「下一頁」、「前進」、「回到前進頁」。不該呼叫：沒有可前進區塊時。",
+      "Purpose: move to the next Voltage Dashboard section. Call when the user asks to go forward. Examples: ‘Next’, ‘Forward’, ‘Return to the section I moved forward from’. Do not call when no forward section is available.",
     inputSchema: noInput,
   },
   {
     name: "agent_instructions",
     description:
-      "用途：取得目前後台的目標與安全限制。何時呼叫：host 在每個對話回合開始時。觸發例子：新對話、切換此頁、開始庫存查詢、開始訂單摘要。不該呼叫：不能用來修改訂單或處理個資。",
+      "Purpose: get the current admin scope and safety limits. Call at the start of every conversation turn. Examples: a new conversation, switching to this page, starting inventory lookup, or starting an order summary. Do not use to modify orders or handle personal data.",
     inputSchema: noInput,
     annotations: { readOnlyHint: true },
   },
   {
     name: "skill_list",
     description:
-      "用途：列出可按需載入的後台作業與資料語意指引。何時呼叫：host 在每個對話回合開始時。觸發例子：盤點、營收分析、製作報表、查看訂單。不該呼叫：不能用來存取個資。",
+      "Purpose: list on-demand admin operations and data-semantic guidance. Call at the start of every conversation turn. Examples: stocktaking, revenue analysis, report writing, or order review. Do not use to access personal data.",
     inputSchema: noInput,
     annotations: { readOnlyHint: true },
   },
   {
     name: "load_skill",
     description:
-      "用途：取得指定後台作業或資料語意指引。何時呼叫：模型需要 skill_list 內的資料粒度、join、分析或安全細節時。觸發例子：銷售資料、庫存風險、報表撰寫、訂單安全。不該呼叫：名稱不在 skill_list 時。",
+      "Purpose: get guidance for a specified admin operation or data semantic. Call when the model needs granularity, joins, analysis, or safety details from skill_list. Examples: sales data, inventory risk, report writing, or order safety. Do not call for a name absent from skill_list.",
     inputSchema: schema(
-      { name: { type: "string", description: "skill_list 所列的技能名稱。" } },
+      {
+        name: {
+          type: "string",
+          description: "A skill name listed by skill_list.",
+        },
+      },
       ["name"]
     ),
     annotations: { readOnlyHint: true },
@@ -250,6 +266,16 @@ const useVoltageAdminWebMcpTools = (
   useLayoutEffect(() => {
     const modelContext = (document as WebMcpDocument).modelContext
     const controller = new AbortController()
+    const executeWithDebugLog = (
+      toolName: string,
+      args: Record<string, unknown>
+    ) =>
+      executeWebMcpToolWithDebugLog({
+        site: "voltage-admin",
+        toolName,
+        args,
+        execute: () => executeRef.current(toolName, args),
+      })
     const registerTools = async () => {
       await prepareProvider?.()
       if (controller.signal.aborted) return
@@ -262,7 +288,7 @@ const useVoltageAdminWebMcpTools = (
                 {
                   ...tool,
                   execute: (args: Record<string, unknown>) =>
-                    executeRef.current(tool.name, args),
+                    executeWithDebugLog(tool.name, args),
                 } as WebMcpRegisteredTool & {
                   execute: (args: Record<string, unknown>) => Promise<unknown>
                 },
@@ -279,7 +305,7 @@ const useVoltageAdminWebMcpTools = (
 
       ;(window as WebMcpWindow).__webmcpTestProvider = {
         getTools: () => toolDefinitions,
-        executeTool: (tool, args) => executeRef.current(tool.name, args),
+        executeTool: (tool, args) => executeWithDebugLog(tool.name, args),
       } satisfies WebMcpTestProvider
     }
 
@@ -289,7 +315,7 @@ const useVoltageAdminWebMcpTools = (
     void readyPromise.catch((error) => {
       if (!controller.signal.aborted && !isAbortError(error)) {
         console.error(
-          "Voltage Market Admin WebMCP tool registration failed.",
+          "Voltage Dashboard WebMCP tool registration failed.",
           error
         )
       }
@@ -345,7 +371,7 @@ export const VoltageAdminDemo = () => {
   }, [reportingController])
 
   const { view, setView, goBack, goForward, getNavigationState } =
-    useWebMcpNavigation<VoltageAdminView>("dashboard")
+    useWebMcpNavigation<VoltageAdminView>("reports")
   const [inventory, setInventory] = useState<VoltageAdminInventory>(
     createVoltageAdminInventory
   )
@@ -497,7 +523,7 @@ export const VoltageAdminDemo = () => {
             </span>
             <span>
               <small>Voltage Market</small>
-              <strong>Merchant Console</strong>
+              <strong>Voltage Dashboard</strong>
             </span>
           </button>
           <Badge className="hidden border-0 bg-[#e2e5df] text-[#4c574e] sm:inline-flex">
@@ -508,7 +534,7 @@ export const VoltageAdminDemo = () => {
         <div className="grid gap-6 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
           <nav
             className="voltage-admin-nav"
-            aria-label="Voltage Market Admin 導覽"
+            aria-label="Voltage Dashboard navigation"
           >
             <p>Workspace</p>
             <div>
@@ -537,7 +563,7 @@ export const VoltageAdminDemo = () => {
 
           <div className="min-w-0">
             {view === "dashboard" ? (
-              <section aria-label="Voltage Market Admin Dashboard">
+              <section aria-label="Voltage Dashboard Overview">
                 <SectionTitle
                   eyebrow="Overview · last 7 days"
                   title="A calm read on the store."
@@ -642,7 +668,7 @@ export const VoltageAdminDemo = () => {
             ) : null}
 
             {view === "products" ? (
-              <section aria-label="Voltage Market Admin Products">
+              <section aria-label="Voltage Dashboard Products">
                 <SectionTitle
                   eyebrow="Catalog management"
                   title="Products, kept focused."
@@ -650,7 +676,7 @@ export const VoltageAdminDemo = () => {
                 />
                 <label className="voltage-admin-search">
                   <Search className="size-4" />
-                  <span className="sr-only">搜尋商品</span>
+                  <span className="sr-only">Search products</span>
                   <input
                     value={productQuery}
                     onChange={(event) => setProductQuery(event.target.value)}
@@ -698,7 +724,7 @@ export const VoltageAdminDemo = () => {
             ) : null}
 
             {view === "orders" ? (
-              <section aria-label="Voltage Market Admin Orders">
+              <section aria-label="Voltage Dashboard Orders">
                 <SectionTitle
                   eyebrow="Order operations"
                   title="A private, clear queue."
@@ -739,7 +765,7 @@ export const VoltageAdminDemo = () => {
             ) : null}
 
             {view === "customers" ? (
-              <section aria-label="Voltage Market Admin Customers">
+              <section aria-label="Voltage Dashboard Customers">
                 <SectionTitle
                   eyebrow="Customer intelligence"
                   title="Segments without identities."
@@ -774,7 +800,7 @@ export const VoltageAdminDemo = () => {
             ) : null}
 
             {view === "inventory" ? (
-              <section aria-label="Voltage Market Admin Inventory">
+              <section aria-label="Voltage Dashboard Inventory">
                 <SectionTitle
                   eyebrow="Stock control"
                   title="Keep the shelf in view."
@@ -783,7 +809,7 @@ export const VoltageAdminDemo = () => {
                 <div className="mb-4 flex flex-col gap-3 sm:flex-row">
                   <label className="voltage-admin-search flex-1">
                     <Search className="size-4" />
-                    <span className="sr-only">搜尋庫存</span>
+                    <span className="sr-only">Search inventory</span>
                     <input
                       value={inventoryQuery}
                       onChange={(event) =>
@@ -832,7 +858,7 @@ export const VoltageAdminDemo = () => {
                           </td>
                           <td>
                             <input
-                              aria-label={`${product.title} 庫存`}
+                              aria-label={`${product.title} inventory`}
                               type="number"
                               min="0"
                               step="1"
@@ -856,7 +882,7 @@ export const VoltageAdminDemo = () => {
             ) : null}
 
             {view === "reports" ? (
-              <section aria-label="Voltage Market Admin Reports">
+              <section aria-label="Voltage Dashboard Reports">
                 <SectionTitle
                   eyebrow="Smart Dashboard · shared workspace"
                   title="Shape the report together."

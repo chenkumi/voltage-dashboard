@@ -71,6 +71,9 @@ describe("Voltage Admin skills", () => {
     expect(text).toMatch(/agent_inventory[\s\S]*stock[\s\S]*單位為件/)
     expect(text).toContain("2026-08-28T00:00:00+08:00")
     expect(text).toMatch(/先將.*agent_sales_daily.*聚合[\s\S]*禁止.*重複計算/)
+    expect(text).toMatch(
+      /agent_products[\s\S]*JOIN agent_products[\s\S]*i\.stock <= \?/
+    )
   })
 
   it("requires evidence and honest report capability discovery", () => {
@@ -92,6 +95,9 @@ describe("Voltage Admin skills", () => {
     )
     expect(text).toMatch(/最新 verifier 結果[\s\S]*才能回報完成/)
     expect(text).toMatch(/先讀取其 state[\s\S]*不要反覆建立新 report/)
+    expect(text).toMatch(
+      /agent_dataset_status[\s\S]*categoryColumn[\s\S]*不得把 table 的 `columns` 用於 bar/
+    )
   })
 
   it("requires verifier-backed completion in shared Admin instructions", () => {

@@ -26,7 +26,8 @@ export const resolveReportWidget = (
   getQueryResult: QueryResultGetter
 ): ResolvedReportWidget => {
   try {
-    if (widget.type === "text") {
+    if (widget.type === "space") return { status: "ready" }
+    if (widget.type === "markdown" || widget.type === "text") {
       for (const queryId of widget.evidenceQueryIds) getQueryResult(queryId)
       return { status: "ready" }
     }

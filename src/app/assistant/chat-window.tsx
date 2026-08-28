@@ -14,6 +14,7 @@ import {
 } from "lucide-react"
 import {
   forwardRef,
+  memo,
   type CSSProperties,
   useCallback,
   useEffect,
@@ -209,13 +210,13 @@ const MessageRow = forwardRef<HTMLLIElement, MessageRowProps>(
   }
 )
 
-export const AssistantChatWindow = ({
+export const AssistantChatWindow = memo(function AssistantChatWindow({
   threadId,
   runtime,
 }: {
   threadId: string
   runtime: ChatStreamRuntime
-}) => {
+}) {
   const persistedMessageIds = useLiveQuery(
     () => listChatMessageIds(threadId),
     [threadId],
@@ -309,4 +310,4 @@ export const AssistantChatWindow = ({
       </div>
     </div>
   )
-}
+})

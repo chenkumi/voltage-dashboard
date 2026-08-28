@@ -49,10 +49,16 @@ describe("Report Canvas mapping", () => {
     },
     {
       id: "text",
-      type: "text",
+      type: "markdown",
       title: "Evidence",
       markdown: "Complete data.",
       evidenceQueryIds: [queryId],
+    },
+    {
+      id: "space",
+      type: "space",
+      xSpace: 2,
+      ySpace: 3,
     },
   ])("resolves valid $type widget evidence", (widget) => {
     expect(resolveReportWidget(widget, () => result)).toMatchObject({

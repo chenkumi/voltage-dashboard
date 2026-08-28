@@ -29,18 +29,48 @@ export class ReportStateError extends Error {
   }
 }
 
+const DEFAULT_WIDGET_LAYOUT = {
+  kpi: { xSpace: 2, ySpace: 1 },
+  table: { xSpace: 6, ySpace: 3 },
+  markdown: { xSpace: 6, ySpace: 2 },
+  text: { xSpace: 6, ySpace: 2 },
+  bar: { xSpace: 6, ySpace: 3 },
+  space: { xSpace: 1, ySpace: 1 },
+} as const
+
+const normalizeWidget = (widget: ReportWidget): ReportWidget => {
+  const defaults = DEFAULT_WIDGET_LAYOUT[widget.type]
+  const xSpace = widget.xSpace
+  const ySpace = widget.ySpace
+  return {
+    ...widget,
+    xSpace:
+      typeof xSpace === "number" &&
+      Number.isSafeInteger(xSpace) &&
+      xSpace >= 1 &&
+      xSpace <= 6
+        ? xSpace
+        : defaults.xSpace,
+    ySpace:
+      typeof ySpace === "number" && Number.isSafeInteger(ySpace) && ySpace >= 1
+        ? ySpace
+        : defaults.ySpace,
+  } as ReportWidget
+}
+
 const freezeWidget = (widget: ReportWidget): ReportWidget => {
-  if (widget.type === "table")
+  const normalized = normalizeWidget(widget)
+  if (normalized.type === "table")
     return Object.freeze({
-      ...widget,
-      columns: Object.freeze([...widget.columns]),
+      ...normalized,
+      columns: Object.freeze([...normalized.columns]),
     })
-  if (widget.type === "text")
+  if (normalized.type === "text")
     return Object.freeze({
-      ...widget,
-      evidenceQueryIds: Object.freeze([...widget.evidenceQueryIds]),
+      ...normalized,
+      evidenceQueryIds: Object.freeze([...normalized.evidenceQueryIds]),
     })
-  return Object.freeze({ ...widget })
+  return Object.freeze({ ...normalized })
 }
 
 const freezeReport = (report: Report): Report =>
@@ -142,6 +172,45 @@ export class ReportStateStore {
     })
     this.emit()
     return widgets[index]
+  }
+
+  updateWidgetLayout(widgetId: string, xSpace: number, ySpace: number) {
+    const report = this.requireReport()
+    const index = report.widgets.findIndex((widget) => widget.id === widgetId)
+    if (index < 0) this.throwWidgetNotFound()
+    if (
+      !Number.isSafeInteger(xSpace) ||
+      xSpace < 1 ||
+      xSpace > 6 ||
+      !Number.isSafeInteger(ySpace) ||
+      ySpace < 1
+    )
+      throw new ReportStateError(
+        "REPORT_ARGUMENT_ERROR",
+        "Widget layout must use 1 to 6 columns and a positive row span."
+      )
+    const widgets = [...report.widgets]
+    widgets[index] = { ...widgets[index], xSpace, ySpace } as ReportWidget
+    this.report = freezeReport({
+      ...report,
+      widgets,
+      updatedAt: this.now(),
+    })
+    this.emit()
+    return widgets[index]
+  }
+
+  loadReport(report: Report) {
+    this.assertActive()
+    this.report = freezeReport(report)
+    this.emit()
+    return this.report
+  }
+
+  clearReport() {
+    this.assertActive()
+    this.report = null
+    this.emit()
   }
 
   moveWidget(widgetId: string, toIndex: number) {

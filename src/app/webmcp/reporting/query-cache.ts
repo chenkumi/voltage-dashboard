@@ -21,6 +21,11 @@ type QueryCacheEntry = {
   sizeBytes: number
 }
 
+export type QueryCacheSnapshotEntry = {
+  queryId: QueryId
+  result: CachedQueryResult
+}
+
 export class QueryCacheError extends Error {
   readonly category: QueryCacheErrorCategory
 
@@ -31,7 +36,12 @@ export class QueryCacheError extends Error {
   }
 }
 
-const cloneAndFreezeResult = (result: SqlQueryResult): CachedQueryResult => {
+const cloneAndFreezeResult = (
+  result: Pick<SqlQueryResult, "rowCount" | "truncated" | "executionTimeMs"> & {
+    columns: readonly SqlQueryResult["columns"][number][]
+    rows: readonly SqlQueryResult["rows"][number][]
+  }
+): CachedQueryResult => {
   const columns = result.columns.map((column) => Object.freeze({ ...column }))
   const rows = result.rows.map((row) => Object.freeze({ ...row }))
   return Object.freeze({
@@ -111,6 +121,45 @@ export class QueryResultCache {
         this.totalBytes >= this.maxTotalBytes ||
         this.lastRejection !== null,
       lastRejection: this.lastRejection,
+    }
+  }
+
+  getEntries(
+    queryIds?: readonly QueryId[]
+  ): readonly QueryCacheSnapshotEntry[] {
+    this.assertActive()
+    const selected = queryIds ? new Set(queryIds) : undefined
+    return Object.freeze(
+      [...this.entries].flatMap(([queryId, entry]) =>
+        selected && !selected.has(queryId)
+          ? []
+          : [Object.freeze({ queryId, result: entry.result })]
+      )
+    )
+  }
+
+  restore(entries: readonly QueryCacheSnapshotEntry[]) {
+    this.assertActive()
+    for (const entry of entries) {
+      if (!/^[0-9A-HJKMNP-TV-Z]{26}$/.test(entry.queryId))
+        throw new QueryCacheError(
+          "QUERY_CACHE_NOT_FOUND",
+          "A saved query result has an invalid identifier."
+        )
+      if (this.entries.has(entry.queryId)) continue
+      const result = cloneAndFreezeResult(entry.result)
+      const sizeBytes = serializedSize(result)
+      if (
+        sizeBytes > this.maxTotalBytes ||
+        this.entries.size >= this.maxEntries ||
+        this.totalBytes + sizeBytes > this.maxTotalBytes
+      )
+        this.reject(
+          "QUERY_CACHE_LIMIT_EXCEEDED",
+          "Saved query results exceed the workspace cache limit."
+        )
+      this.entries.set(entry.queryId, { result, sizeBytes })
+      this.totalBytes += sizeBytes
     }
   }
 

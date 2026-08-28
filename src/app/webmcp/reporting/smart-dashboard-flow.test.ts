@@ -17,7 +17,8 @@ class InProcessReportingRuntime {
   }
 
   async execute(input: SqlQueryInput): Promise<SqlQueryResult> {
-    if (!this.database) throw new Error("Reporting database is not initialized.")
+    if (!this.database)
+      throw new Error("Reporting database is not initialized.")
     return this.database.execute(input)
   }
 
@@ -110,7 +111,7 @@ const addWidgets = (
   })
   controller.executeReportTool("add_report_widget", {
     widget: {
-      type: "text",
+      type: "markdown",
       title: "營運摘要與查詢證據",
       markdown:
         "報表依實際查詢建立，涵蓋 **2026-08-21** 至 **2026-08-27**，時區為 Asia/Taipei。營收、前三分類與低庫存項目均引用下列查詢證據；若任何結果遭截斷，應視為部分資料。",
@@ -153,7 +154,7 @@ const expectCompleteReport = (
           columns: ["title", "category", "stock", "updated_at"],
         },
         {
-          type: "text",
+          type: "markdown",
           evidenceQueryIds: [
             evidence.status.queryId,
             evidence.revenue.queryId,
@@ -184,17 +185,14 @@ const expectCompleteReport = (
     )
   ).toBe(true)
   expect(evidence.revenue.truncated).toBe(false)
-  expect(evidence.revenue.rows).toEqual([
-    { total_revenue_usd: 49_722.51 },
-  ])
+  expect(evidence.revenue.rows).toEqual([{ total_revenue_usd: 49_722.51 }])
   expect(evidence.categories).toMatchObject({ rowCount: 3, truncated: false })
   expect(evidence.categories.rows).toEqual(
-    [...evidence.categories.rows]
-      .sort(
-        (left, right) =>
-          Number(right.revenue_usd) - Number(left.revenue_usd) ||
-          String(left.category).localeCompare(String(right.category))
-      )
+    [...evidence.categories.rows].sort(
+      (left, right) =>
+        Number(right.revenue_usd) - Number(left.revenue_usd) ||
+        String(left.category).localeCompare(String(right.category))
+    )
   )
   expect(evidence.lowStock.truncated).toBe(false)
   expect(evidence.lowStock.rows.length).toBeGreaterThan(0)
@@ -216,7 +214,9 @@ describe("Smart Dashboard report workflow", () => {
   const controllers: ReportingRuntimeController[] = []
 
   afterEach(async () => {
-    await Promise.all(controllers.splice(0).map((controller) => controller.dispose()))
+    await Promise.all(
+      controllers.splice(0).map((controller) => controller.dispose())
+    )
   })
 
   const createController = async () => {
@@ -271,7 +271,9 @@ describe("Smart Dashboard report workflow", () => {
           valueColumn: "missing_revenue",
         },
       })
-    ).toThrowError(expect.objectContaining({ category: "REPORT_ARGUMENT_ERROR" }))
+    ).toThrowError(
+      expect.objectContaining({ category: "REPORT_ARGUMENT_ERROR" })
+    )
 
     const state = controller.executeReportTool("get_report_state", {})
     expect(state).toMatchObject({

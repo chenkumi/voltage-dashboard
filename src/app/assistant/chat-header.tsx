@@ -1,13 +1,14 @@
 import { Button } from "@/components/ui/button"
 import { BotIcon, PlusIcon } from "lucide-react"
+import { memo } from "react"
 
-export const AssistantChatHeader = ({
+export const AssistantChatHeader = memo(function AssistantChatHeader({
   title,
   onNewThread,
 }: {
   title: string
   onNewThread: () => void
-}) => {
+}) {
   return (
     <header className="flex min-h-18 w-full items-center gap-3 border-b border-white/10 bg-[#151b1f] px-4 py-2">
       <div className="flex size-10 shrink-0 items-center justify-center rounded-xl border border-amber-300/20 bg-amber-300/10 text-amber-300 shadow-[0_0_24px_rgba(251,191,36,0.08)]">
@@ -37,4 +38,4 @@ export const AssistantChatHeader = ({
       </div>
     </header>
   )
-}
+})

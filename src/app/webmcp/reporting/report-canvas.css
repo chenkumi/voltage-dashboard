@@ -51,6 +51,106 @@
   gap: 1rem;
 }
 
+.report-library {
+  padding: 1rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--admin-surface) 82%, transparent);
+}
+
+.report-library-heading,
+.report-library li,
+.report-library-open {
+  display: flex;
+  align-items: center;
+}
+
+.report-library-heading {
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.report-library-heading p,
+.report-library-heading strong {
+  display: block;
+}
+
+.report-library-heading p {
+  color: var(--admin-subtle);
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.report-library-heading strong {
+  margin-top: 0.15rem;
+  color: var(--admin-ink);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.1rem;
+  font-weight: 400;
+}
+
+.report-library ul {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+
+.report-library li {
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  border-radius: 0.65rem;
+  background: var(--admin-muted);
+}
+
+.report-library-open {
+  min-width: 0;
+  flex: 1;
+  gap: 0.55rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 0.45rem;
+  color: var(--admin-ink);
+  text-align: left;
+}
+
+.report-library-open:hover,
+.report-library-open:focus-visible {
+  background: rgb(97 117 104 / 14%);
+  outline: none;
+}
+
+.report-library-open span,
+.report-library-open strong,
+.report-library-open small {
+  min-width: 0;
+}
+
+.report-library-open strong,
+.report-library-open small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.report-library-open small,
+.report-library-empty,
+.report-library-error {
+  color: var(--admin-subtle);
+  font-size: 0.72rem;
+}
+
+.report-library-empty,
+.report-library-error {
+  margin-top: 0.8rem;
+}
+
+.report-library-error {
+  color: #825638;
+}
+
 .report-canvas-header {
   display: grid;
   gap: 1rem;
@@ -63,10 +163,15 @@
 .report-title-input,
 .report-widget-title-input {
   width: 100%;
+  min-height: 1.6em;
+  max-height: 8em;
   border: 1px solid transparent;
   outline: none;
   background: transparent;
   color: inherit;
+  field-sizing: content;
+  line-height: 1.2;
+  resize: vertical;
   transition:
     border-color 180ms ease,
     background 180ms ease;
@@ -151,7 +256,9 @@
 .report-widget-grid {
   display: grid;
   gap: 1rem;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-flow: row;
+  grid-auto-rows: 7rem;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
 }
 
 .report-widget {
@@ -160,12 +267,7 @@
   border: 1px solid var(--admin-border);
   border-radius: 1rem;
   background: var(--admin-surface);
-}
-
-.report-widget-table,
-.report-widget-bar,
-.report-widget-text {
-  grid-column: 1 / -1;
+  overflow: auto;
 }
 
 .report-widget > header {
@@ -199,7 +301,60 @@
 
 .report-widget-actions {
   display: flex;
+  align-items: flex-start;
   gap: 0.15rem;
+}
+
+.report-widget-layout {
+  display: flex;
+  gap: 0.25rem;
+  padding: 0;
+  border: 0;
+}
+
+.report-widget-layout label {
+  display: grid;
+  gap: 0.1rem;
+  color: var(--admin-subtle);
+  font-size: 0.55rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.report-widget-layout select,
+.report-widget-layout input {
+  width: 2.6rem;
+  height: 1.85rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 0.35rem;
+  background: var(--admin-surface);
+  color: var(--admin-ink);
+  font-size: 0.7rem;
+}
+
+.report-widget-layout input {
+  padding: 0 0.25rem;
+}
+
+.report-space-title {
+  margin-top: 0.2rem;
+  color: var(--admin-subtle);
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.1rem;
+}
+
+.report-space-widget {
+  min-height: 100%;
+  border: 1px dashed color-mix(in srgb, var(--admin-border) 75%, transparent);
+  border-radius: 0.65rem;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 0.5rem,
+    rgb(97 117 104 / 5%) 0.5rem,
+    rgb(97 117 104 / 5%) 1rem
+  );
 }
 
 .report-kpi strong {
@@ -318,7 +473,7 @@
   }
 
   .report-widget {
-    grid-column: 1;
+    grid-column: 1 !important;
   }
 
   .report-widget > header {
@@ -328,6 +483,7 @@
 
   .report-widget-actions {
     justify-content: flex-end;
+    flex-wrap: wrap;
   }
 
   .report-bar-row {

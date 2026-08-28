@@ -30,6 +30,7 @@ import type {
   WebMcpTestProvider,
   WebMcpWindow,
 } from "./types"
+import { executeWebMcpToolWithDebugLog } from "./tool-debug"
 import { useWebMcpNavigation } from "./navigation"
 import { getPhotoCanvasStyle } from "./photo-canvas"
 import {
@@ -214,14 +215,21 @@ export const VOLTAGE_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "search_voltage_products",
     description:
-      "搜尋 Voltage Market 的內嵌商品目錄，可用關鍵字、分類與售價篩選。",
+      "Search the embedded Voltage Market catalog with keyword, category, and price filters.",
     inputSchema: schema({
       query: {
         type: "string",
-        description: "名稱、品牌、描述、標籤或分類關鍵字。",
+        description:
+          "A keyword matching product names, brands, descriptions, tags, or categories.",
       },
-      category: { type: "string", description: "可選的 DummyJSON 分類 slug。" },
-      maxPrice: { type: "number", description: "可選的最高折後 USD 售價。" },
+      category: {
+        type: "string",
+        description: "Optional DummyJSON category slug.",
+      },
+      maxPrice: {
+        type: "number",
+        description: "Optional maximum sale price in USD.",
+      },
       sort: {
         type: "string",
         enum: ["featured", "price-asc", "price-desc", "rating"],
@@ -231,36 +239,42 @@ export const VOLTAGE_TOOLS: WebMcpRegisteredTool[] = [
   },
   {
     name: "get_voltage_product",
-    description: "依 ID 取得 Voltage Market 商品詳情與庫存。",
+    description: "Get Voltage Market product details and stock by ID.",
     inputSchema: schema({ productId: { type: "number" } }, ["productId"]),
     annotations: { readOnlyHint: true },
   },
   {
     name: "list_voltage_categories",
-    description: "列出內嵌 DummyJSON 目錄的可用分類與商品數量。",
+    description:
+      "List available categories and product counts in the embedded DummyJSON catalog.",
     inputSchema: schema({}),
     annotations: { readOnlyHint: true },
   },
   {
     name: "get_voltage_cart",
-    description: "取得目前購物車、運費與合計。",
+    description: "Get the current cart, shipping cost, and total.",
     inputSchema: schema({}),
     annotations: { readOnlyHint: true },
   },
   {
     name: "add_voltage_cart_item",
-    description: "將庫存中的商品加入購物車；使用者可以後續調整或移除。",
+    description:
+      "Add an in-stock product to the cart; the user can adjust or remove it later.",
     inputSchema: schema(
       {
         productId: { type: "number" },
-        quantity: { type: "number", description: "預設為 1，且不可超過庫存。" },
+        quantity: {
+          type: "number",
+          description: "Defaults to 1 and cannot exceed available stock.",
+        },
       },
       ["productId"]
     ),
   },
   {
     name: "update_voltage_cart_item",
-    description: "調整購物車商品數量；數量 0 會移除商品。",
+    description:
+      "Adjust a cart item quantity; a quantity of 0 removes the item.",
     inputSchema: schema(
       { productId: { type: "number" }, quantity: { type: "number" } },
       ["productId", "quantity"]
@@ -268,73 +282,74 @@ export const VOLTAGE_TOOLS: WebMcpRegisteredTool[] = [
   },
   {
     name: "remove_voltage_cart_item",
-    description: "從購物車移除一件商品。",
+    description: "Remove one product from the cart.",
     inputSchema: schema({ productId: { type: "number" } }, ["productId"]),
   },
   {
     name: "get_voltage_checkout_preview",
-    description: "取得結帳前的商品、運費與合計，不會建立訂單。",
+    description:
+      "Get the pre-checkout items, shipping, and total without creating an order.",
     inputSchema: schema({}),
     annotations: { readOnlyHint: true },
   },
   {
     name: "open_voltage_checkout",
     description:
-      "開啟使用者專屬結帳頁。此工具不接受或回傳個資、付款資料，也不會建立訂單。",
+      "Open the user's dedicated checkout page. This tool does not accept or return personal or payment data and never creates an order.",
     inputSchema: schema({}),
   },
   {
     name: "list_voltage_orders",
-    description: "列出此瀏覽器保存的 Voltage Market 模擬訂單。",
+    description: "List simulated Voltage Market orders saved in this browser.",
     inputSchema: schema({}),
     annotations: { readOnlyHint: true },
   },
   {
     name: "get_voltage_order",
-    description: "取得一筆模擬訂單的明細。",
+    description: "Get the details of one simulated order.",
     inputSchema: schema({ orderId: { type: "string" } }, ["orderId"]),
     annotations: { readOnlyHint: true },
   },
   {
     name: "open_voltage_orders",
     description:
-      "開啟訂單頁供使用者自行查看或取消模擬訂單；此工具不會改變訂單。",
+      "Open the orders page so the user can view or cancel simulated orders; this tool does not change orders.",
     inputSchema: schema({}),
   },
   {
     name: "navigate_state",
     description:
-      "用途：讀取目前頁面與可用的上一頁／下一頁狀態。何時呼叫：host 初始化、頁面導覽後或需要更新導覽按鈕時。觸發例子：「目前在哪一頁？」、「上一頁按鈕能否使用？」、「更新導覽狀態」。不該呼叫：不可用來讀取表單或個資。",
+      "Purpose: read the current page and available back/forward state. Call after host initialization, navigation, or when navigation controls need refreshing. Examples: ‘Which page am I on?’, ‘Can I go back?’, ‘Refresh navigation state’. Do not use to read forms or personal data.",
     inputSchema: schema({}),
     annotations: { readOnlyHint: true },
   },
   {
     name: "navigate_back",
     description:
-      "用途：返回 Voltage Market 的上一個頁面狀態。何時呼叫：使用者要求上一頁、返回或回到前一頁時。觸發例子：「上一頁」、「返回」、「回到剛才頁面」。不該呼叫：使用者只是要重新整理頁面時。",
+      "Purpose: return to the previous Voltage Market page state. Call when the user asks to go back or return. Examples: ‘Back’, ‘Return’, ‘Go to the previous page’. Do not call when the user only wants to refresh.",
     inputSchema: schema({}),
   },
   {
     name: "navigate_forward",
     description:
-      "用途：前往 Voltage Market 的下一個頁面狀態。何時呼叫：使用者要求下一頁或前進時。觸發例子：「下一頁」、「前進」、「回到剛才前進的頁面」。不該呼叫：沒有可前進的頁面時。",
+      "Purpose: move to the next Voltage Market page state. Call when the user asks to go forward. Examples: ‘Next’, ‘Forward’, ‘Return to the page I just left’. Do not call when no forward state is available.",
     inputSchema: schema({}),
   },
   {
     name: "agent_instructions",
-    description: "取得 Voltage Market Agent 操作說明。",
+    description: "Get operating instructions for the Voltage Market agent.",
     inputSchema: schema({}),
     annotations: { readOnlyHint: true },
   },
   {
     name: "skill_list",
-    description: "列出可載入的 Voltage Market 操作技能。",
+    description: "List loadable Voltage Market operating skills.",
     inputSchema: schema({}),
     annotations: { readOnlyHint: true },
   },
   {
     name: "load_skill",
-    description: "載入一項 Voltage Market 操作技能。",
+    description: "Load one Voltage Market operating skill.",
     inputSchema: schema({ name: { type: "string" } }, ["name"]),
     annotations: { readOnlyHint: true },
   },
@@ -353,6 +368,16 @@ const useVoltageWebMcpTools = (
   useLayoutEffect(() => {
     const modelContext = (document as WebMcpDocument).modelContext
     const controller = new AbortController()
+    const executeWithDebugLog = (
+      toolName: string,
+      args: Record<string, unknown>
+    ) =>
+      executeWebMcpToolWithDebugLog({
+        site: "voltage-market",
+        toolName,
+        args,
+        execute: () => executeRef.current(toolName, args),
+      })
     const registerTools = async () => {
       if (modelContext?.registerTool) {
         try {
@@ -362,7 +387,7 @@ const useVoltageWebMcpTools = (
                 {
                   ...tool,
                   execute: (args: Record<string, unknown>) =>
-                    executeRef.current(tool.name, args),
+                    executeWithDebugLog(tool.name, args),
                 } as WebMcpRegisteredTool & {
                   execute: (args: Record<string, unknown>) => Promise<unknown>
                 },
@@ -384,7 +409,7 @@ const useVoltageWebMcpTools = (
 
       const provider: WebMcpTestProvider = {
         getTools: () => toolDefinitions,
-        executeTool: (tool, args) => executeRef.current(tool.name, args),
+        executeTool: (tool, args) => executeWithDebugLog(tool.name, args),
       }
       ;(window as WebMcpWindow).__webmcpTestProvider = provider
       if (import.meta.env.DEV) {
@@ -424,7 +449,7 @@ const ProductImage = ({
     return (
       <div
         className={`bg-[linear-gradient(135deg,#ec4899_0%,#fb7185_46%,#fbbf24_100%)] ${className}`}
-        aria-label={`${product.title} 的預設商品圖片`}
+        aria-label={`${product.title} default product image`}
       />
     )
   }
@@ -467,22 +492,23 @@ const CartSummary = ({ items }: { items: VoltageCartItem[] }) => {
   return (
     <div className="space-y-3 text-sm">
       <div className="flex justify-between text-zinc-600">
-        <span>小計（{summary.itemCount} 件）</span>
+        <span>Subtotal ({summary.itemCount} items)</span>
         <span>{formatMoney(summary.subtotal)}</span>
       </div>
       <div className="flex justify-between text-zinc-600">
-        <span>標準配送</span>
+        <span>Standard shipping</span>
         <span>
-          {summary.shipping === 0 ? "免費" : formatMoney(summary.shipping)}
+          {summary.shipping === 0 ? "Free" : formatMoney(summary.shipping)}
         </span>
       </div>
       <div className="flex justify-between border-t-2 border-zinc-950 pt-3 text-base font-black">
-        <span>合計</span>
+        <span>Total</span>
         <span>{formatMoney(summary.total)}</span>
       </div>
       {summary.shipping > 0 ? (
         <p className="text-xs leading-5 text-zinc-500">
-          再購買 {formatMoney(75 - summary.subtotal)} 即享免費配送。
+          Spend {formatMoney(75 - summary.subtotal)} more to unlock free
+          shipping.
         </p>
       ) : null}
     </div>
@@ -490,13 +516,8 @@ const CartSummary = ({ items }: { items: VoltageCartItem[] }) => {
 }
 
 export const VoltageMarketDemo = () => {
-  const {
-    view,
-    setView,
-    goBack,
-    goForward,
-    getNavigationState,
-  } = useWebMcpNavigation<VoltageView>("catalog")
+  const { view, setView, goBack, goForward, getNavigationState } =
+    useWebMcpNavigation<VoltageView>("catalog")
   const [filters, setFilters] = useState<VoltageFilters>(emptyFilters)
   const [page, setPage] = useState(0)
   const [store, setStore] = useState<VoltageStore>(loadStore)
@@ -540,13 +561,15 @@ export const VoltageMarketDemo = () => {
     (product: VoltageProduct, quantity = 1) => {
       const amount = Math.floor(quantity)
       if (!Number.isFinite(amount) || amount < 1) {
-        return { error: "請選擇有效的商品數量。" }
+        return { error: "Please choose a valid product quantity." }
       }
       const currentQuantity =
         storeRef.current.cart.find((item) => item.productId === product.id)
           ?.quantity ?? 0
       if (currentQuantity + amount > product.stock) {
-        return { error: `庫存不足，目前最多可購買 ${product.stock} 件。` }
+        return {
+          error: `Insufficient stock. You can purchase up to ${product.stock} items.`,
+        }
       }
       const next = commit((current) => {
         const found = current.cart.find((item) => item.productId === product.id)
@@ -569,10 +592,15 @@ export const VoltageMarketDemo = () => {
       const product = voltageProductById.get(productId)
       const amount = Math.floor(quantity)
       if (!product || !Number.isFinite(amount) || amount < 0) {
-        return { error: "請提供有效商品 ID 與非負整數數量。" }
+        return {
+          error:
+            "Provide a valid product ID and a non-negative integer quantity.",
+        }
       }
       if (amount > product.stock) {
-        return { error: `庫存不足，目前最多可購買 ${product.stock} 件。` }
+        return {
+          error: `Insufficient stock. You can purchase up to ${product.stock} items.`,
+        }
       }
       const next = commit((current) => ({
         ...current,
@@ -593,7 +621,7 @@ export const VoltageMarketDemo = () => {
   const createOrder = useCallback(
     (form: CheckoutForm) => {
       const items = getVoltageCartItems(storeRef.current.cart)
-      if (items.length === 0) return { error: "購物車目前是空的。" }
+      if (items.length === 0) return { error: "The cart is currently empty." }
       const orderSummary = getVoltageCartSummary(items)
       const order: VoltageOrder = {
         id: `VOLT-${Date.now().toString().slice(-7)}-${Math.random()
@@ -646,7 +674,7 @@ export const VoltageMarketDemo = () => {
     }
     if (name === "agent_instructions") {
       return {
-        text: "這是 Voltage Market 的模擬購物網站。194 筆商品是從 DummyJSON 下載後嵌入此網站的快照；購物車與訂單只保存於這個瀏覽器。Agent 可協助搜尋、購物車與導向結帳頁，但絕不可要求、接收、重述或保存姓名、Email、地址、卡號或任何付款資料。使用者必須在 iframe 結帳頁自行填寫資料，並自行按下確認模擬付款／建立訂單；Agent 不可透過工具建立或取消訂單。",
+        text: "This is the Voltage Market simulated storefront. Its 194 products are an embedded snapshot downloaded from DummyJSON; cart and orders are stored only in this browser. The agent may help with search, cart actions, and opening checkout, but must never request, receive, repeat, or store names, contact details, physical locations, card numbers, or other payment data. The user must enter details and press the final action button directly in the iframe checkout page; the agent cannot create or cancel orders through tools.",
       }
     }
     if (name === "skill_list") {
@@ -654,11 +682,11 @@ export const VoltageMarketDemo = () => {
         skills: [
           {
             name: "voltage-catalog-guide",
-            description: "查找內嵌商品、庫存與購物車操作。",
+            description: "Find embedded products, stock, and cart actions.",
           },
           {
             name: "voltage-checkout-safety",
-            description: "模擬結帳與訂單確認規則。",
+            description: "Simulated checkout and order confirmation rules.",
           },
         ],
       }
@@ -668,17 +696,20 @@ export const VoltageMarketDemo = () => {
         return {
           type: "skill",
           name: "voltage-catalog-guide",
-          text: "先以 search_voltage_products 篩選商品，再用 get_voltage_product 確認庫存與折後價格。購物車操作可逆；在建議結帳前，使用 get_voltage_checkout_preview 取得最新金額。",
+          text: "First filter products with search_voltage_products, then use get_voltage_product to confirm stock and sale pricing. Cart actions are reversible; before suggesting checkout, use get_voltage_checkout_preview to obtain the latest amount.",
         }
       }
       if (args.name === "voltage-checkout-safety") {
         return {
           type: "skill",
           name: "voltage-checkout-safety",
-          text: "結帳屬高風險流程。先以 get_voltage_checkout_preview 說明商品、運費與總計；若使用者要結帳，只能呼叫 open_voltage_checkout，請使用者在 iframe 內自行填寫姓名、Email、地址與付款展示資料，並自行按下確認。不得在對話中索取、接收、重述個資或付款資料，不得以工具建立或取消訂單。",
+          text: "Checkout is a high-risk flow. Use get_voltage_checkout_preview first to explain items, shipping, and the total. If the user wants checkout, only call open_voltage_checkout and ask them to enter their recipient, contact, location, and payment display data in the iframe and press the final action themselves. Never request, receive, or repeat personal or payment data in chat, and never create or cancel orders through tools.",
         }
       }
-      return { status: "ARGUMENT_ERROR", message: "找不到指定技能。" }
+      return {
+        status: "ARGUMENT_ERROR",
+        message: "The requested skill was not found.",
+      }
     }
     if (name === "search_voltage_products") {
       const category =
@@ -721,7 +752,7 @@ export const VoltageMarketDemo = () => {
           : undefined
       return product
         ? productPayload(product)
-        : { status: "ARGUMENT_ERROR", message: "找不到商品。" }
+        : { status: "ARGUMENT_ERROR", message: "Product not found." }
     }
     if (name === "list_voltage_categories") {
       return {
@@ -747,14 +778,17 @@ export const VoltageMarketDemo = () => {
           : undefined
       const quantity = typeof args.quantity === "number" ? args.quantity : 1
       if (!product) {
-        return { status: "ARGUMENT_ERROR", message: "請提供有效商品 ID。" }
+        return {
+          status: "ARGUMENT_ERROR",
+          message: "Provide a valid product ID.",
+        }
       }
       const result = addToCart(product, quantity)
       if ("error" in result)
         return { status: "ARGUMENT_ERROR", message: result.error }
       setView("cart")
       return {
-        message: `${product.title} 已加入購物車。`,
+        message: `${product.title} was added to the cart.`,
         ...cartPayload(result.state.cart),
       }
     }
@@ -765,7 +799,8 @@ export const VoltageMarketDemo = () => {
       ) {
         return {
           status: "ARGUMENT_ERROR",
-          message: "請提供有效商品 ID 與非負整數數量。",
+          message:
+            "Provide a valid product ID and a non-negative integer quantity.",
         }
       }
       const result = setQuantity(args.productId, args.quantity)
@@ -776,7 +811,7 @@ export const VoltageMarketDemo = () => {
     }
     if (name === "remove_voltage_cart_item") {
       if (typeof args.productId !== "number") {
-        return { status: "ARGUMENT_ERROR", message: "請提供商品 ID。" }
+        return { status: "ARGUMENT_ERROR", message: "Provide a product ID." }
       }
       const result = setQuantity(args.productId, 0)
       if ("error" in result)
@@ -788,14 +823,14 @@ export const VoltageMarketDemo = () => {
       if (storeRef.current.cart.length === 0) {
         return {
           status: "ERROR",
-          message: "購物車是空的，無法開啟結帳頁。",
+          message: "The cart is empty, so checkout cannot be opened.",
         }
       }
       setCheckoutError("")
       setView("checkout")
       return {
         message:
-          "已開啟結帳頁。請使用者直接在頁面填寫資料並自行按下確認；不可在對話中提供個資或付款資料。",
+          "Checkout is open. The user must enter details and press confirmation directly on the page; personal or payment data must not be provided in chat.",
       }
     }
     if (name === "list_voltage_orders") {
@@ -807,15 +842,16 @@ export const VoltageMarketDemo = () => {
       )
       return order
         ? orderPayload(order)
-        : { status: "ARGUMENT_ERROR", message: "找不到訂單。" }
+        : { status: "ARGUMENT_ERROR", message: "Order not found." }
     }
     if (name === "open_voltage_orders") {
       setView("orders")
       return {
-        message: "已開啟訂單頁。取消操作必須由使用者直接在頁面確認。",
+        message:
+          "The orders page is open. Cancellation must be confirmed directly by the user on the page.",
       }
     }
-    return { status: "ERROR", message: "不支援的 Voltage Market 工具。" }
+    return { status: "ERROR", message: "Unsupported Voltage Market tool." }
   }
 
   useVoltageWebMcpTools(VOLTAGE_TOOLS, executeTool)
@@ -828,10 +864,10 @@ export const VoltageMarketDemo = () => {
   const handleAdd = (product: VoltageProduct) => {
     const result = addToCart(product)
     if ("error" in result) {
-      setNotice(result.error ?? "無法將商品加入購物車。")
+      setNotice(result.error ?? "Unable to add the product to the cart.")
       return
     }
-    setNotice(`${product.title} 已加入購物車。`)
+    setNotice(`${product.title} was added to the cart.`)
   }
 
   const submitCheckout = (event: FormEvent<HTMLFormElement>) => {
@@ -841,22 +877,26 @@ export const VoltageMarketDemo = () => {
       !checkout.email.trim() ||
       !checkout.address.trim()
     ) {
-      setCheckoutError("請完整填寫收件人、Email 與送貨地址。")
+      setCheckoutError(
+        "Please complete the recipient name, email, and shipping address."
+      )
       return
     }
     if (!confirmed) {
-      setCheckoutError("請先確認訂單內容與模擬結帳聲明。")
+      setCheckoutError(
+        "Please confirm the order details and simulated checkout notice first."
+      )
       return
     }
     const result = createOrder(checkout)
     if ("error" in result) {
-      setCheckoutError(result.error ?? "無法建立模擬訂單。")
+      setCheckoutError(result.error ?? "Unable to create the simulated order.")
       return
     }
     setCardNumber("")
     setConfirmed(false)
     setCheckoutError("")
-    setNotice(`模擬訂單 ${result.order.id} 已建立。`)
+    setNotice(`Simulated order ${result.order.id} was created.`)
     setView("orders")
   }
 
@@ -869,7 +909,7 @@ export const VoltageMarketDemo = () => {
               type="button"
               onClick={() => setView("catalog")}
               className="flex cursor-pointer items-center gap-3 text-left focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-pink-500"
-              aria-label="前往 Voltage Market 商品目錄"
+              aria-label="Go to the Voltage Market catalog"
             >
               <span className="grid size-11 place-items-center bg-zinc-950 text-pink-400">
                 <Sparkles className="size-5" />
@@ -879,28 +919,29 @@ export const VoltageMarketDemo = () => {
                   Voltage Market
                 </span>
                 <span className="block text-lg font-black tracking-tight sm:text-xl">
-                  大膽選物，立即上線
+                  Curated goods, ready to launch
                 </span>
               </span>
             </button>
             <nav
               className="flex flex-wrap gap-2"
-              aria-label="Voltage Market 導覽"
+              aria-label="Voltage Market navigation"
             >
               {(
                 [
-                  ["catalog", "商品"],
+                  ["catalog", "Catalog"],
                   [
                     "cart",
-                    `購物車${summary.itemCount ? ` (${summary.itemCount})` : ""}`,
+                    `Cart${summary.itemCount ? ` (${summary.itemCount})` : ""}`,
                   ],
-                  ["orders", "訂單"],
+                  ["orders", "Orders"],
                 ] as Array<[VoltageView, string]>
               ).map(([target, label]) => (
                 <button
                   key={target}
                   type="button"
                   onClick={() => setView(target)}
+                  aria-current={view === target ? "page" : undefined}
                   className={`cursor-pointer border-2 border-zinc-950 px-3 py-2 text-xs font-black uppercase transition-colors duration-200 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-pink-500 ${
                     view === target
                       ? "bg-zinc-950 text-white"
@@ -912,7 +953,7 @@ export const VoltageMarketDemo = () => {
               ))}
             </nav>
             <Badge className="hidden rounded-none border-2 border-zinc-950 bg-amber-300 px-3 py-1.5 text-zinc-950 sm:inline-flex">
-              模擬結帳 · 無真實付款
+              Simulated checkout · No real payment
             </Badge>
           </div>
         </header>
@@ -922,24 +963,23 @@ export const VoltageMarketDemo = () => {
         </div>
 
         {view === "catalog" ? (
-          <section aria-label="Voltage Market 商品目錄">
+          <section aria-label="Voltage Market catalog">
             <div className="mb-5 grid overflow-hidden border-2 border-zinc-950 bg-zinc-950 text-white min-[900px]:grid-cols-[1.15fr_0.85fr]">
               <div className="p-6 sm:p-9">
                 <p className="mb-4 font-mono text-xs font-black tracking-[0.2em] text-pink-400 uppercase">
                   Drop 02 · DummyJSON catalog
                 </p>
                 <h1 className="max-w-2xl text-4xl leading-[0.94] font-black tracking-[-0.06em] sm:text-6xl">
-                  找到下一件
-                  <span className="block text-amber-300">
-                    讓你心跳加速的東西。
-                  </span>
+                  Find your next
+                  <span className="block text-amber-300">obsession.</span>
                 </h1>
                 <p className="mt-5 max-w-lg text-sm leading-6 text-[#596057]">
-                  這是一個高對比、模組化的選物宇宙，
-                  內含 {voltageProducts.length} 筆可搜尋、可結帳的靜態商品資料。
+                  A high-contrast, modular shopping universe with{" "}
+                  {voltageProducts.length} searchable products ready for
+                  checkout.
                 </p>
                 <p className="mt-3 flex items-center gap-1.5 text-xs font-medium text-zinc-600">
-                  測試資料來源：
+                  Test data source:
                   <a
                     href="https://dummyjson.com/"
                     target="_blank"
@@ -957,7 +997,7 @@ export const VoltageMarketDemo = () => {
                     {voltageProducts.length}
                   </span>
                   <span className="text-xs font-bold tracking-wider uppercase">
-                    嵌入式商品
+                    Embedded products
                   </span>
                 </div>
                 <div className="border-2 border-zinc-950 bg-white p-4 shadow-[4px_4px_0_#18181b]">
@@ -965,18 +1005,19 @@ export const VoltageMarketDemo = () => {
                     {voltageCategories.length}
                   </span>
                   <span className="text-xs font-bold tracking-wider uppercase">
-                    商品分類
+                    Categories
                   </span>
                 </div>
                 <p className="self-end text-xs leading-5 font-bold min-[900px]:mt-4">
-                  免費配送門檻：{formatMoney(75)}。所有訂單都只存在此瀏覽器。
+                  Free shipping over {formatMoney(75)}. All orders stay in this
+                  browser.
                 </p>
               </div>
             </div>
 
             <section className="mb-5 grid gap-3 border-2 border-zinc-950 bg-white p-4 min-[700px]:grid-cols-2 min-[900px]:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)_minmax(7rem,0.7fr)_minmax(8rem,0.8fr)] min-[1100px]:grid-cols-[minmax(0,1fr)_220px_150px_170px]">
               <label className="grid gap-1.5 text-xs font-black tracking-wide uppercase">
-                搜尋商品
+                Search products
                 <span className="relative">
                   <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-pink-600" />
                   <input
@@ -984,13 +1025,13 @@ export const VoltageMarketDemo = () => {
                     onChange={(event) =>
                       applyFilters({ query: event.target.value })
                     }
-                    placeholder="名稱、品牌、標籤…"
+                    placeholder="Name, brand, tag…"
                     className="h-10 w-full border-2 border-zinc-950 bg-white pr-3 pl-9 text-sm font-normal normal-case transition-colors outline-none focus:bg-pink-50 focus:ring-2 focus:ring-pink-500"
                   />
                 </span>
               </label>
               <label className="grid gap-1.5 text-xs font-black tracking-wide uppercase">
-                分類
+                Category
                 <select
                   value={filters.category}
                   onChange={(event) =>
@@ -998,7 +1039,7 @@ export const VoltageMarketDemo = () => {
                   }
                   className="h-10 border-2 border-zinc-950 bg-white px-3 text-sm font-medium normal-case transition-colors outline-none focus:bg-pink-50 focus:ring-2 focus:ring-pink-500"
                 >
-                  <option value="all">全部分類</option>
+                  <option value="all">All categories</option>
                   {voltageCategories.map((category) => (
                     <option key={category} value={category}>
                       {formatVoltageCategory(category)}
@@ -1007,7 +1048,7 @@ export const VoltageMarketDemo = () => {
                 </select>
               </label>
               <label className="grid gap-1.5 text-xs font-black tracking-wide uppercase">
-                最高售價
+                Max price
                 <input
                   type="number"
                   min="0"
@@ -1015,12 +1056,12 @@ export const VoltageMarketDemo = () => {
                   onChange={(event) =>
                     applyFilters({ maxPrice: event.target.value })
                   }
-                  placeholder="不限"
+                  placeholder="Any"
                   className="h-10 border-2 border-zinc-950 bg-white px-3 text-sm font-normal transition-colors outline-none focus:bg-pink-50 focus:ring-2 focus:ring-pink-500"
                 />
               </label>
               <label className="grid gap-1.5 text-xs font-black tracking-wide uppercase">
-                排序
+                Sort
                 <select
                   value={filters.sort}
                   onChange={(event) =>
@@ -1030,17 +1071,17 @@ export const VoltageMarketDemo = () => {
                   }
                   className="h-10 border-2 border-zinc-950 bg-white px-3 text-sm font-medium normal-case transition-colors outline-none focus:bg-pink-50 focus:ring-2 focus:ring-pink-500"
                 >
-                  <option value="featured">精選折扣</option>
-                  <option value="price-asc">價格：低至高</option>
-                  <option value="price-desc">價格：高至低</option>
-                  <option value="rating">評分最高</option>
+                  <option value="featured">Featured discounts</option>
+                  <option value="price-asc">Price: low to high</option>
+                  <option value="price-desc">Price: high to low</option>
+                  <option value="rating">Highest rated</option>
                 </select>
               </label>
             </section>
 
             <div className="mb-4 flex items-center justify-between gap-3">
               <p className="font-mono text-xs font-bold text-zinc-600">
-                顯示{" "}
+                Showing{" "}
                 {matchingProducts.length === 0
                   ? 0
                   : currentPage * PAGE_SIZE + 1}
@@ -1049,7 +1090,7 @@ export const VoltageMarketDemo = () => {
                   (currentPage + 1) * PAGE_SIZE,
                   matchingProducts.length
                 )}{" "}
-                / {matchingProducts.length} 件
+                / {matchingProducts.length} items
               </p>
               {filters.category !== "all" ||
               filters.query ||
@@ -1065,7 +1106,7 @@ export const VoltageMarketDemo = () => {
                   }}
                 >
                   <X className="size-4" />
-                  清除篩選
+                  Clear filters
                 </Button>
               ) : null}
             </div>
@@ -1111,7 +1152,7 @@ export const VoltageMarketDemo = () => {
                           </span>
                           {product.stock === 0 ? (
                             <span className="text-[10px] font-semibold text-[#a85b4b]">
-                              已售完
+                              Sold out
                             </span>
                           ) : null}
                           <Button
@@ -1121,7 +1162,7 @@ export const VoltageMarketDemo = () => {
                             onClick={() => handleAdd(product)}
                           >
                             <Plus className="size-4" />
-                            加入
+                            Add
                           </Button>
                         </div>
                       </div>
@@ -1133,9 +1174,9 @@ export const VoltageMarketDemo = () => {
               <div className="grid min-h-64 place-items-center border-2 border-dashed border-zinc-950 bg-white p-6 text-center">
                 <div>
                   <Search className="mx-auto mb-3 size-7 text-pink-600" />
-                  <h2 className="text-xl font-black">沒有符合的商品</h2>
+                  <h2 className="text-xl font-black">No products found</h2>
                   <p className="mt-2 text-sm text-zinc-600">
-                    試試其他關鍵字、分類或售價範圍。
+                    Try another keyword, category, or price range.
                   </p>
                 </div>
               </div>
@@ -1144,7 +1185,7 @@ export const VoltageMarketDemo = () => {
             {matchingProducts.length > PAGE_SIZE ? (
               <nav
                 className="mt-6 flex items-center justify-center gap-3"
-                aria-label="商品分頁"
+                aria-label="Product pagination"
               >
                 <Button
                   type="button"
@@ -1154,7 +1195,7 @@ export const VoltageMarketDemo = () => {
                   onClick={() => setPage((current) => Math.max(0, current - 1))}
                 >
                   <ArrowLeft className="size-4" />
-                  上一頁
+                  Previous
                 </Button>
                 <span className="font-mono text-xs font-bold">
                   {currentPage + 1} / {pageCount}
@@ -1168,7 +1209,7 @@ export const VoltageMarketDemo = () => {
                     setPage((current) => Math.min(pageCount - 1, current + 1))
                   }
                 >
-                  下一頁
+                  Next
                   <ArrowRight className="size-4" />
                 </Button>
               </nav>
@@ -1179,7 +1220,7 @@ export const VoltageMarketDemo = () => {
         {view === "cart" ? (
           <section
             className="grid gap-5 min-[900px]:grid-cols-[minmax(0,1fr)_320px]"
-            aria-label="購物車"
+            aria-label="Shopping cart"
           >
             <div>
               <div className="mb-4 flex items-end justify-between gap-3">
@@ -1188,7 +1229,7 @@ export const VoltageMarketDemo = () => {
                     Cart mode
                   </p>
                   <h1 className="mt-1 text-3xl font-black tracking-tight">
-                    你的選物清單
+                    Your picks
                   </h1>
                 </div>
                 <Button
@@ -1198,7 +1239,7 @@ export const VoltageMarketDemo = () => {
                   onClick={() => setView("catalog")}
                 >
                   <ArrowLeft className="size-4" />
-                  繼續選購
+                  Continue shopping
                 </Button>
               </div>
               {cartItems.length > 0 ? (
@@ -1218,7 +1259,7 @@ export const VoltageMarketDemo = () => {
                         </p>
                         <h2 className="mt-1 font-bold">{item.product.title}</h2>
                         <p className="mt-1 text-sm text-zinc-600">
-                          {formatMoney(item.product.salePrice)} / 件
+                          {formatMoney(item.product.salePrice)} / item
                         </p>
                         <div className="mt-3 flex items-center gap-1">
                           <Button
@@ -1232,9 +1273,11 @@ export const VoltageMarketDemo = () => {
                                 item.quantity - 1
                               )
                               if ("error" in result)
-                                setNotice(result.error ?? "無法調整商品數量。")
+                                setNotice(
+                                  result.error ?? "Unable to update quantity."
+                                )
                             }}
-                            aria-label={`減少 ${item.product.title} 的數量`}
+                            aria-label={`Decrease ${item.product.title} quantity`}
                           >
                             <Minus className="size-3" />
                           </Button>
@@ -1249,10 +1292,12 @@ export const VoltageMarketDemo = () => {
                                 Number(event.target.value)
                               )
                               if ("error" in result)
-                                setNotice(result.error ?? "無法調整商品數量。")
+                                setNotice(
+                                  result.error ?? "Unable to update quantity."
+                                )
                             }}
                             className="h-8 w-12 border-y-2 border-zinc-950 text-center text-sm font-bold outline-none focus:bg-pink-50"
-                            aria-label={`${item.product.title} 的數量`}
+                            aria-label={`${item.product.title} quantity`}
                           />
                           <Button
                             type="button"
@@ -1266,9 +1311,11 @@ export const VoltageMarketDemo = () => {
                                 item.quantity + 1
                               )
                               if ("error" in result)
-                                setNotice(result.error ?? "無法調整商品數量。")
+                                setNotice(
+                                  result.error ?? "Unable to update quantity."
+                                )
                             }}
-                            aria-label={`增加 ${item.product.title} 的數量`}
+                            aria-label={`Increase ${item.product.title} quantity`}
                           >
                             <Plus className="size-3" />
                           </Button>
@@ -1286,9 +1333,11 @@ export const VoltageMarketDemo = () => {
                           onClick={() => {
                             const result = setQuantity(item.product.id, 0)
                             if ("error" in result)
-                              setNotice(result.error ?? "無法調整商品數量。")
+                              setNotice(
+                                result.error ?? "Unable to update quantity."
+                              )
                           }}
-                          aria-label={`移除 ${item.product.title}`}
+                          aria-label={`Remove ${item.product.title}`}
                         >
                           <Trash2 className="size-4" />
                         </Button>
@@ -1300,13 +1349,13 @@ export const VoltageMarketDemo = () => {
                 <div className="grid min-h-64 place-items-center border-2 border-dashed border-zinc-950 bg-white p-6 text-center">
                   <div>
                     <ShoppingBag className="mx-auto mb-3 size-7 text-pink-600" />
-                    <h2 className="text-xl font-black">購物車還是空的</h2>
+                    <h2 className="text-xl font-black">Your cart is empty</h2>
                     <Button
                       type="button"
                       className="mt-4 cursor-pointer rounded-none border-2 border-zinc-950 bg-pink-500 font-black hover:bg-pink-600"
                       onClick={() => setView("catalog")}
                     >
-                      開始選購
+                      Start shopping
                     </Button>
                   </div>
                 </div>
@@ -1315,7 +1364,7 @@ export const VoltageMarketDemo = () => {
             <aside className="h-fit border-2 border-zinc-950 bg-amber-300 p-5 shadow-[5px_5px_0_#18181b] min-[900px]:sticky min-[900px]:top-4">
               <h2 className="mb-5 flex items-center gap-2 text-lg font-black">
                 <Package className="size-5" />
-                訂單摘要
+                Order summary
               </h2>
               <CartSummary items={cartItems} />
               <Button
@@ -1327,7 +1376,7 @@ export const VoltageMarketDemo = () => {
                   setView("checkout")
                 }}
               >
-                前往結帳
+                Go to checkout
                 <ArrowRight className="size-4" />
               </Button>
             </aside>
@@ -1335,7 +1384,10 @@ export const VoltageMarketDemo = () => {
         ) : null}
 
         {view === "checkout" ? (
-          <section className="mx-auto max-w-4xl" aria-label="模擬結帳">
+          <section
+            className="mx-auto max-w-4xl"
+            aria-label="Simulated checkout"
+          >
             <Button
               type="button"
               variant="ghost"
@@ -1343,18 +1395,20 @@ export const VoltageMarketDemo = () => {
               onClick={() => setView("cart")}
             >
               <ArrowLeft className="size-4" />
-              返回購物車
+              Back to cart
             </Button>
             {cartItems.length === 0 ? (
               <div className="grid min-h-64 place-items-center border-2 border-dashed border-zinc-950 bg-white p-6 text-center">
                 <div>
-                  <h1 className="text-2xl font-black">沒有可結帳的商品</h1>
+                  <h1 className="text-2xl font-black">
+                    No items available for checkout
+                  </h1>
                   <Button
                     type="button"
                     className="mt-4 cursor-pointer rounded-none border-2 border-zinc-950 bg-pink-500 font-black hover:bg-pink-600"
                     onClick={() => setView("catalog")}
                   >
-                    返回商品目錄
+                    Back to catalog
                   </Button>
                 </div>
               </div>
@@ -1368,19 +1422,22 @@ export const VoltageMarketDemo = () => {
                     Checkout / demo only
                   </p>
                   <h1 className="mt-2 text-3xl font-black tracking-tight">
-                    在此頁確認配送資訊
+                    Confirm shipping details here
                   </h1>
                   <p className="mt-2 text-sm leading-6 text-zinc-600">
-                    請由你直接填寫與確認；Agent
-                    無法讀取或代填。付款欄位只展示畫面，卡號不會保存或傳送。
+                    Enter and confirm these details yourself; the agent cannot
+                    read or fill them in. Payment fields are display-only, and
+                    card numbers are never saved or transmitted.
                   </p>
                   <fieldset className="mt-6 grid gap-4">
-                    <legend className="mb-1 font-black">收件資訊</legend>
+                    <legend className="mb-1 font-black">
+                      Recipient details
+                    </legend>
                     <label
                       className="grid gap-1.5 text-sm font-bold"
                       htmlFor="voltage-name"
                     >
-                      收件人姓名
+                      Recipient name
                       <input
                         id="voltage-name"
                         required
@@ -1419,7 +1476,7 @@ export const VoltageMarketDemo = () => {
                       className="grid gap-1.5 text-sm font-bold"
                       htmlFor="voltage-address"
                     >
-                      送貨地址
+                      Shipping address
                       <textarea
                         id="voltage-address"
                         required
@@ -1437,12 +1494,12 @@ export const VoltageMarketDemo = () => {
                     </label>
                   </fieldset>
                   <fieldset className="mt-6 grid gap-2 border-t-2 border-zinc-950 pt-5">
-                    <legend className="mb-1 font-black">付款展示</legend>
+                    <legend className="mb-1 font-black">Payment display</legend>
                     <label
                       className="grid gap-1.5 text-sm font-bold"
                       htmlFor="voltage-card"
                     >
-                      卡號（不保存）
+                      Card number (not saved)
                       <span className="relative">
                         <CreditCard className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-pink-600" />
                         <input
@@ -1466,8 +1523,9 @@ export const VoltageMarketDemo = () => {
                       className="mt-1 size-4 accent-pink-600"
                     />
                     <span>
-                      我確認商品、配送資訊與合計金額；只有我按下下一步才會建立可在本機取消的
-                      <strong>模擬</strong>訂單。
+                      I confirm the items, shipping details, and total. A{" "}
+                      <strong>simulated</strong> order that can be canceled
+                      locally is created only when I press the button below.
                     </span>
                   </label>
                   {checkoutError ? (
@@ -1483,11 +1541,11 @@ export const VoltageMarketDemo = () => {
                     className="mt-5 w-full cursor-pointer rounded-none border-2 border-zinc-950 bg-pink-500 font-black hover:bg-pink-600"
                   >
                     <Check className="size-4" />
-                    我確認並建立模擬訂單
+                    Confirm and create simulated order
                   </Button>
                 </div>
                 <aside className="border-t-2 border-zinc-950 bg-amber-300 p-5 min-[900px]:border-t-0 min-[900px]:border-l-2">
-                  <h2 className="mb-5 text-lg font-black">本次合計</h2>
+                  <h2 className="mb-5 text-lg font-black">Current total</h2>
                   <CartSummary items={cartItems} />
                 </aside>
               </form>
@@ -1496,14 +1554,14 @@ export const VoltageMarketDemo = () => {
         ) : null}
 
         {view === "orders" ? (
-          <section aria-label="訂單紀錄">
+          <section aria-label="Order history">
             <div className="mb-5 flex flex-wrap items-end justify-between gap-4">
               <div>
                 <p className="font-mono text-xs font-black tracking-wider text-pink-600 uppercase">
                   Local history
                 </p>
                 <h1 className="mt-1 text-3xl font-black tracking-tight">
-                  模擬訂單紀錄
+                  Simulated order history
                 </h1>
               </div>
               <Button
@@ -1511,7 +1569,7 @@ export const VoltageMarketDemo = () => {
                 className="cursor-pointer rounded-none border-2 border-zinc-950 bg-zinc-950 font-black hover:bg-zinc-800"
                 onClick={() => setView("catalog")}
               >
-                繼續選購
+                Continue shopping
                 <ArrowRight className="size-4" />
               </Button>
             </div>
@@ -1541,7 +1599,7 @@ export const VoltageMarketDemo = () => {
                             : "bg-zinc-200 text-zinc-700"
                         }`}
                       >
-                        {order.status === "confirmed" ? "已建立" : "已取消"}
+                        {order.status === "confirmed" ? "Created" : "Canceled"}
                       </Badge>
                     </div>
                     <div className="mt-4 grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto]">
@@ -1562,7 +1620,7 @@ export const VoltageMarketDemo = () => {
                       </ul>
                       <div className="min-w-40 border-l-0 border-zinc-950 pt-3 sm:border-l-2 sm:pt-0 sm:pl-4">
                         <p className="text-xs text-zinc-600">
-                          送往：{order.address}
+                          Ship to: {order.address}
                         </p>
                         <p className="mt-3 text-lg font-black">
                           {formatMoney(order.total)}
@@ -1578,10 +1636,12 @@ export const VoltageMarketDemo = () => {
                                   onClick={() => {
                                     cancelOrder(order.id)
                                     setCancelTarget(null)
-                                    setNotice(`模擬訂單 ${order.id} 已取消。`)
+                                    setNotice(
+                                      `Simulated order ${order.id} was canceled.`
+                                    )
                                   }}
                                 >
-                                  確認取消
+                                  Confirm cancellation
                                 </Button>
                                 <Button
                                   type="button"
@@ -1590,7 +1650,7 @@ export const VoltageMarketDemo = () => {
                                   className="cursor-pointer rounded-none border-2 border-zinc-950"
                                   onClick={() => setCancelTarget(null)}
                                 >
-                                  保留訂單
+                                  Keep order
                                 </Button>
                               </>
                             ) : (
@@ -1601,7 +1661,7 @@ export const VoltageMarketDemo = () => {
                                 className="cursor-pointer rounded-none border-2 border-zinc-950 text-pink-700 hover:bg-pink-100"
                                 onClick={() => setCancelTarget(order.id)}
                               >
-                                取消訂單
+                                Cancel order
                               </Button>
                             )}
                           </div>
@@ -1615,9 +1675,11 @@ export const VoltageMarketDemo = () => {
               <div className="grid min-h-64 place-items-center border-2 border-dashed border-zinc-950 bg-white p-6 text-center">
                 <div>
                   <Package className="mx-auto mb-3 size-7 text-pink-600" />
-                  <h2 className="text-xl font-black">還沒有模擬訂單</h2>
+                  <h2 className="text-xl font-black">
+                    No simulated orders yet
+                  </h2>
                   <p className="mt-2 text-sm text-zinc-600">
-                    完成結帳後，訂單會只保存於這個瀏覽器。
+                    Orders are stored only in this browser after checkout.
                   </p>
                 </div>
               </div>

@@ -82,7 +82,7 @@ describe("ReportStateStore", () => {
     const store = createStore()
     const report = store.createReport({ title: "Draft" })
     const widget = store.addWidget({
-      type: "text",
+      type: "markdown",
       title: "Scope",
       markdown: "Complete data.",
       evidenceQueryIds: [],
@@ -96,12 +96,58 @@ describe("ReportStateStore", () => {
     expect(actual.updatedAt).not.toBe(actual.createdAt)
   })
 
+  it("sets one-to-six column spans and unbounded positive row spans", () => {
+    const store = createStore()
+    store.createReport({ title: "Operations" })
+    const widget = store.addWidget({
+      type: "space",
+      xSpace: 1,
+      ySpace: 1,
+    })
+
+    store.updateWidgetLayout(widget.id, 6, 42)
+
+    expect(store.getSnapshot()?.widgets[0]).toMatchObject({
+      xSpace: 6,
+      ySpace: 42,
+    })
+    expect(() => store.updateWidgetLayout(widget.id, 7, 1)).toThrowError(
+      expect.objectContaining({ category: "REPORT_ARGUMENT_ERROR" })
+    )
+  })
+
+  it("keeps a legacy text widget readable when restoring a saved report", () => {
+    const store = createStore()
+
+    store.loadReport({
+      id: "saved-report",
+      title: "Saved operations",
+      widgets: [
+        {
+          id: "saved-widget",
+          type: "text",
+          title: "Legacy summary",
+          markdown: "Complete data.",
+          evidenceQueryIds: [],
+        },
+      ],
+      createdAt: "2026-08-28T00:00:00+08:00",
+      updatedAt: "2026-08-28T00:00:00+08:00",
+    })
+
+    expect(store.getSnapshot()?.widgets[0]).toMatchObject({
+      type: "text",
+      xSpace: 6,
+      ySpace: 2,
+    })
+  })
+
   it("rejects edits without a report, unknown widgets, and invalid positions", () => {
     const store = createStore()
 
     expect(() =>
       store.addWidget({
-        type: "text",
+        type: "markdown",
         title: "Summary",
         markdown: "No report yet.",
         evidenceQueryIds: [],
@@ -110,7 +156,7 @@ describe("ReportStateStore", () => {
 
     store.createReport({ title: "Operations" })
     const widget = store.addWidget({
-      type: "text",
+      type: "markdown",
       title: "Summary",
       markdown: "Complete data.",
       evidenceQueryIds: [],

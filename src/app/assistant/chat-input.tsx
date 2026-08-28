@@ -1,14 +1,14 @@
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { CornerDownLeftIcon, SendIcon, SquareIcon } from "lucide-react"
-import { useState, useSyncExternalStore } from "react"
+import { memo, useState, useSyncExternalStore } from "react"
 import type { ChatStreamRuntime } from "./chat-stream-runtime"
 
-export const AssistantChatInput = ({
+export const AssistantChatInput = memo(function AssistantChatInput({
   runtime,
 }: {
   runtime: ChatStreamRuntime
-}) => {
+}) {
   const status = useSyncExternalStore(
     runtime.subscribeStatus,
     runtime.getStatus,
@@ -65,4 +65,4 @@ export const AssistantChatInput = ({
       </div>
     </form>
   )
-}
+})

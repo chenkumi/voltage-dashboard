@@ -127,4 +127,15 @@ describe("QueryResultCache", () => {
     expect(first.get(queryId).rows).toEqual([{ category: "Beauty" }])
     expect(second.get(queryId).rows).toEqual([{ category: "Furniture" }])
   })
+
+  it("exports selected evidence and restores it under the original query ID", () => {
+    const queryId = "01K00000000000000000000000"
+    const first = new QueryResultCache({ createId: () => queryId })
+    first.add(createResult())
+    const second = new QueryResultCache()
+
+    second.restore(first.getEntries([queryId]))
+
+    expect(second.get(queryId).rows).toEqual([{ category: "Beauty" }])
+  })
 })

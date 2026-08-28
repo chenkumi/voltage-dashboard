@@ -5,6 +5,7 @@ import { useLiveQuery } from "dexie-react-hooks"
 import {
   useCallback,
   useEffect,
+  memo,
   useMemo,
   useRef,
   useSyncExternalStore,
@@ -71,7 +72,7 @@ const InvalidThread = () => {
   return <Loading />
 }
 
-const ChatWorkspace = ({
+const ChatWorkspace = memo(function ChatWorkspace({
   site,
   target,
   session,
@@ -83,7 +84,7 @@ const ChatWorkspace = ({
   session: WebMcpSession
   runtime: ChatStreamRuntime
   onSiteChange: (site: WebMcpSite) => void
-}) => {
+}) {
   const status = useSyncExternalStore(
     runtime.subscribeStatus,
     runtime.getStatus,
@@ -100,90 +101,107 @@ const ChatWorkspace = ({
       disabled={disabled}
     />
   )
-}
+})
 
-const ChatSession = ({
-  thread,
-  site,
-  target,
-}: {
-  thread: ChatThread
-  site: WebMcpSite
-  target: ThreadSiteTarget
-}) => {
-  const navigate = useNavigate()
-  const { theme } = useTheme()
-  const session = useMemo(() => new WebMcpSession(), [])
-  const runtime = useMemo(() => new ChatStreamRuntime(), [])
-  const generateId = useMemo(() => monotonicFactory(), [])
+const ChatSession = memo(
+  function ChatSession({
+    thread,
+    site,
+    target,
+  }: {
+    thread: ChatThread
+    site: WebMcpSite
+    target: ThreadSiteTarget
+  }) {
+    const navigate = useNavigate()
+    const { theme } = useTheme()
+    const session = useMemo(() => new WebMcpSession(), [])
+    const runtime = useMemo(() => new ChatStreamRuntime(), [])
+    const generateId = useMemo(() => monotonicFactory(), [])
 
-  useEffect(() => () => session.dispose(), [session])
+    useEffect(() => () => session.dispose(), [session])
 
-  const createNewThread = useCallback(async () => {
-    runtime.cancel()
-    session.dispose()
-    const nextThread = createEmptyThread(site)
-    await createChatThread(nextThread)
-    await navigate(`/chat/${nextThread.id}`)
-  }, [navigate, runtime, session, site])
-
-  const switchSite = useCallback(
-    async (nextSite: WebMcpSite) => {
-      if (nextSite.id === site.id) return
+    const createNewThread = useCallback(async () => {
       runtime.cancel()
-      session.dispose()
-      const nextThread = await createOrOpenSiteThread(nextSite)
+      const nextThread = createEmptyThread(site)
+      await createChatThread(nextThread)
       await navigate(`/chat/${nextThread.id}`)
-    },
-    [navigate, runtime, session, site.id]
-  )
+    }, [navigate, runtime, site])
 
-  return (
-    <div className="flex h-full w-full min-w-0 overflow-hidden bg-[#101417]">
-      <ChatStreamController
-        threadId={thread.id}
-        session={session}
-        runtime={runtime}
-        generateId={generateId}
-      />
-      <ChatWorkspace
-        site={site}
-        target={target}
-        session={session}
-        runtime={runtime}
-        onSiteChange={switchSite}
-      />
-      <section className="flex h-full min-w-[320px] basis-[30%] flex-col overflow-hidden border-l border-white/10 bg-[#101417] text-slate-100">
-        <AssistantChatHeader
-          title={thread.customTitle ?? thread.title}
-          onNewThread={createNewThread}
+    const switchSite = useCallback(
+      async (nextSite: WebMcpSite) => {
+        if (nextSite.id === site.id) return
+        runtime.cancel()
+        session.dispose()
+        const nextThread = await createOrOpenSiteThread(nextSite)
+        await navigate(`/chat/${nextThread.id}`)
+      },
+      [navigate, runtime, session, site.id]
+    )
+
+    return (
+      <div className="flex h-full w-full min-w-0 overflow-hidden bg-[#101417]">
+        <ChatStreamController
+          key={thread.id}
+          threadId={thread.id}
+          session={session}
+          runtime={runtime}
+          generateId={generateId}
         />
-        <div className="flex min-h-0 flex-1 flex-col bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.04),transparent_38%)] px-4 pt-3 pb-4">
-          <section
-            className="min-h-0 flex-1 overflow-hidden"
-            aria-label="Chat history"
-          >
-            <AssistantChatWindow threadId={thread.id} runtime={runtime} />
-          </section>
-          <div className="pt-3">
-            <AssistantChatInput runtime={runtime} />
+        <ChatWorkspace
+          site={site}
+          target={target}
+          session={session}
+          runtime={runtime}
+          onSiteChange={switchSite}
+        />
+        <section className="flex h-full min-w-[320px] basis-[30%] flex-col overflow-hidden border-l border-white/10 bg-[#101417] text-slate-100">
+          <AssistantChatHeader
+            title={thread.customTitle ?? thread.title}
+            onNewThread={createNewThread}
+          />
+          <div className="flex min-h-0 flex-1 flex-col bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.04),transparent_38%)] px-4 pt-3 pb-4">
+            <section
+              className="min-h-0 flex-1 overflow-hidden"
+              aria-label="Chat history"
+            >
+              <AssistantChatWindow threadId={thread.id} runtime={runtime} />
+            </section>
+            <div className="pt-3">
+              <AssistantChatInput runtime={runtime} />
+            </div>
           </div>
-        </div>
-      </section>
-      <Toaster theme={theme} />
-    </div>
-  )
-}
+        </section>
+        <Toaster theme={theme} />
+      </div>
+    )
+  },
+  (previous, next) =>
+    previous.thread.id === next.thread.id &&
+    (previous.thread.customTitle ?? previous.thread.title) ===
+      (next.thread.customTitle ?? next.thread.title) &&
+    previous.site.id === next.site.id &&
+    previous.site.url === next.site.url &&
+    previous.target.siteId === next.target.siteId &&
+    previous.target.url === next.target.url
+)
 
 const ChatPage = ({ threadId }: { threadId: string }) => {
   const thread = useLiveQuery(() => getChatThread(threadId), [threadId])
+  const threadSiteId = thread?.siteId
+  const threadUrl = thread?.url
+  const resolvedSite = useMemo(
+    () =>
+      threadSiteId && threadUrl
+        ? resolveThreadSite({ siteId: threadSiteId, url: threadUrl })
+        : undefined,
+    [threadSiteId, threadUrl]
+  )
 
   if (thread === undefined) return <Loading />
-  const resolvedSite = thread ? resolveThreadSite(thread) : undefined
   if (!thread || !resolvedSite) return <InvalidThread />
   return (
     <ChatSession
-      key={threadId}
       thread={thread}
       site={resolvedSite.site}
       target={resolvedSite.target}

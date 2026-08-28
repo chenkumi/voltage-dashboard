@@ -1,7 +1,25 @@
 import { describe, expect, it, vi } from "vitest"
-import { executeWebMcpToolWithDebugLog } from "./tool-debug"
+import {
+  executeWebMcpToolWithDebugLog,
+  writeStructuredDebugLog,
+} from "./tool-debug"
 
 describe("WebMCP tool debug logging", () => {
+  it("renders default debug details as inspectable single-line JSON", () => {
+    const debug = vi.spyOn(console, "debug").mockImplementation(() => undefined)
+
+    writeStructuredDebugLog("[WebMCP tool] input", {
+      callId: "voltage-admin:1",
+      toolName: "execute_readonly_sql",
+    })
+
+    expect(debug).toHaveBeenCalledWith(
+      "[WebMCP tool] input",
+      '{"callId":"voltage-admin:1","toolName":"execute_readonly_sql"}'
+    )
+    debug.mockRestore()
+  })
+
   it("logs correlated input and response without changing the result", async () => {
     const logger = vi.fn()
     const response = { status: "OK", queryId: "query-1" }
@@ -66,6 +84,24 @@ describe("WebMCP tool debug logging", () => {
     expect(logger.mock.calls[1][1]).toMatchObject({
       response: { accountId: "[REDACTED]", status: "OK" },
     })
+  })
+
+  it("does not mistake SQL whitespace and parentheses for a phone value", async () => {
+    const logger = vi.fn()
+    const sql = `SELECT SUM(net_revenue_usd)
+      FROM agent_sales_daily
+      WHERE sale_date BETWEEN ? AND ?`
+
+    await executeWebMcpToolWithDebugLog({
+      site: "voltage-admin",
+      toolName: "execute_readonly_sql",
+      args: { sql },
+      execute: async () => ({ status: "OK" }),
+      enabled: true,
+      logger,
+    })
+
+    expect(logger.mock.calls[0][1]).toMatchObject({ arguments: { sql } })
   })
 
   it("logs and rethrows the original tool error", async () => {

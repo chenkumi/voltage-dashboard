@@ -59,6 +59,10 @@ export type ReportPeriod = {
 type ReportWidgetBase = {
   id: string
   title: string
+  /** Width in the six-column report grid. */
+  xSpace?: number
+  /** Height in grid rows. There is intentionally no product limit. */
+  ySpace?: number
 }
 
 export type KpiReportWidget = ReportWidgetBase & {
@@ -74,10 +78,18 @@ export type TableReportWidget = ReportWidgetBase & {
   columns: readonly string[]
 }
 
-export type TextReportWidget = ReportWidgetBase & {
-  type: "text"
+type MarkdownReportWidgetBase = ReportWidgetBase & {
   markdown: string
   evidenceQueryIds: readonly QueryId[]
+}
+
+export type MarkdownReportWidget = MarkdownReportWidgetBase & {
+  type: "markdown"
+}
+
+/** Allows reports saved by the former TextWidget to remain readable. */
+export type LegacyTextReportWidget = MarkdownReportWidgetBase & {
+  type: "text"
 }
 
 export type BarReportWidget = ReportWidgetBase & {
@@ -87,14 +99,27 @@ export type BarReportWidget = ReportWidgetBase & {
   valueColumn: string
 }
 
+export type SpaceReportWidget = {
+  id: string
+  type: "space"
+  xSpace: number
+  ySpace: number
+}
+
 export type ReportWidget =
-  KpiReportWidget | TableReportWidget | TextReportWidget | BarReportWidget
+  | KpiReportWidget
+  | TableReportWidget
+  | MarkdownReportWidget
+  | LegacyTextReportWidget
+  | BarReportWidget
+  | SpaceReportWidget
 
 export type NewReportWidget =
   | Omit<KpiReportWidget, "id">
   | Omit<TableReportWidget, "id">
-  | Omit<TextReportWidget, "id">
+  | Omit<MarkdownReportWidget, "id">
   | Omit<BarReportWidget, "id">
+  | Omit<SpaceReportWidget, "id">
 
 export type Report = {
   id: string
@@ -109,6 +134,25 @@ export type Report = {
 export type ReportingWorkspaceSnapshot = {
   report: Report | null
   cacheStatus: QueryCacheStatus
+}
+
+export type SavedQueryResult = {
+  queryId: QueryId
+  result: CachedQueryResult
+}
+
+export type SavedReport = {
+  report: Report
+  queryResults: readonly SavedQueryResult[]
+  savedAt: string
+}
+
+export type SavedReportSummary = Pick<
+  Report,
+  "id" | "title" | "createdAt" | "updatedAt"
+> & {
+  widgetCount: number
+  savedAt: string
 }
 
 export type ReportErrorCategory =

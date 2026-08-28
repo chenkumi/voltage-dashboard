@@ -21,6 +21,8 @@ const reportPeriodSchema = schema(
 const dataWidgetFields = {
   title: { type: "string", maxLength: 120 },
   queryId: { type: "string", description: "A queryId from this workspace." },
+  xSpace: { type: "integer", minimum: 1, maximum: 6 },
+  ySpace: { type: "integer", minimum: 1 },
 }
 
 const reportWidgetSchema = {
@@ -49,14 +51,21 @@ const reportWidgetSchema = {
     ),
     schema(
       {
-        type: { type: "string", const: "text" },
+        type: { type: "string", const: "markdown" },
         title: { type: "string", maxLength: 120 },
-        markdown: { type: "string", maxLength: 4_000 },
+        markdown: {
+          type: "string",
+          maxLength: 4_000,
+          description:
+            "Evidence-based Markdown. Use ordinary business formats such as $49,722.51, 12 items, YYYY-MM-DD, and IANA time zones; do not use unformatted 7+ digit sequences. Mermaid fenced blocks are supported. Do not include personal contact, account, payment data, links, HTML, JavaScript, or other code fences.",
+        },
         evidenceQueryIds: {
           type: "array",
           maxItems: 16,
           items: { type: "string" },
         },
+        xSpace: dataWidgetFields.xSpace,
+        ySpace: dataWidgetFields.ySpace,
       },
       ["type", "title", "markdown", "evidenceQueryIds"]
     ),
@@ -69,6 +78,14 @@ const reportWidgetSchema = {
       },
       ["type", "title", "queryId", "categoryColumn", "valueColumn"]
     ),
+    schema(
+      {
+        type: { type: "string", const: "space" },
+        xSpace: dataWidgetFields.xSpace,
+        ySpace: dataWidgetFields.ySpace,
+      },
+      ["type"]
+    ),
   ],
 }
 
@@ -79,7 +96,9 @@ const reversibleAnnotations = {
   completionVerifier: "get_report_state",
 }
 
-const withCompletionVerifier = <T extends Record<string, unknown>>(value: T) => ({
+const withCompletionVerifier = <T extends Record<string, unknown>>(
+  value: T
+) => ({
   ...value,
   [COMPLETION_VERIFIER_SCHEMA_KEY]: "get_report_state",
 })
@@ -88,14 +107,14 @@ export const REPORT_AUTHORING_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "create_report",
     description:
-      "Create or replace the single editable report in this Admin workspace. Use verified period metadata and then add widgets that reference queryIds from this workspace.",
+      "Create or replace the single editable report in this Admin workspace. Use verified period metadata and then add widgets that reference queryIds from this workspace. Titles and audiences may use business terms and YYYY-MM-DD dates; never include personal contact, account, or payment data.",
     inputSchema: withCompletionVerifier(
       schema(
-      {
-        title: { type: "string", maxLength: 120 },
-        audience: { type: "string", maxLength: 120 },
-        period: reportPeriodSchema,
-      },
+        {
+          title: { type: "string", maxLength: 120 },
+          audience: { type: "string", maxLength: 120 },
+          period: reportPeriodSchema,
+        },
         ["title"]
       )
     ),
@@ -111,7 +130,7 @@ export const REPORT_AUTHORING_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "add_report_widget",
     description:
-      "Add one validated KPI, table, safe Markdown text, or bar widget to the active report. The root input must contain only widget; put type, title, queryId, columns, and other widget fields inside widget. Do not include reportId.",
+      "Add one validated KPI, table, Markdown, bar, or space widget to the active report. Every widget uses xSpace (1 to 6 columns) and ySpace (a positive row span); a space widget only reserves layout area and has no data fields. Markdown may use ordinary business formats such as $49,722.51, 12 items, YYYY-MM-DD, and IANA time zones, plus standard Markdown and Mermaid fences. Never include personal contact, account, payment data, links, HTML, or JavaScript. The root input must contain only widget; put type, title, queryId, columns, layout, and other widget fields inside widget. Do not include reportId.",
     inputSchema: withCompletionVerifier({
       ...schema({ widget: reportWidgetSchema }, ["widget"]),
       description:
@@ -125,10 +144,10 @@ export const REPORT_AUTHORING_TOOLS: WebMcpRegisteredTool[] = [
       "Replace one existing report widget with a newly validated declarative widget while preserving its ID.",
     inputSchema: withCompletionVerifier(
       schema(
-      {
-        widgetId: { type: "string" },
-        widget: reportWidgetSchema,
-      },
+        {
+          widgetId: { type: "string" },
+          widget: reportWidgetSchema,
+        },
         ["widgetId", "widget"]
       )
     ),
@@ -140,10 +159,10 @@ export const REPORT_AUTHORING_TOOLS: WebMcpRegisteredTool[] = [
       "Move an existing widget to a zero-based position in the active report.",
     inputSchema: withCompletionVerifier(
       schema(
-      {
-        widgetId: { type: "string" },
-        toIndex: { type: "integer", minimum: 0 },
-      },
+        {
+          widgetId: { type: "string" },
+          toIndex: { type: "integer", minimum: 0 },
+        },
         ["widgetId", "toIndex"]
       )
     ),
@@ -208,7 +227,10 @@ const assertKeys = (
 
 const EMAIL_VALUE_PATTERN = /[^\s@]+@[^\s@]+\.[^\s@]+/
 const PAYMENT_CARD_VALUE_PATTERN = /(?:\d[ -]?){13,19}/
-const PHONE_VALUE_PATTERN = /\+?[\d ()-]{8,}/g
+// A report summary can legitimately contain short, space-separated business
+// metrics (for example, "12 - 3 - 4"). Require seven actual digits before
+// treating text as a phone number, instead of matching punctuation alone.
+const PHONE_VALUE_PATTERN = /\+?(?:\d[\s().-]*){7,15}/g
 const ISO_DATE_IN_TEXT_PATTERN = /\b\d{4}-\d{2}-\d{2}\b/g
 const COLON_LABELED_VALUE_PATTERN =
   /\b(?:customer\s*(?:id|name)|first\s*name|last\s*name|full\s*name|name|e-?mail|address|phone|account(?:\s*id)?|card\s*number)\b\s*[:：#]\s*([^\n;；]+)/gi
@@ -258,8 +280,12 @@ const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
 const HTML_PATTERN = /[<>]/
 const MARKDOWN_LINK_PATTERN =
   /!?\[[^\]]*\]\([^)]*\)|https?:\/\/|mailto:|\bwww\./i
+const MARKDOWN_REFERENCE_LINK_PATTERN = /!?\[[^\]]+\]\s*\[[^\]]*\]/
 const UNSAFE_MARKDOWN_SYNTAX_PATTERN =
-  /(?:\[|\])|```|~~~|&(?:#[0-9]+|#x[0-9a-f]+|[a-z][a-z0-9]+);|\b(?:html|script|javascript|mermaid)\b/i
+  /~~~|&(?:#[0-9]+|#x[0-9a-f]+|[a-z][a-z0-9]+);|\b(?:html|script|javascript)\b/i
+const MARKDOWN_WRAPPER_PATTERN =
+  /^\s*<markdown>\s*([\s\S]*?)\s*<\/markdown>\s*$/i
+const MARKDOWN_FENCE_PATTERN = /```([^\n`]*)\n([\s\S]*?)```/g
 
 const containsRestrictedDataValue = (value: string) => {
   const valueWithoutDates = value.replaceAll(ISO_DATE_IN_TEXT_PATTERN, "")
@@ -274,14 +300,18 @@ const containsRestrictedDataValue = (value: string) => {
 }
 
 const isSafeBusinessContext = (value: string) => {
-  const normalized = value.trim().replace(/[.!?。！？，,]+$/g, "").trim()
-  if (SAFE_CJK_BUSINESS_CONTEXTS.has(normalized.replaceAll(" ", ""))) return true
+  const normalized = value
+    .trim()
+    .replace(/[.!?。！？，,]+$/g, "")
+    .trim()
+  if (SAFE_CJK_BUSINESS_CONTEXTS.has(normalized.replaceAll(" ", "")))
+    return true
   const normalizedEnglish = normalized.toLowerCase().replace(/\s+/g, " ")
   const words = normalizedEnglish.match(/[a-z]+/g)
   return Boolean(
     words?.length &&
-      words.join(" ") === normalizedEnglish &&
-      words.every((word) => BUSINESS_CONTEXT_WORDS.has(word))
+    words.join(" ") === normalizedEnglish &&
+    words.every((word) => BUSINESS_CONTEXT_WORDS.has(word))
   )
 }
 
@@ -337,10 +367,31 @@ export const validateReportWidgetTitle = (value: unknown) =>
   assertDisplayText(value, "Widget title", 120)
 
 const assertMarkdown = (value: unknown) => {
-  const markdown = assertDisplayText(value, "Widget markdown", 4_000)
+  const wrapped =
+    typeof value === "string"
+      ? value.match(MARKDOWN_WRAPPER_PATTERN)?.[1]
+      : undefined
+  const markdownSource = wrapped === undefined ? value : wrapped
+  if (
+    typeof markdownSource !== "string" ||
+    markdownSource.trim().length === 0 ||
+    markdownSource.length > 4_000 ||
+    containsUnsupportedControl(markdownSource) ||
+    markdownSource.includes("<")
+  )
+    return throwArgumentError("Widget markdown contains unsupported content.")
+  const markdown = markdownSource.trim()
+  if (containsRestrictedDataValue(markdown))
+    return throwArgumentError("Widget markdown contains restricted data.")
+  const invalidFence = [...markdown.matchAll(MARKDOWN_FENCE_PATTERN)].some(
+    (match) => match[1].trim().toLowerCase() !== "mermaid"
+  )
   if (
     MARKDOWN_LINK_PATTERN.test(markdown) ||
-    UNSAFE_MARKDOWN_SYNTAX_PATTERN.test(markdown)
+    MARKDOWN_REFERENCE_LINK_PATTERN.test(markdown) ||
+    UNSAFE_MARKDOWN_SYNTAX_PATTERN.test(markdown) ||
+    invalidFence ||
+    markdown.replaceAll(MARKDOWN_FENCE_PATTERN, "").includes("```")
   )
     throwArgumentError("Widget markdown contains unsupported content.")
   return markdown
@@ -367,6 +418,28 @@ const assertColumnName = (value: unknown) => {
   if (typeof value !== "string" || value.length === 0 || value.length > 128)
     return throwArgumentError("Widget column name is invalid.")
   return value
+}
+
+const assertWidgetLayout = (input: JsonObject, type: unknown) => {
+  const defaults =
+    type === "kpi"
+      ? { xSpace: 2, ySpace: 1 }
+      : type === "markdown"
+        ? { xSpace: 6, ySpace: 2 }
+        : { xSpace: 6, ySpace: 3 }
+  const xSpace = input.xSpace ?? defaults.xSpace
+  const ySpace = input.ySpace ?? defaults.ySpace
+  if (
+    !Number.isSafeInteger(xSpace) ||
+    (xSpace as number) < 1 ||
+    (xSpace as number) > 6 ||
+    !Number.isSafeInteger(ySpace) ||
+    (ySpace as number) < 1
+  )
+    return throwArgumentError(
+      "Widget layout must use 1 to 6 columns and a positive row span."
+    )
+  return { xSpace: xSpace as number, ySpace: ySpace as number }
 }
 
 const assertColumn = (
@@ -417,12 +490,19 @@ const parseWidget = (
 ): NewReportWidget => {
   const input = assertObject(value, "Widget")
   const type = input.type
+  const layout = assertWidgetLayout(input, type)
+
+  if (type === "space") {
+    assertKeys(input, ["type", "xSpace", "ySpace"], "Space widget")
+    return { type, ...layout }
+  }
+
   const title = validateReportWidgetTitle(input.title)
 
-  if (type === "text") {
+  if (type === "markdown") {
     assertKeys(
       input,
-      ["type", "title", "markdown", "evidenceQueryIds"],
+      ["type", "title", "markdown", "evidenceQueryIds", "xSpace", "ySpace"],
       "Text widget"
     )
     const evidenceQueryIds = assertStringArray(
@@ -434,6 +514,7 @@ const parseWidget = (
     return {
       type,
       title,
+      ...layout,
       markdown: assertMarkdown(input.markdown),
       evidenceQueryIds,
     }
@@ -444,7 +525,15 @@ const parseWidget = (
   if (type === "kpi") {
     assertKeys(
       input,
-      ["type", "title", "queryId", "valueColumn", "comparisonColumn"],
+      [
+        "type",
+        "title",
+        "queryId",
+        "valueColumn",
+        "comparisonColumn",
+        "xSpace",
+        "ySpace",
+      ],
       "KPI widget"
     )
     const valueColumn = assertColumnName(input.valueColumn)
@@ -454,27 +543,39 @@ const parseWidget = (
         ? undefined
         : assertColumnName(input.comparisonColumn)
     if (comparisonColumn) assertColumn(result, comparisonColumn, true)
-    return { type, title, queryId, valueColumn, comparisonColumn }
+    return { type, title, queryId, valueColumn, comparisonColumn, ...layout }
   }
   if (type === "table") {
-    assertKeys(input, ["type", "title", "queryId", "columns"], "Table widget")
+    assertKeys(
+      input,
+      ["type", "title", "queryId", "columns", "xSpace", "ySpace"],
+      "Table widget"
+    )
     const columns = assertStringArray(input.columns, "Table columns", 12)
     if (columns.length === 0)
       throwArgumentError("Table columns must not be empty.")
     for (const column of columns) assertColumn(result, column)
-    return { type, title, queryId, columns }
+    return { type, title, queryId, columns, ...layout }
   }
   if (type === "bar") {
     assertKeys(
       input,
-      ["type", "title", "queryId", "categoryColumn", "valueColumn"],
+      [
+        "type",
+        "title",
+        "queryId",
+        "categoryColumn",
+        "valueColumn",
+        "xSpace",
+        "ySpace",
+      ],
       "Bar widget"
     )
     const categoryColumn = assertColumnName(input.categoryColumn)
     const valueColumn = assertColumnName(input.valueColumn)
     assertColumn(result, categoryColumn)
     assertColumn(result, valueColumn, true)
-    return { type, title, queryId, categoryColumn, valueColumn }
+    return { type, title, queryId, categoryColumn, valueColumn, ...layout }
   }
   return throwArgumentError("Widget type is not supported.")
 }

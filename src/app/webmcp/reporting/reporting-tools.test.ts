@@ -28,6 +28,11 @@ describe("execute_readonly_sql WebMCP tool", () => {
     })
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("SQLite")
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("agent_products")
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("net_revenue_usd")
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("stock_quantity")
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain(
+      "join agent_inventory to agent_products"
+    )
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("100 rows")
     expect(EXECUTE_READONLY_SQL_TOOL.inputSchema).toEqual(
       expect.objectContaining({
@@ -51,6 +56,67 @@ describe("execute_readonly_sql WebMCP tool", () => {
       sql: "SELECT category FROM agent_products WHERE price_usd > ?",
       parameters: [100],
     })
+
+    await expect(
+      executeReadonlySqlTool(runtime, {
+        sql: "SELECT title FROM agent_inventory WHERE stock <= ?",
+        parameters: ["12"],
+      })
+    ).resolves.toEqual(result)
+    expect(execute).toHaveBeenLastCalledWith({
+      sql: "SELECT title FROM agent_inventory WHERE stock <= ?",
+      parameters: ["12"],
+    })
+  })
+
+  it("ignores safe surplus parameters when SQL has no placeholder", async () => {
+    const execute = vi.fn(async () => result)
+
+    await expect(
+      executeReadonlySqlTool(
+        { execute },
+        {
+          sql: "SELECT category FROM agent_products",
+          parameters: ["2026-08-21", "2026-08-27"],
+        }
+      )
+    ).resolves.toEqual(result)
+    expect(execute).toHaveBeenCalledWith({
+      sql: "SELECT category FROM agent_products",
+      parameters: undefined,
+    })
+  })
+
+  it("does not treat a question mark in a comment as a placeholder", async () => {
+    const execute = vi.fn(async () => result)
+
+    await executeReadonlySqlTool(
+      { execute },
+      {
+        sql: "SELECT category FROM agent_products -- why?",
+        parameters: ["2026-08-21"],
+      }
+    )
+
+    expect(execute).toHaveBeenCalledWith({
+      sql: "SELECT category FROM agent_products -- why?",
+      parameters: undefined,
+    })
+  })
+
+  it("still rejects sensitive surplus parameters", async () => {
+    const execute = vi.fn(async () => result)
+
+    await expect(
+      executeReadonlySqlTool(
+        { execute },
+        {
+          sql: "SELECT category FROM agent_products",
+          parameters: ["private@example.com"],
+        }
+      )
+    ).rejects.toMatchObject({ category: "SQL_SENSITIVE_VALUE_ERROR" })
+    expect(execute).not.toHaveBeenCalled()
   })
 
   it.each([
@@ -121,6 +187,16 @@ describe("execute_readonly_sql WebMCP tool", () => {
       { sql: "SELECT ? AS category", parameters: [912345678] },
       "SQL_IDENTIFIER_ERROR",
       "suspicious numeric identifier",
+    ],
+    [
+      { sql: "SELECT ? AS category", parameters: ["1234567"] },
+      "SQL_LITERAL_ERROR",
+      "curated reporting data",
+    ],
+    [
+      { sql: "SELECT ? AS category", parameters: ["1234567.123456"] },
+      "SQL_LITERAL_ERROR",
+      "curated reporting data",
     ],
   ])(
     "classifies restricted SQL input as %s",
@@ -638,6 +714,37 @@ describe("ReportingRuntimeController", () => {
     await controller.prepare()
     expect(controller.getReportSnapshot()).toBeNull()
     expect(listener.mock.calls.length).toBeGreaterThanOrEqual(6)
+  })
+
+  it("snapshots and restores a report with the evidence needed by its widgets", async () => {
+    const runtime = {
+      initialize: vi.fn(async () => undefined),
+      execute: vi.fn(async () => result),
+      dispose: vi.fn(async () => undefined),
+    }
+    const controller = new ReportingRuntimeController(() => runtime)
+    await controller.prepare()
+    controller.executeReportTool("create_report", { title: "Operations" })
+    const query = await controller.execute({ sql: "SELECT 1" })
+    controller.executeReportTool("add_report_widget", {
+      widget: {
+        type: "markdown",
+        title: "Evidence",
+        markdown: "Complete data.",
+        evidenceQueryIds: [query.queryId],
+      },
+    })
+    const snapshot = controller.createSavedReportSnapshot()
+    if (!snapshot) throw new Error("Expected a saved report snapshot.")
+
+    controller.createNewReport()
+    controller.loadSavedReport(snapshot)
+
+    expect(controller.getReportSnapshot()).toMatchObject({
+      id: snapshot.report.id,
+      widgets: [{ type: "markdown", evidenceQueryIds: [query.queryId] }],
+    })
+    expect(controller.getQueryResult(query.queryId).rows).toEqual(result.rows)
   })
 
   it("publishes cache additions and rejected limits through one stable workspace snapshot", async () => {

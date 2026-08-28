@@ -47,6 +47,8 @@ const skills = [
 
 低庫存門檻不是資料本身的固定業務規則；分析時要明確揭露採用的門檻。\`stock = 0\` 應與低庫存分開呈現。若要搭配近期銷量，先將 \`agent_sales_daily\` 聚合成每個 \`product_id\` 一列，再與 inventory 一對一連接；禁止把庫存快照直接連到多日銷售明細後加總 stock，避免多對多或重複計算。
 
+需要商品標題或分類時，欄位必須從 \`agent_products\` 取得，不可直接從 \`agent_inventory\` 選取。低庫存查詢可使用：\`SELECT p.title, p.category, i.stock, i.updated_at FROM agent_inventory AS i JOIN agent_products AS p ON p.product_id = i.product_id WHERE i.stock <= ? ORDER BY i.stock ASC, p.title ASC\`，門檻以數字 parameter 傳入。
+
 庫存資料不含供應商聯絡方式、客戶個資、帳戶識別或付款資料；不得推導或要求這些資料。`,
   },
   {
@@ -60,6 +62,8 @@ const skills = [
 SQL 負責探索與聚合資料；本 skill 負責報表品質與語意。只有在目前頁面實際 discovery 到報表建立或編輯 tools 時才能使用它們；未 discovery 到時，不得宣稱已建立 Report Canvas、已保存 query result 或已修改報表。
 
 execute_readonly_sql 與 create_report 沒有固定先後，兩種順序都有效；但 add_report_widget 必須在 active report 存在後，使用同一 workspace 中成功 SQL 回傳的有效 queryId。每次報表 mutation 成功後都要再呼叫 discovery 到的唯讀 report-state verifier；只有最新 verifier 結果包含預期 report 與 widgets 時才能回報完成。
+
+建立前可用 \`SELECT dataset_name, updated_at, time_zone, period_start, period_end, completeness FROM agent_dataset_status ORDER BY dataset_name\` 確認狀態。建立 widget 時必須依 type 使用正確欄位：KPI 用 \`{type,title,queryId,valueColumn}\`；bar 用 \`{type,title,queryId,categoryColumn,valueColumn}\`；table 用 \`{type,title,queryId,columns}\`；markdown 用 \`{type:"markdown",title,markdown,evidenceQueryIds}\`；space 用 \`{type:"space",xSpace,ySpace}\` 且不含資料或文字。markdown 字串可以可選的 \`<markdown>...</markdown>\` 包裝，並支援標準 Markdown 與 \`mermaid\` fenced block；禁止連結、HTML、JavaScript 及其他程式碼 fenced block。所有 widget 均可選填 \`xSpace\`（1 到 6 欄）及 \`ySpace\`（正整數列高，沒有產品上限）；沒有填時會使用各類型的預設尺寸。這些欄位都放在 add_report_widget 的 \`widget\` 物件內。不得把 table 的 \`columns\` 用於 bar，也不得在 create_report 成功前新增 widget。
 
 任何 tool error 都代表該動作未完成。若部分 widgets 成功、部分失敗，或 verifier 失敗／缺少，不得宣稱整份報表已建立；最終回覆必須明確標示 PARTIALLY_COMPLETED 或 FAILED，列出已確認成果與尚未確認項目，不得把「將建立」寫成「已建立」。
 
