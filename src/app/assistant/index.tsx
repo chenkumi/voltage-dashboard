@@ -79,7 +79,7 @@ const ChatWorkspace = memo(function ChatWorkspace({
   target: ThreadSiteTarget
   session: WebMcpSession
   runtime: ChatStreamRuntime
-  onSiteChange: (profile: SiteProfile) => void
+  onSiteChange: (site: WebMcpSite) => void
 }) {
   const status = useSyncExternalStore(
     runtime.subscribeStatus,
@@ -111,7 +111,7 @@ const ChatSession = memo(
     site: WebMcpSite
     target: ThreadSiteTarget
     profile: SiteProfile
-    onSiteChange: (profile: SiteProfile) => void
+    onSiteChange: (site: WebMcpSite) => Promise<void>
   }) {
     const { theme } = useTheme()
     const session = useMemo(() => new WebMcpSession(), [])
@@ -131,10 +131,7 @@ const ChatSession = memo(
         if (nextSite.id === site.id) return
         runtime.cancel()
         session.dispose()
-        const nextProfile = await getSiteProfileById(nextSite.id)
-        if (!nextProfile) return
-        await createOrOpenSiteThread(nextProfile)
-        onSiteChange(nextProfile)
+        await onSiteChange(nextSite)
       },
       [onSiteChange, runtime, session, site.id]
     )
@@ -199,7 +196,9 @@ export const Assistant = () => {
     () => (profile ? getSiteThread(profile.siteId) : undefined),
     [profile?.siteId]
   )
-  const creationKeyRef = useRef<string | null>(null)
+  const creatingSiteIdsRef = useRef(new Set<string>())
+  const siteSwitchRequestRef = useRef(0)
+  const siteSwitchChainRef = useRef(Promise.resolve())
 
   const site = useMemo(
     () =>
@@ -212,20 +211,29 @@ export const Assistant = () => {
   useEffect(() => {
     if (!profile || !site || !siteThread) return
 
-    const creationKey = `${profile.siteId}:${siteThread.lastThread?.threadId ?? "new"}`
-    if (creationKeyRef.current === creationKey) return
-    creationKeyRef.current = creationKey
-
     if (siteThread.thread) return
+    if (creatingSiteIdsRef.current.has(profile.siteId)) return
 
-    if (siteThread.lastThread) {
-      void clearStaleSiteLastThread(profile.siteId, siteThread.lastThread)
-    }
-    void createOrOpenSiteThread(profile)
+    creatingSiteIdsRef.current.add(profile.siteId)
+    void createOrOpenSiteThread(profile).finally(() => {
+      creatingSiteIdsRef.current.delete(profile.siteId)
+    })
   }, [profile, site, siteThread])
 
-  const handleSiteChange = useCallback((nextProfile: SiteProfile) => {
-    setActiveSiteUrl(nextProfile.url)
+  const handleSiteChange = useCallback((nextSite: WebMcpSite) => {
+    const requestId = ++siteSwitchRequestRef.current
+    const switchTask = async () => {
+      const nextProfile = await getSiteProfileById(nextSite.id)
+      if (!nextProfile || requestId !== siteSwitchRequestRef.current) return
+
+      await createOrOpenSiteThread(nextProfile)
+      if (requestId !== siteSwitchRequestRef.current) return
+      setActiveSiteUrl(nextProfile.url)
+    }
+
+    const nextTask = siteSwitchChainRef.current.then(switchTask, switchTask)
+    siteSwitchChainRef.current = nextTask
+    return nextTask
   }, [])
 
   if (!profiles || !profile || !site || !siteThread?.thread) return <Loading />

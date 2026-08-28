@@ -157,6 +157,21 @@ describe("chat persistence", () => {
     })
   })
 
+  it("does not let an old thread reactivate after a newer thread is active", async () => {
+    await createAndActivateThread(thread("old-thread", "market", "/market"))
+    await createAndActivateThread(thread("new-thread", "market", "/market"))
+
+    await saveUserMessage("old-thread", {
+      id: "late-user-message",
+      role: "user",
+      parts: [{ type: "text", text: "Late completion" }],
+    })
+
+    expect(await chatDb.siteLastThreads.get("market")).toMatchObject({
+      threadId: "new-thread",
+    })
+  })
+
   it("uses the profile URL as the new thread target snapshot", async () => {
     await initializeSiteProfiles()
     const profile = await getSiteProfileByUrl("/market")

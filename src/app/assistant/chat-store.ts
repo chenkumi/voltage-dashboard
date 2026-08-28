@@ -96,11 +96,14 @@ const persistMessage = async (threadId: string, message: UIMessage) => {
 
     await chatDb.messages.put(record)
     await chatDb.threads.update(threadId, { updatedAt: timestamp })
-    await chatDb.siteLastThreads.put({
-      siteId: thread.siteId,
-      threadId,
-      updatedAt: timestamp,
-    })
+    const activeThread = await chatDb.siteLastThreads.get(thread.siteId)
+    if (!activeThread || activeThread.threadId === threadId) {
+      await chatDb.siteLastThreads.put({
+        siteId: thread.siteId,
+        threadId,
+        updatedAt: timestamp,
+      })
+    }
   })
 }
 
