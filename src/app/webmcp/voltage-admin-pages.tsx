@@ -10,6 +10,7 @@ import {
   voltageAdminOrders,
 } from "./voltage-admin-data"
 import { useVoltageAdmin, voltageAdminPath } from "./voltage-admin"
+import { GridBlock, PageLayout } from "./voltage-admin-page-layout"
 import { ReportCanvas } from "./reporting/report-canvas"
 
 const formatMoney = (value: number) =>
@@ -25,51 +26,6 @@ const statusClass = (status: string) => {
   if (status === "Shipped") return "bg-[#e4eaed] text-[#4f6975]"
   return "bg-[#ece8d9] text-[#6e6746]"
 }
-
-const SectionTitle = ({
-  eyebrow,
-  title,
-  detail,
-}: {
-  eyebrow: string
-  title: string
-  detail: string
-}) => (
-  <div className="voltage-admin-title">
-    <p>{eyebrow}</p>
-    <h1>{title}</h1>
-    <span>{detail}</span>
-  </div>
-)
-
-const PageLayout = ({
-  ariaLabel,
-  eyebrow,
-  title,
-  detail,
-  children,
-}: {
-  ariaLabel: string
-  eyebrow: string
-  title: string
-  detail: string
-  children: ReactNode
-}) => (
-  <section className="grid gap-2 px-1.5" aria-label={ariaLabel}>
-    <div className="p-1">
-      <SectionTitle eyebrow={eyebrow} title={title} detail={detail} />
-    </div>
-    <div className="grid grid-cols-12 gap-2">{children}</div>
-  </section>
-)
-
-const GridBlock = ({
-  children,
-  className = "col-span-12",
-}: {
-  children: ReactNode
-  className?: string
-}) => <div className={`p-1 ${className}`}>{children}</div>
 
 const DataTable = ({ children }: { children: ReactNode }) => (
   <div className="voltage-admin-data-table overflow-x-auto border border-[#cfd3cb] bg-[#f5f6f1]">

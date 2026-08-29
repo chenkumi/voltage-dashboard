@@ -4,8 +4,11 @@ import {
   ClipboardList,
   FileChartColumn,
   LayoutDashboard,
+  ListChecks,
+  PackagePlus,
   PackageSearch,
   Sparkles,
+  TriangleAlert,
   Users,
 } from "lucide-react"
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
@@ -27,13 +30,29 @@ const navigation: ReadonlyArray<
   ["customers", "Customers", Users],
   ["inventory", "Inventory", Boxes],
   ["reports", "Reports", FileChartColumn],
+  ["catalog-intake", "Catalog Intake", PackagePlus],
+  ["operations-cases", "Operations Cases", TriangleAlert],
+  ["approvals", "Approval Inbox", ListChecks],
 ]
 
 export const MainLayout = () => {
   const navigate = useNavigate()
   const location = useLocation()
-  const { dashboard } = useVoltageAdmin()
+  const { dashboard, workflow } = useVoltageAdmin()
   const activeView = voltageAdminViewFromPath(location.pathname)
+  const pendingCounts: Partial<Record<VoltageAdminView, number>> = {
+    inventory: dashboard.lowStockCount,
+    "catalog-intake": workflow.candidates.filter((candidate) => {
+      const draft = workflow.productDrafts.find(
+        ({ candidateId }) => candidateId === candidate.id
+      )
+      return !draft || draft.status === "draft"
+    }).length,
+    "operations-cases": workflow.cases.filter(({ status }) => status === "open")
+      .length,
+    approvals: workflow.reviews.filter(({ state }) => state === "pending")
+      .length,
+  }
 
   return (
     <main className="voltage-admin h-full overflow-hidden px-4 sm:px-6">
@@ -59,7 +78,7 @@ export const MainLayout = () => {
 
         <div className="grid min-h-0 flex-1 gap-6 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
           <nav
-            className="voltage-admin-nav min-h-0 pb-4 pt-4 sm:pb-6 sm:pt-6"
+            className="voltage-admin-nav min-h-0 pt-4 pb-4 sm:pt-6 sm:pb-6"
             aria-label="Voltage Dashboard navigation"
           >
             <p>Workspace</p>
@@ -73,8 +92,8 @@ export const MainLayout = () => {
                 >
                   <Icon className="size-4" />
                   {label}
-                  {target === "inventory" && dashboard.lowStockCount > 0 ? (
-                    <span>{dashboard.lowStockCount}</span>
+                  {(pendingCounts[target] ?? 0) > 0 ? (
+                    <span>{pendingCounts[target]}</span>
                   ) : null}
                 </button>
               ))}
@@ -87,7 +106,7 @@ export const MainLayout = () => {
             </aside>
           </nav>
 
-          <div className="voltage-admin-outlet min-h-0 min-w-0 overflow-y-auto overscroll-contain pb-4 pt-4 sm:pb-6 sm:pt-6">
+          <div className="voltage-admin-outlet min-h-0 min-w-0 overflow-y-auto overscroll-contain pt-4 pb-4 sm:pt-6 sm:pb-6">
             <Outlet />
           </div>
         </div>

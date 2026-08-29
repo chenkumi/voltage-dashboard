@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type Dispatch,
   type SetStateAction,
 } from "react"
@@ -43,9 +44,19 @@ import {
   isReportAuthoringTool,
   REPORT_AUTHORING_TOOLS,
 } from "./reporting/report-tools"
+import { OperationsController } from "./operations/operations-controller"
+import type { WorkflowSnapshot } from "./operations/types"
 
 export type VoltageAdminView =
-  "dashboard" | "products" | "orders" | "customers" | "inventory" | "reports"
+  | "dashboard"
+  | "products"
+  | "orders"
+  | "customers"
+  | "inventory"
+  | "reports"
+  | "catalog-intake"
+  | "operations-cases"
+  | "approvals"
 
 const schema = (
   properties: Record<string, unknown>,
@@ -70,7 +81,10 @@ export const isVoltageAdminView = (value: unknown): value is VoltageAdminView =>
   value === "orders" ||
   value === "customers" ||
   value === "inventory" ||
-  value === "reports"
+  value === "reports" ||
+  value === "catalog-intake" ||
+  value === "operations-cases" ||
+  value === "approvals"
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const voltageAdminPath = (view: VoltageAdminView) => `/${view}`
@@ -174,7 +188,7 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "open_voltage_admin_section",
     description:
-      "Purpose: open an admin section. Call when the user wants Dashboard, Products, Orders, Customers, Inventory, or Reports. Examples: ‘Open product management’, ‘Take me to inventory’, ‘View reports’, ‘Go to orders’. Do not call to create, confirm, or cancel orders.",
+      "Purpose: open a Dashboard section, including catalog intake, operations cases, approvals, inventory, or reports. Examples: ‘Open catalog intake’, ‘Take me to operations cases’, ‘View approvals’, ‘Go to reports’. Do not call to perform a final action.",
     inputSchema: schema(
       {
         section: {
@@ -186,6 +200,9 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
             "customers",
             "inventory",
             "reports",
+            "catalog-intake",
+            "operations-cases",
+            "approvals",
           ],
         },
       },
@@ -245,8 +262,10 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
 type VoltageAdminContextValue = {
   dashboard: ReturnType<typeof getVoltageAdminDashboard>
   inventory: VoltageAdminInventory
+  operationsController: OperationsController
   reportingController: ReportingRuntimeController
   setInventory: Dispatch<SetStateAction<VoltageAdminInventory>>
+  workflow: WorkflowSnapshot
 }
 
 const VoltageAdminContext = createContext<VoltageAdminContextValue | null>(null)
@@ -338,12 +357,18 @@ export const VoltageAdminProvider = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [reportingController] = useState(() => new ReportingRuntimeController())
+  const [operationsController] = useState(() => new OperationsController())
   const [inventory, setInventory] = useState<VoltageAdminInventory>(
     createVoltageAdminInventory
   )
   const dashboard = useMemo(
     () => getVoltageAdminDashboard(inventory),
     [inventory]
+  )
+  const workflow = useSyncExternalStore(
+    operationsController.subscribe,
+    operationsController.getSnapshot,
+    operationsController.getSnapshot
   )
   const sectionRef = useRef(voltageAdminViewFromPath(location.pathname))
 
@@ -354,8 +379,9 @@ export const VoltageAdminProvider = () => {
   useEffect(() => {
     return () => {
       void reportingController.dispose()
+      operationsController.dispose()
     }
-  }, [reportingController])
+  }, [operationsController, reportingController])
 
   const prepareReportingRuntime = useCallback(async () => {
     await reportingController.prepare()
@@ -473,8 +499,15 @@ export const VoltageAdminProvider = () => {
   useVoltageAdminWebMcpTools(executeTool, prepareReportingRuntime)
 
   const value = useMemo<VoltageAdminContextValue>(
-    () => ({ dashboard, inventory, reportingController, setInventory }),
-    [dashboard, inventory, reportingController]
+    () => ({
+      dashboard,
+      inventory,
+      operationsController,
+      reportingController,
+      setInventory,
+      workflow,
+    }),
+    [dashboard, inventory, operationsController, reportingController, workflow]
   )
 
   return (

@@ -1,6 +1,9 @@
 import { Navigate, Route, Routes } from "react-router-dom"
 import { MainLayout } from "@/app/webmcp/voltage-admin-layout"
 import { VoltageAdminProvider } from "@/app/webmcp/voltage-admin"
+import { ApprovalInboxPage } from "@/app/webmcp/operations/approval-inbox-page"
+import { CatalogIntakePage } from "@/app/webmcp/operations/catalog-intake-page"
+import { OperationsCasesPage } from "@/app/webmcp/operations/operations-cases-page"
 import {
   Customers,
   Dashboard,
@@ -22,6 +25,9 @@ export function App() {
           <Route path="customers" element={<Customers />} />
           <Route path="inventory" element={<Inventory />} />
           <Route path="reports" element={<Reports />} />
+          <Route path="catalog-intake" element={<CatalogIntakePage />} />
+          <Route path="operations-cases" element={<OperationsCasesPage />} />
+          <Route path="approvals" element={<ApprovalInboxPage />} />
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
