@@ -3,6 +3,7 @@ import {
   createInitialOperationsState,
   openCaseReview,
   openProductReview,
+  publishProduct,
   returnReview,
   saveCaseDraft,
   saveProductDraft,
@@ -45,7 +46,13 @@ export class OperationsController {
   private update(next: WorkflowSnapshot) {
     if (next === this.snapshot) return this.snapshot
     this.snapshot = freezeSnapshot(next)
-    this.listeners.forEach((listener) => listener())
+    this.listeners.forEach((listener) => {
+      try {
+        listener()
+      } catch {
+        // A broken subscriber must not roll back or mask a committed transition.
+      }
+    })
     return this.snapshot
   }
 
@@ -70,6 +77,10 @@ export class OperationsController {
 
   openCaseReview(caseId: string, actor: "agent" | "user" = "agent") {
     return this.update(openCaseReview(this.snapshot, caseId, actor, this.now()))
+  }
+
+  publishProduct(input: ProductDraftInput, actor: unknown) {
+    return this.update(publishProduct(this.snapshot, input, actor, this.now()))
   }
 
   returnReview(reviewId: string, actor: unknown) {

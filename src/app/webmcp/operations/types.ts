@@ -1,5 +1,14 @@
 export type SourceTrust = "verified" | "review_required"
 
+export const PRODUCT_CATEGORIES = [
+  "Kitchen > Coffee",
+  "Home > Lighting",
+  "Home > Storage",
+  "Electronics > Accessories",
+] as const
+
+export type ProductCategory = (typeof PRODUCT_CATEGORIES)[number]
+
 export type CatalogCandidate = {
   id: string
   sourceLabel: string
@@ -7,7 +16,7 @@ export type CatalogCandidate = {
   sourceTrust: SourceTrust
   sourceTitle: string
   sourceSummary: string
-  suggestedCategory: string
+  suggestedCategory: ProductCategory
   specifications: Record<string, string>
   missingFields: Array<"title" | "category" | "description" | "specifications">
 }
@@ -15,7 +24,7 @@ export type CatalogCandidate = {
 export type ProductDraft = {
   candidateId: string
   title: string
-  category: string
+  category: ProductCategory
   description: string
   specifications: Record<string, string>
   status: "draft" | "pending_review" | "published"

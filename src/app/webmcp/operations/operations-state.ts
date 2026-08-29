@@ -5,6 +5,7 @@ import {
   assertSafeTextList,
 } from "./operations-content-safety"
 import { catalogCandidates, operationsCases } from "./operations-data"
+import { PRODUCT_CATEGORIES } from "./types"
 import type {
   AuditEntry,
   CaseDraft,
@@ -157,7 +158,7 @@ export const saveProductDraft = (
   assertExactKeys(input, productInputKeys, "product draft")
   assertSafeShortText(input.candidateId, "candidateId")
   assertSafeShortText(input.title, "title")
-  assertSafeShortText(input.category, "category")
+  assertEnum(input.category, PRODUCT_CATEGORIES, "category")
   assertSafeOperationsText(input.description, "description")
   assertSafeSpecifications(input.specifications)
 
@@ -338,6 +339,22 @@ export const openCaseReview = (
       item.id === caseId ? { ...item, status: "pending_review" as const } : item
     ),
   }
+}
+
+export const publishProduct = (
+  state: WorkflowSnapshot,
+  input: unknown,
+  actor: unknown,
+  now: string
+): WorkflowSnapshot => {
+  assertUserActor(actor)
+  assertRecord(input, "product draft")
+  const candidateId = input.candidateId
+  assertSafeShortText(candidateId, "candidateId")
+
+  const saved = saveProductDraft(state, input, actor, now)
+  const pending = openProductReview(saved, candidateId, actor, now)
+  return completeReview(pending, `REV-${candidateId}`, actor, now)
 }
 
 export const returnReview = (

@@ -40,4 +40,13 @@ describe("operations content safety", () => {
       assertSafeSpecifications({ material: "Tritan", capacity: "300 ml" })
     ).not.toThrow()
   })
+
+  it("allows only visible specification fields and validates key-value pairs", () => {
+    expect(() => assertSafeSpecifications({ recipient: "John Smith" })).toThrow(
+      /unsupported field recipient/
+    )
+    expect(() =>
+      assertSafeSpecifications({ material: "recipient John Smith" })
+    ).toThrow(/personal name/)
+  })
 })

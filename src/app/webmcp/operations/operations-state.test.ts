@@ -45,7 +45,8 @@ describe("operations state", () => {
   })
 
   it.each([
-    [{ ...productDraft, category: "invalid", unexpected: true }],
+    [{ ...productDraft, category: "invalid" }],
+    [{ ...productDraft, unexpected: true }],
     [{ ...productDraft, description: "x".repeat(601) }],
     [{ ...productDraft, title: "Contact demo@example.com" }],
   ])("rejects invalid product draft input %#", (input) => {

@@ -1,6 +1,15 @@
 const MAX_TEXT_LENGTH = 600
 const MAX_SHORT_TEXT_LENGTH = 120
 
+export const ALLOWED_SPECIFICATION_KEYS = [
+  "material",
+  "capacity",
+  "origin",
+  "power",
+  "runtime",
+  "warranty",
+] as const
+
 const unsafePatterns: Array<{ label: string; pattern: RegExp }> = [
   {
     label: "personal name",
@@ -114,7 +123,13 @@ export const assertSafeSpecifications = (
     )
   }
   for (const [key, specification] of entries) {
+    if (!(ALLOWED_SPECIFICATION_KEYS as readonly string[]).includes(key)) {
+      throw new OperationsContentError(
+        `specifications contains unsupported field ${key}.`
+      )
+    }
     assertSafeShortText(key, "specification key")
     assertSafeShortText(specification, `specifications.${key}`)
+    assertSafeShortText(`${key}: ${specification}`, `specifications.${key}`)
   }
 }

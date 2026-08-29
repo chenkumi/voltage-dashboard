@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
 import { OperationsController } from "./operations-controller"
+import type { ProductDraftInput } from "./types"
 
 const productDraft = {
   candidateId: "CAT-1001",
@@ -7,7 +8,7 @@ const productDraft = {
   category: "Kitchen > Coffee",
   description: "A compact manual brewer for a clear and consistent cup.",
   specifications: { material: "Tritan" },
-}
+} satisfies ProductDraftInput
 
 describe("OperationsController", () => {
   it("updates the stable snapshot and notifies subscribers synchronously", async () => {
@@ -57,5 +58,44 @@ describe("OperationsController", () => {
     )
     expect(() => controller.getSnapshot().reviews.push()).toThrow()
     expect(controller.getSnapshot().reviews[0]?.state).toBe("pending")
+  })
+
+  it("publishes atomically and never exposes intermediate review state", () => {
+    const controller = new OperationsController()
+    const observedStatuses: string[] = []
+    controller.subscribe(() => {
+      observedStatuses.push(
+        controller.getSnapshot().productDrafts[0]?.status ?? "missing"
+      )
+    })
+
+    controller.publishProduct(productDraft, "user")
+
+    expect(observedStatuses).toEqual(["published"])
+    expect(controller.getSnapshot()).toMatchObject({
+      productDrafts: [{ status: "published" }],
+      reviews: [{ state: "completed" }],
+    })
+    expect(controller.getSnapshot().audit.map(({ action }) => action)).toEqual([
+      "product_draft_saved",
+      "review_opened",
+      "product_published",
+    ])
+  })
+
+  it("leaves the snapshot unchanged when atomic publication is rejected", () => {
+    const controller = new OperationsController()
+    const initial = controller.getSnapshot()
+    const listener = vi.fn()
+    controller.subscribe(listener)
+
+    expect(() =>
+      controller.publishProduct(
+        { ...productDraft, specifications: { recipient: "John Smith" } },
+        "user"
+      )
+    ).toThrow()
+    expect(controller.getSnapshot()).toBe(initial)
+    expect(listener).not.toHaveBeenCalled()
   })
 })
