@@ -23,6 +23,15 @@ export type VoltageAdminOrder = {
 
 export type VoltageAdminInventory = Record<number, number>
 
+export type VoltageAdminOrderSummary = Omit<VoltageAdminOrder, "customerId">
+
+export type VoltageAdminCustomerSegmentSummary = {
+  segment: VoltageAdminCustomer["segment"]
+  customerCount: number
+  orderCount: number
+  lifetimeValue: number
+}
+
 export const voltageAdminCustomers: VoltageAdminCustomer[] = [
   {
     id: "CUST-1042",
@@ -115,6 +124,49 @@ export const createVoltageAdminInventory = (): VoltageAdminInventory =>
   Object.fromEntries(
     voltageProducts.map((product) => [product.id, product.stock])
   )
+
+export const listSafeVoltageAdminOrders = (
+  status?: VoltageAdminOrder["status"]
+): VoltageAdminOrderSummary[] =>
+  voltageAdminOrders
+    .filter((order) => !status || order.status === status)
+    .map(({ id, status: orderStatus, itemCount, total, createdAt }) => ({
+      id,
+      status: orderStatus,
+      itemCount,
+      total,
+      createdAt,
+    }))
+
+export const listVoltageAdminCustomerSegments = (
+  segment?: VoltageAdminCustomer["segment"]
+): VoltageAdminCustomerSegmentSummary[] => {
+  const segments: VoltageAdminCustomer["segment"][] = [
+    "New",
+    "Returning",
+    "VIP",
+  ]
+
+  return segments
+    .filter((value) => !segment || value === segment)
+    .map((value) => {
+      const customers = voltageAdminCustomers.filter(
+        (customer) => customer.segment === value
+      )
+      return {
+        segment: value,
+        customerCount: customers.length,
+        orderCount: customers.reduce(
+          (total, customer) => total + customer.orders,
+          0
+        ),
+        lifetimeValue: customers.reduce(
+          (total, customer) => total + customer.lifetimeValue,
+          0
+        ),
+      }
+    })
+}
 
 export const getVoltageAdminDashboard = (inventory: VoltageAdminInventory) => {
   const availableProducts = voltageProducts.filter(

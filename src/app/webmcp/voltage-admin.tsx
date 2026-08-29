@@ -21,11 +21,11 @@ import { executeWebMcpToolWithDebugLog } from "./tool-debug"
 import {
   createVoltageAdminInventory,
   getVoltageAdminDashboard,
+  listSafeVoltageAdminOrders,
+  listVoltageAdminCustomerSegments,
   searchVoltageAdminProducts,
   setVoltageAdminInventory,
   toAdminProduct,
-  voltageAdminCustomers,
-  voltageAdminOrders,
   type VoltageAdminInventory,
 } from "./voltage-admin-data"
 import { voltageProductById } from "./voltage-product-data"
@@ -398,20 +398,23 @@ export const VoltageAdminProvider = () => {
         : { status: "ARGUMENT_ERROR", message: "Product not found." }
     }
     if (name === "list_voltage_admin_orders") {
-      const status = typeof args.status === "string" ? args.status : undefined
+      const status =
+        typeof args.status === "string"
+          ? (args.status as Parameters<typeof listSafeVoltageAdminOrders>[0])
+          : undefined
       return {
-        items: voltageAdminOrders.filter(
-          (order) => !status || order.status === status
-        ),
+        items: listSafeVoltageAdminOrders(status),
       }
     }
     if (name === "list_voltage_admin_customers") {
       const segment =
-        typeof args.segment === "string" ? args.segment : undefined
+        typeof args.segment === "string"
+          ? (args.segment as Parameters<
+              typeof listVoltageAdminCustomerSegments
+            >[0])
+          : undefined
       return {
-        items: voltageAdminCustomers.filter(
-          (customer) => !segment || customer.segment === segment
-        ),
+        items: listVoltageAdminCustomerSegments(segment),
       }
     }
     if (name === "list_voltage_admin_inventory") {
