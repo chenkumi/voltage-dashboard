@@ -16,6 +16,7 @@ import { GridBlock, PageLayout } from "../voltage-admin-page-layout"
 import { useVoltageAdmin } from "../voltage-admin"
 import { archiveProducts, restoreProduct } from "./product-actions"
 import { ConfirmationDialog } from "./confirmation-dialog"
+import { createProductContentModel } from "./product-content-model"
 import type { ProductRepository } from "./product-repository"
 import type { Product } from "./types"
 
@@ -110,6 +111,7 @@ export const ProductDetailContent = ({
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState("")
   const [archiveError, setArchiveError] = useState("")
+  const content = useMemo(() => createProductContentModel(product), [product])
 
   const archive = async () => {
     setBusy(true)
@@ -212,7 +214,7 @@ export const ProductDetailContent = ({
           <div>
             <span>{product.brand ?? t("Unbranded")}</span>
             <h2>{product.title}</h2>
-            <p>{product.shortAdCopy}</p>
+            <p>{content.shortAdCopy}</p>
           </div>
           <strong>{formatPrice(product, i18n.resolvedLanguage ?? "en")}</strong>
           <dl>
@@ -243,29 +245,27 @@ export const ProductDetailContent = ({
       <GridBlock className="col-span-12 lg:col-span-7">
         <section className="product-detail-panel product-detail-copy">
           <h2>{t("Product content")}</h2>
-          <p>{product.description}</p>
+          <p>{content.description}</p>
         </section>
       </GridBlock>
       <GridBlock className="col-span-12 lg:col-span-5">
         <section className="product-detail-panel">
           <h2>{t("Specifications")}</h2>
-          {product.specifications.length === 0 ? (
+          {content.specifications.length === 0 ? (
             <p className="product-detail-empty">
               {t("No specifications provided.")}
             </p>
           ) : (
             <dl className="product-specification-list">
-              {[...product.specifications]
-                .sort((left, right) => left.position - right.position)
-                .map((specification) => (
-                  <div key={specification.id}>
-                    <dt>{specification.title}</dt>
-                    <dd>
-                      {specification.value}
-                      {specification.unit ? ` ${specification.unit}` : ""}
-                    </dd>
-                  </div>
-                ))}
+              {content.specifications.map((specification) => (
+                <div key={specification.id}>
+                  <dt>{specification.title}</dt>
+                  <dd>
+                    {specification.value}
+                    {specification.unit ? ` ${specification.unit}` : ""}
+                  </dd>
+                </div>
+              ))}
             </dl>
           )}
         </section>
@@ -274,13 +274,13 @@ export const ProductDetailContent = ({
       <GridBlock className="col-span-12 lg:col-span-5">
         <section className="product-detail-panel product-detail-copy">
           <h2>{t("Short advertising copy")}</h2>
-          <p>{product.shortAdCopy}</p>
+          <p>{content.shortAdCopy}</p>
         </section>
       </GridBlock>
       <GridBlock className="col-span-12 lg:col-span-7">
         <section className="product-detail-panel product-detail-copy">
           <h2>{t("Long advertising copy")}</h2>
-          <p>{product.longAdCopy}</p>
+          <p>{content.longAdCopy}</p>
         </section>
       </GridBlock>
 
@@ -289,14 +289,14 @@ export const ProductDetailContent = ({
           <div className="product-detail-section-heading">
             <h2>{t("Reviews")}</h2>
             <span>
-              {t("{{count}} reviews", { count: product.reviews.length })}
+              {t("{{count}} reviews", { count: content.reviews.length })}
             </span>
           </div>
-          {product.reviews.length === 0 ? (
+          {content.reviews.length === 0 ? (
             <p className="product-detail-empty">{t("No reviews yet.")}</p>
           ) : (
             <div className="product-review-list">
-              {product.reviews.map((review, index) => (
+              {content.reviews.map((review, index) => (
                 <article key={`${review.date}-${index}`}>
                   <div>
                     <span

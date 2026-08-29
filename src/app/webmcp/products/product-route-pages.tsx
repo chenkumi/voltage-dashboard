@@ -1,47 +1,63 @@
 import { useTranslation } from "react-i18next"
-import { useParams } from "react-router-dom"
+import { useParams, useSearchParams } from "react-router-dom"
 import { GridBlock, PageLayout } from "../voltage-admin-page-layout"
+import { useVoltageAdmin } from "../voltage-admin"
+import { ProductEditor } from "./product-editor"
 
-const RouteWorkspace = ({ message }: { message: string }) => (
-  <GridBlock>
-    <div className="voltage-admin-panel product-route-workspace" role="status">
-      {message}
-    </div>
-  </GridBlock>
-)
+const ProductEditorUnavailable = ({ message }: { message: string }) => {
+  const { t } = useTranslation()
+  return (
+    <PageLayout ariaLabel={t("Products")} pageName="Products">
+      <GridBlock>
+        <div
+          className="voltage-admin-panel product-route-workspace"
+          role="status"
+        >
+          {message}
+        </div>
+      </GridBlock>
+    </PageLayout>
+  )
+}
 
 export const ProductAddRoute = () => {
   const { t } = useTranslation()
+  const { productRepository, products } = useVoltageAdmin()
+  const [searchParams] = useSearchParams()
+  const sourceId = Number(searchParams.get("copyFrom"))
+  const sourceProduct = Number.isInteger(sourceId)
+    ? products.products.find((item) => item.id === sourceId)
+    : undefined
+  if (products.state !== "ready") {
+    return <ProductEditorUnavailable message={t("Loading products…")} />
+  }
   return (
-    <PageLayout
-      ariaLabel={t("Add product")}
-      pageName="Add product"
-      breadcrumb={[
-        { label: "Products", to: "/products" },
-        { label: "Add product" },
-      ]}
-    >
-      <RouteWorkspace message={t("Preparing product editor…")} />
-    </PageLayout>
+    <ProductEditor
+      mode="create"
+      sourceProduct={sourceProduct}
+      repository={productRepository}
+    />
   )
 }
 
 export const ProductEditRoute = () => {
   const { t } = useTranslation()
   const { productId = "" } = useParams()
-  const productLabel = t("Product #{{id}}", { id: productId })
-  const editLabel = t("Edit product #{{id}}", { id: productId })
+  const { productRepository, products } = useVoltageAdmin()
+  const numericId = Number(productId)
+  if (products.state !== "ready") {
+    return <ProductEditorUnavailable message={t("Loading products…")} />
+  }
+  const product = products.products.find((item) => item.id === numericId)
+  if (!product) {
+    return <ProductEditorUnavailable message={t("Product not found.")} />
+  }
   return (
-    <PageLayout
-      ariaLabel={editLabel}
-      pageName={editLabel}
-      breadcrumb={[
-        { label: "Products", to: "/products" },
-        { label: productLabel, to: `/products/${productId}` },
-        { label: "Edit" },
-      ]}
-    >
-      <RouteWorkspace message={t("Preparing product editor…")} />
-    </PageLayout>
+    <ProductEditor
+      key={product.id}
+      mode="edit"
+      product={product}
+      repository={productRepository}
+    />
   )
 }
