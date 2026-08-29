@@ -1,4 +1,8 @@
 import { ulid } from "ulid"
+import {
+  DEFAULT_REPORTING_DATA,
+  type ReportingDataSnapshot,
+} from "./reporting-data"
 import type {
   ReportingWorkerPort,
   ReportingWorkerRequest,
@@ -51,20 +55,22 @@ export class SqliteReportingRuntime {
     this.worker.addEventListener("error", this.handleError)
   }
 
-  initialize() {
+  initialize(snapshot: ReportingDataSnapshot = DEFAULT_REPORTING_DATA) {
     if (this.failure) return Promise.reject(this.failure)
     if (this.disposed)
       return Promise.reject(new Error("SQLite reporting runtime is disposed."))
     if (this.readyPromise) return this.readyPromise
 
-    this.readyPromise = this.request({ id: ulid(), type: "init" }).then(
-      (response) => {
-        if (response.type !== "ready")
-          throw new Error(
-            "SQLite reporting runtime returned an invalid init response."
-          )
-      }
-    )
+    this.readyPromise = this.request({
+      id: ulid(),
+      type: "init",
+      snapshot,
+    }).then((response) => {
+      if (response.type !== "ready")
+        throw new Error(
+          "SQLite reporting runtime returned an invalid init response."
+        )
+    })
     return this.readyPromise
   }
 

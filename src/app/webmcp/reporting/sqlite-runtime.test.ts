@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from "vitest"
+import { createDummyJsonProductSeed } from "../products/product-seed"
+import { createReportingDataSnapshot } from "./reporting-data"
 import {
   SqliteReportingRuntime,
   SqliteReportingRuntimeError,
@@ -62,13 +64,31 @@ class FakeWorker implements ReportingWorkerPort {
   }
 }
 
-const nextRequest = (worker: FakeWorker, type: ReportingWorkerRequest["type"]) => {
+const nextRequest = (
+  worker: FakeWorker,
+  type: ReportingWorkerRequest["type"]
+) => {
   const request = worker.requests.find((item) => item.type === type)
   if (!request) throw new Error(`Missing ${type} request.`)
   return request
 }
 
 describe("SqliteReportingRuntime", () => {
+  it("sends the current product projection in the worker init payload", async () => {
+    const worker = new FakeWorker()
+    const runtime = new SqliteReportingRuntime(() => worker)
+    const snapshot = createReportingDataSnapshot(
+      createDummyJsonProductSeed().slice(0, 1)
+    )
+    const initialized = runtime.initialize(snapshot)
+    const init = nextRequest(worker, "init")
+
+    expect(init).toMatchObject({ type: "init", snapshot })
+    worker.respond({ id: init.id, type: "ready" })
+    await initialized
+    await runtime.dispose()
+  })
+
   it("initializes once and correlates concurrent query responses", async () => {
     const worker = new FakeWorker()
     const runtime = new SqliteReportingRuntime(() => worker)
@@ -78,7 +98,9 @@ describe("SqliteReportingRuntime", () => {
 
     worker.respond({ id: init.id, type: "ready" })
     await vi.waitFor(() =>
-      expect(worker.requests.filter((item) => item.type === "execute")).toHaveLength(2)
+      expect(
+        worker.requests.filter((item) => item.type === "execute")
+      ).toHaveLength(2)
     )
     const queries = worker.requests.filter((item) => item.type === "execute")
     const result = (value: number) => ({
@@ -93,7 +115,9 @@ describe("SqliteReportingRuntime", () => {
 
     await expect(first).resolves.toEqual(result(1))
     await expect(second).resolves.toEqual(result(2))
-    expect(worker.requests.filter((item) => item.type === "init")).toHaveLength(1)
+    expect(worker.requests.filter((item) => item.type === "init")).toHaveLength(
+      1
+    )
   })
 
   it("rejects an aborted query without resolving a later worker response", async () => {
@@ -123,7 +147,9 @@ describe("SqliteReportingRuntime", () => {
     controller.abort()
 
     await expect(query).rejects.toMatchObject({ name: "AbortError" })
-    expect(worker.requests.filter((item) => item.type === "execute")).toHaveLength(0)
+    expect(
+      worker.requests.filter((item) => item.type === "execute")
+    ).toHaveLength(0)
   })
 
   it("rejects pending work and terminates exactly once on dispose", async () => {
@@ -140,7 +166,9 @@ describe("SqliteReportingRuntime", () => {
     await Promise.all([disposing, concurrentDispose])
     await expect(pendingQuery).rejects.toThrow("disposed")
     await runtime.dispose()
-    expect(worker.requests.filter((item) => item.type === "dispose")).toHaveLength(1)
+    expect(
+      worker.requests.filter((item) => item.type === "dispose")
+    ).toHaveLength(1)
     expect(worker.terminateCalls).toBe(1)
     await expect(runtime.execute({ sql: "SELECT 2" })).rejects.toThrow(
       "disposed"

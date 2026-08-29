@@ -29,11 +29,17 @@ describe("execute_readonly_sql WebMCP tool", () => {
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("SQLite")
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("agent_products")
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("net_revenue_usd")
-    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("stock_quantity")
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("price_amount")
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("currency_code")
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("product_status")
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("price_usd is NULL")
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain(
       "join agent_inventory to agent_products"
     )
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("100 rows")
+    expect(EXECUTE_READONLY_SQL_TOOL.description?.length).toBeLessThanOrEqual(
+      500
+    )
     expect(EXECUTE_READONLY_SQL_TOOL.inputSchema).toEqual(
       expect.objectContaining({
         required: ["sql"],
@@ -426,6 +432,53 @@ describe("ReportingRuntimeController", () => {
     expect(runtime.initialize).toHaveBeenCalledTimes(2)
     expect(runtime.execute).toHaveBeenCalledOnce()
     expect(runtime.dispose).toHaveBeenCalledOnce()
+  })
+
+  it("serializes rapid data versions and leaves only the newest runtime active", async () => {
+    const initializationResolvers: Array<() => void> = []
+    const runtimes: Array<{
+      initialize: ReturnType<typeof vi.fn>
+      execute: ReturnType<typeof vi.fn>
+      dispose: ReturnType<typeof vi.fn>
+    }> = []
+    const createRuntime = vi.fn(() => {
+      const initialization = new Promise<void>((resolve) => {
+        initializationResolvers.push(resolve)
+      })
+      const runtime = {
+        initialize: vi.fn(() => initialization),
+        execute: vi.fn(async () => result),
+        dispose: vi.fn(async () => undefined),
+      }
+      runtimes.push(runtime)
+      return runtime
+    })
+    const controller = new ReportingRuntimeController(createRuntime)
+
+    const first = controller.prepare(undefined, 1)
+    const second = controller.prepare(undefined, 2)
+    const third = controller.prepare(undefined, 3)
+
+    expect(createRuntime).toHaveBeenCalledTimes(1)
+    initializationResolvers[0]()
+    await first
+    await vi.waitFor(() => expect(createRuntime).toHaveBeenCalledTimes(2))
+    initializationResolvers[1]()
+    await second
+    await vi.waitFor(() => expect(createRuntime).toHaveBeenCalledTimes(3))
+    initializationResolvers[2]()
+    await third
+
+    await expect(controller.execute({ sql: "SELECT 1" })).resolves.toEqual({
+      ...result,
+      queryId: expect.any(String),
+    })
+    expect(runtimes[0].dispose).toHaveBeenCalledOnce()
+    expect(runtimes[1].dispose).toHaveBeenCalledOnce()
+    expect(runtimes[2].dispose).not.toHaveBeenCalled()
+    expect(runtimes[0].execute).not.toHaveBeenCalled()
+    expect(runtimes[1].execute).not.toHaveBeenCalled()
+    expect(runtimes[2].execute).toHaveBeenCalledOnce()
   })
 
   it("creates and prepares a fresh runtime after effect-replay cleanup", async () => {

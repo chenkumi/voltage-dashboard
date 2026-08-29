@@ -27,7 +27,7 @@ const skills = [
 
 ## agent_products
 
-每列代表一個商品。\`product_id\` 是商品鍵；\`title\` 與 \`category\` 是非個人的 curated 商品文字；\`price_usd\` 單位為 USD。
+每列代表 Product Repository 目前的一個商品，包含 draft、published、archived。\`product_id\` 是商品鍵；\`title\` 與 \`category\` 是非個人的 curated 商品文字；\`price_amount\` 與 \`currency_code\` 保存商品原生價格；\`product_status\` 是商品狀態。只有 USD 商品的 \`price_usd\` 有值，TWD 商品為 NULL，不得自行推測匯率。
 
 ## agent_sales_daily
 
@@ -45,7 +45,7 @@ const skills = [
 
 ## agent_inventory
 
-每列代表一個商品目前可見的庫存快照。\`product_id\` 是商品鍵，可一對一連接 \`agent_products.product_id\`；\`stock\` 單位為件且不得為負數；\`updated_at\` 是含時區的 ISO 8601 更新時間。demo fixture 的更新時間為 2026-08-28T00:00:00+08:00；查詢時應以 \`agent_dataset_status\` 的動態狀態為準。
+每列代表 Product Repository 中一個商品的目前庫存快照。\`product_id\` 是商品鍵，可一對一連接 \`agent_products.product_id\`；\`stock\` 單位為件且不得為負數；\`updated_at\` 是 ISO 8601 更新時間。查詢時應以 \`agent_dataset_status\` 的動態狀態為準；商品變更會重建目前 reporting context，使先前 queryId 失效。
 
 低庫存門檻不是資料本身的固定業務規則；分析時要明確揭露採用的門檻。\`stock = 0\` 應與低庫存分開呈現。若要搭配近期銷量，先將 \`agent_sales_daily\` 聚合成每個 \`product_id\` 一列，再與 inventory 一對一連接；禁止把庫存快照直接連到多日銷售明細後加總 stock，避免多對多或重複計算。
 

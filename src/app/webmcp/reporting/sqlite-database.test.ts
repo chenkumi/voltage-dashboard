@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
-import { REPORTING_DATASETS } from "./reporting-data"
+import { DEFAULT_REPORTING_DATA, REPORTING_DATASETS } from "./reporting-data"
 import {
   ReportingDatabaseError,
   SqliteReportingDatabase,
@@ -33,9 +33,9 @@ describe("SqliteReportingDatabase", () => {
       { name: "units", type: "number" },
     ])
     expect(result.rows).toEqual([
-      { category: "Furniture", units: 34 },
-      { category: "Groceries", units: 30 },
-      { category: "Beauty", units: 29 },
+      { category: "furniture", units: 34 },
+      { category: "groceries", units: 30 },
+      { category: "beauty", units: 29 },
     ])
     expect(result.truncated).toBe(false)
   })
@@ -55,7 +55,9 @@ describe("SqliteReportingDatabase", () => {
     expect(result.rows).toHaveLength(REPORTING_DATASETS.length)
     expect(result.rows[0]).toEqual({
       dataset_name: "agent_dataset_status",
-      updated_at: "2026-08-28T00:00:00+08:00",
+      updated_at: DEFAULT_REPORTING_DATA.datasetStatus.find(
+        ([dataset]) => dataset === "agent_dataset_status"
+      )?.[1],
       time_zone: "Asia/Taipei",
     })
   })
@@ -71,7 +73,9 @@ describe("SqliteReportingDatabase", () => {
       "agent_sales_daily",
     ])
     expect(() =>
-      database.execute({ sql: "SELECT * FROM pragma_table_info('agent_products')" })
+      database.execute({
+        sql: "SELECT * FROM pragma_table_info('agent_products')",
+      })
     ).toThrow(ReportingDatabaseError)
   })
 
@@ -111,8 +115,9 @@ describe("SqliteReportingDatabase", () => {
   })
 
   it("limits columns and truncates oversized strings", () => {
-    const columns = Array.from({ length: 33 }, (_, index) =>
-      `${index} AS column_${index}`
+    const columns = Array.from(
+      { length: 33 },
+      (_, index) => `${index} AS column_${index}`
     ).join(", ")
     expect(() => database.execute({ sql: `SELECT ${columns}` })).toThrow(
       "more than 32 columns"

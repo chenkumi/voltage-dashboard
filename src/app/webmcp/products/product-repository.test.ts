@@ -159,6 +159,29 @@ describe("ProductRepository", () => {
     consoleError.mockRestore()
   })
 
+  it("updates stock through the shared repository and validates the value", async () => {
+    const repository = createRepository(`products-${crypto.randomUUID()}`)
+    await repository.initialize()
+    const created = await repository.create(createInput(), "draft")
+    const listener = vi.fn()
+    repository.subscribe(listener)
+
+    await expect(repository.setStock(created.id, 7)).resolves.toMatchObject({
+      id: created.id,
+      stock: 7,
+    })
+    expect(await repository.get(created.id)).toMatchObject({ stock: 7 })
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "update", productId: created.id })
+    )
+    await expect(repository.setStock(created.id, -1)).rejects.toBeInstanceOf(
+      ProductValidationError
+    )
+    await expect(repository.setStock(999_999, 1)).rejects.toEqual(
+      expect.objectContaining({ code: "PRODUCT_NOT_FOUND" })
+    )
+  })
+
   it("archives a selected batch atomically and emits one refresh event", async () => {
     const repository = createRepository(`products-${crypto.randomUUID()}`)
     await repository.initialize()

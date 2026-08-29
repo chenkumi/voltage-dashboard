@@ -10,10 +10,19 @@ vi.mock("../reporting/reporting-tools", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../reporting/reporting-tools")>()
   class NoopReportingRuntimeController {
-    async prepare() {}
+    private snapshot:
+      { inventory: readonly (readonly [number, number, string])[] } | undefined
+    async prepare(snapshot?: {
+      inventory: readonly (readonly [number, number, string])[]
+    }) {
+      if (snapshot) this.snapshot = snapshot
+    }
     async dispose() {}
     async execute() {
-      throw new Error("Reporting is outside this test.")
+      const stock = this.snapshot?.inventory.find(
+        ([productId]) => productId === 1
+      )?.[1]
+      return { rows: [{ product_id: 1, stock }] }
     }
     executeReportTool() {
       throw new Error("Reporting is outside this test.")
@@ -214,6 +223,35 @@ describe("fallback product authoring workflow", () => {
       expect(toolChanges).toBeGreaterThan(before)
     } finally {
       delete (document as Document & { modelContext?: unknown }).modelContext
+    }
+  })
+
+  it("awaits reporting invalidation before an inventory tool returns", async () => {
+    const router = createMemoryRouter([{ path: "*", element: <App /> }], {
+      initialEntries: ["/inventory"],
+    })
+    render(<RouterProvider router={router} />)
+    const current = await provider()
+    const before = await execute(current, "get_admin_product", {
+      productId: 1,
+    })
+    const originalStock = (before as { product: { stock: number } }).product
+      .stock
+
+    try {
+      await execute(current, "set_voltage_admin_inventory", {
+        productId: 1,
+        stock: 6,
+      })
+      const sql = await execute(current, "execute_readonly_sql", {
+        sql: "SELECT product_id, stock FROM agent_inventory WHERE product_id = 1",
+      })
+      expect(sql).toMatchObject({ rows: [{ product_id: 1, stock: 6 }] })
+    } finally {
+      await execute(current, "set_voltage_admin_inventory", {
+        productId: 1,
+        stock: originalStock,
+      })
     }
   })
 })

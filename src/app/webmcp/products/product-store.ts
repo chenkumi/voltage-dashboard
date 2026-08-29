@@ -68,9 +68,7 @@ export class ProductStore {
 
   private connect() {
     if (this.unsubscribeRepository) return
-    this.unsubscribeRepository = this.repository.subscribe(() => {
-      void this.refresh()
-    })
+    this.unsubscribeRepository = this.repository.subscribe(() => this.refresh())
   }
 
   private async load() {

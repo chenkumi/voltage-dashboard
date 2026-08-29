@@ -1,18 +1,17 @@
 import { describe, expect, it } from "vitest"
+import { createDummyJsonProductSeed } from "./products/product-seed"
 import {
-  createVoltageAdminInventory,
   getVoltageAdminDashboard,
   listSafeVoltageAdminOrders,
   listVoltageAdminCustomerSegments,
   searchVoltageAdminProducts,
-  setVoltageAdminInventory,
 } from "./voltage-admin-data"
 
 describe("Voltage Dashboard data", () => {
-  it("uses the embedded product catalog for product search", () => {
-    const inventory = createVoltageAdminInventory()
+  const products = createDummyJsonProductSeed()
 
-    expect(searchVoltageAdminProducts("mascara", inventory)).toEqual(
+  it("uses the embedded product catalog for product search", () => {
+    expect(searchVoltageAdminProducts("mascara", products)).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
           id: 1,
@@ -23,23 +22,27 @@ describe("Voltage Dashboard data", () => {
   })
 
   it("includes a newly low-stock product in the dashboard signal", () => {
-    const inventory = createVoltageAdminInventory()
-    const nextInventory = setVoltageAdminInventory(inventory, 1, 3)
+    const updated = products.map((product) =>
+      product.id === 1 ? { ...product, stock: 3 } : product
+    )
 
-    expect(nextInventory).not.toBeNull()
-    expect(
-      getVoltageAdminDashboard(nextInventory ?? inventory).lowStockProducts
-    ).toEqual(
+    expect(getVoltageAdminDashboard(updated).lowStockProducts).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: 1, stock: 3 })])
     )
   })
 
-  it("rejects inventory updates with an unknown product or invalid stock", () => {
-    const inventory = createVoltageAdminInventory()
-
-    expect(setVoltageAdminInventory(inventory, 9999, 10)).toBeNull()
-    expect(setVoltageAdminInventory(inventory, 1, -1)).toBeNull()
-    expect(setVoltageAdminInventory(inventory, 1, 1.5)).toBeNull()
+  it("excludes archived products from dashboard and inventory selectors", () => {
+    const archived = products.map((product) =>
+      product.id === 1 ? { ...product, status: "archived" as const } : product
+    )
+    expect(searchVoltageAdminProducts("mascara", archived)[0]?.status).toBe(
+      "archived"
+    )
+    expect(
+      getVoltageAdminDashboard(archived).lowStockProducts.some(
+        ({ id }) => id === 1
+      )
+    ).toBe(false)
   })
 
   it("returns order summaries without stable customer identifiers", () => {

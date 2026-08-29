@@ -61,7 +61,9 @@ export class ProductRepository {
   private readonly database: ProductDatabase
   private readonly seed: readonly Product[]
   private readonly now: () => string
-  private readonly listeners = new Set<(mutation: ProductMutation) => void>()
+  private readonly listeners = new Set<
+    (mutation: ProductMutation) => void | Promise<void>
+  >()
   private mutationVersion = 0
 
   constructor(options: ProductRepositoryOptions = {}) {
@@ -100,7 +102,7 @@ export class ProductRepository {
         })
       }
     )
-    if (inserted) this.emit({ type: "initialize" })
+    if (inserted) await this.emit({ type: "initialize" })
   }
 
   async list(options: { includeArchived?: boolean } = {}) {
@@ -154,7 +156,7 @@ export class ProductRepository {
         return createdProduct
       }
     )
-    this.emit({ type: "create", productId: product.id })
+    await this.emit({ type: "create", productId: product.id })
     return cloneProduct(product)
   }
 
@@ -185,7 +187,35 @@ export class ProductRepository {
         return updatedProduct
       }
     )
-    this.emit({ type: "update", productId })
+    await this.emit({ type: "update", productId })
+    return cloneProduct(product)
+  }
+
+  async setStock(productId: number, stock: number) {
+    if (!Number.isInteger(stock) || stock < 0) {
+      throw new ProductValidationError([
+        {
+          field: "stock",
+          code: "INVALID_NUMBER",
+          message: "stock must be a non-negative integer.",
+        },
+      ])
+    }
+    const product = await this.database.transaction(
+      "rw",
+      this.database.products,
+      async () => {
+        const existing = await this.requireProduct(productId)
+        const updatedProduct: Product = {
+          ...existing,
+          stock,
+          updatedAt: this.now(),
+        }
+        await this.database.products.put(updatedProduct)
+        return updatedProduct
+      }
+    )
+    await this.emit({ type: "update", productId })
     return cloneProduct(product)
   }
 
@@ -233,7 +263,7 @@ export class ProductRepository {
         return { changed: changedProducts.length > 0, products }
       }
     )
-    if (result.changed) this.emit({ type: "archive" })
+    if (result.changed) await this.emit({ type: "archive" })
     return result.products.map(cloneProduct)
   }
 
@@ -257,18 +287,24 @@ export class ProductRepository {
         return { changed: true, product }
       }
     )
-    if (result.changed) this.emit({ type: "restore", productId })
+    if (result.changed) await this.emit({ type: "restore", productId })
     return cloneProduct(result.product)
   }
 
-  subscribe(listener: (mutation: ProductMutation) => void) {
+  subscribe(listener: (mutation: ProductMutation) => void | Promise<void>) {
     this.listeners.add(listener)
-    return () => this.listeners.delete(listener)
+    return () => {
+      this.listeners.delete(listener)
+    }
   }
 
   close() {
     this.database.close()
     this.listeners.clear()
+  }
+
+  getVersion() {
+    return this.mutationVersion
   }
 
   async deleteDatabaseForTests() {
@@ -303,7 +339,7 @@ export class ProductRepository {
         return updatedProduct
       }
     )
-    this.emit({ type: mutationType, productId })
+    await this.emit({ type: mutationType, productId })
     return cloneProduct(product)
   }
 
@@ -328,16 +364,18 @@ export class ProductRepository {
     }
   }
 
-  private emit(mutation: Omit<ProductMutation, "version">) {
+  private async emit(mutation: Omit<ProductMutation, "version">) {
     this.mutationVersion += 1
     const event = { ...mutation, version: this.mutationVersion }
-    for (const listener of this.listeners) {
-      try {
-        listener(event)
-      } catch (error) {
-        console.error("Product repository listener failed.", error)
-      }
-    }
+    await Promise.all(
+      [...this.listeners].map(async (listener) => {
+        try {
+          await listener(event)
+        } catch (error) {
+          console.error("Product repository listener failed.", error)
+        }
+      })
+    )
   }
 }
 

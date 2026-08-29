@@ -1,9 +1,6 @@
 /// <reference lib="webworker" />
 
-import type {
-  ReportingWorkerRequest,
-  ReportingWorkerResponse,
-} from "./types"
+import type { ReportingWorkerRequest, ReportingWorkerResponse } from "./types"
 import {
   ReportingDatabaseError,
   SqliteReportingDatabase,
@@ -24,39 +21,46 @@ const normalizeError = (error: unknown) => ({
       : "SQLite operation failed.",
 })
 
-const initialize = async () => {
+const initialize = async (
+  snapshot: Extract<ReportingWorkerRequest, { type: "init" }>["snapshot"]
+) => {
   if (database) return
-  database = await SqliteReportingDatabase.create()
+  database = await SqliteReportingDatabase.create(snapshot)
 }
 
-const execute = (request: Extract<ReportingWorkerRequest, { type: "execute" }>) => {
+const execute = (
+  request: Extract<ReportingWorkerRequest, { type: "execute" }>
+) => {
   if (!database) throw new Error("SQLite reporting database is not ready.")
 
   return database.execute({ sql: request.sql, parameters: request.parameters })
 }
 
-self.addEventListener("message", (event: MessageEvent<ReportingWorkerRequest>) => {
-  const request = event.data
+self.addEventListener(
+  "message",
+  (event: MessageEvent<ReportingWorkerRequest>) => {
+    const request = event.data
 
-  void (async () => {
-    try {
-      if (request.type === "init") {
-        await initialize()
-        post({ id: request.id, type: "ready" })
-        return
+    void (async () => {
+      try {
+        if (request.type === "init") {
+          await initialize(request.snapshot)
+          post({ id: request.id, type: "ready" })
+          return
+        }
+
+        if (request.type === "dispose") {
+          database?.close()
+          database = null
+          post({ id: request.id, type: "disposed" })
+          self.close()
+          return
+        }
+
+        post({ id: request.id, type: "result", result: execute(request) })
+      } catch (error) {
+        post({ id: request.id, type: "error", error: normalizeError(error) })
       }
-
-      if (request.type === "dispose") {
-        database?.close()
-        database = null
-        post({ id: request.id, type: "disposed" })
-        self.close()
-        return
-      }
-
-      post({ id: request.id, type: "result", result: execute(request) })
-    } catch (error) {
-      post({ id: request.id, type: "error", error: normalizeError(error) })
-    }
-  })()
-})
+    })()
+  }
+)

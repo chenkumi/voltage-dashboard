@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   searchVoltageAdminProducts,
-  setVoltageAdminInventory,
   voltageAdminCustomers,
   voltageAdminOrders,
 } from "./voltage-admin-data"
@@ -19,6 +18,17 @@ const formatMoney = (value: number, language = "en") =>
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 0,
+  }).format(value)
+
+const formatProductMoney = (
+  value: number,
+  currency: "USD" | "TWD",
+  language = "en"
+) =>
+  new Intl.NumberFormat(language === "zh-TW" ? "zh-TW" : "en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: currency === "TWD" ? 0 : 2,
   }).format(value)
 
 const statusClass = (status: string) => {
@@ -180,11 +190,11 @@ export const Dashboard = () => {
 
 export const Products = () => {
   const { t, i18n } = useTranslation()
-  const { inventory } = useVoltageAdmin()
+  const { products: productStore } = useVoltageAdmin()
   const [query, setQuery] = useState("")
   const products = useMemo(
-    () => searchVoltageAdminProducts(query, inventory),
-    [inventory, query]
+    () => searchVoltageAdminProducts(query, productStore.products),
+    [productStore.products, query]
   )
 
   return (
@@ -230,8 +240,18 @@ export const Products = () => {
                     <small>#{product.id}</small>
                   </td>
                   <td>{product.category}</td>
-                  <td>{formatMoney(product.price, i18n.resolvedLanguage)}</td>
-                  <td>{product.rating.toFixed(1)} / 5</td>
+                  <td>
+                    {formatProductMoney(
+                      product.price.amount,
+                      product.price.currency,
+                      i18n.resolvedLanguage
+                    )}
+                  </td>
+                  <td>
+                    {product.rating === null
+                      ? t("No reviews")
+                      : `${product.rating.toFixed(1)} / 5`}
+                  </td>
                   <td>
                     <Badge
                       className={
@@ -354,15 +374,17 @@ export const Customers = () => {
 
 export const Inventory = () => {
   const { t } = useTranslation()
-  const { inventory, setInventory } = useVoltageAdmin()
+  const { productRepository, products: productStore } = useVoltageAdmin()
   const [query, setQuery] = useState("")
   const [lowStockOnly, setLowStockOnly] = useState(false)
   const products = useMemo(
     () =>
-      searchVoltageAdminProducts(query, inventory, 194).filter(
-        (product) => !lowStockOnly || (product.stock > 0 && product.stock <= 12)
+      searchVoltageAdminProducts(query, productStore.products, 194).filter(
+        (product) =>
+          product.status !== "archived" &&
+          (!lowStockOnly || (product.stock > 0 && product.stock <= 12))
       ),
-    [inventory, lowStockOnly, query]
+    [lowStockOnly, productStore.products, query]
   )
 
   return (
@@ -434,12 +456,10 @@ export const Inventory = () => {
                       step="1"
                       value={product.stock}
                       onChange={(event) => {
-                        const next = setVoltageAdminInventory(
-                          inventory,
+                        void productRepository.setStock(
                           product.id,
                           Number(event.target.value)
                         )
-                        if (next) setInventory(next)
                       }}
                     />
                   </td>

@@ -8,8 +8,6 @@ import {
   useRef,
   useState,
   useSyncExternalStore,
-  type Dispatch,
-  type SetStateAction,
 } from "react"
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import type {
@@ -20,16 +18,12 @@ import type {
 } from "./types"
 import { executeWebMcpToolWithDebugLog } from "./tool-debug"
 import {
-  createVoltageAdminInventory,
   getVoltageAdminDashboard,
   listSafeVoltageAdminOrders,
   listVoltageAdminCustomerSegments,
   searchVoltageAdminProducts,
-  setVoltageAdminInventory,
   toAdminProduct,
-  type VoltageAdminInventory,
 } from "./voltage-admin-data"
-import { voltageProductById } from "./voltage-product-data"
 import {
   getVoltageAdminAgentInstructions,
   listVoltageAdminSkills,
@@ -45,6 +39,7 @@ import {
   EXECUTE_READONLY_SQL_TOOL_NAME,
   ReportingRuntimeController,
 } from "./reporting/reporting-tools"
+import { createReportingDataSnapshot } from "./reporting/reporting-data"
 import {
   isReportAuthoringTool,
   REPORT_AUTHORING_TOOLS,
@@ -295,13 +290,11 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
 
 type VoltageAdminContextValue = {
   dashboard: ReturnType<typeof getVoltageAdminDashboard>
-  inventory: VoltageAdminInventory
   operationsController: OperationsController
   productRepository: ProductRepository
   productEditorController: ProductEditorController
   products: ProductStoreSnapshot
   reportingController: ReportingRuntimeController
-  setInventory: Dispatch<SetStateAction<VoltageAdminInventory>>
   workflow: WorkflowSnapshot
 }
 
@@ -402,12 +395,9 @@ export const VoltageAdminProvider = () => {
   )
   const [productStore] = useState(() => new ProductStore(productRepository))
   const products = useProductStore(productStore)
-  const [inventory, setInventory] = useState<VoltageAdminInventory>(
-    createVoltageAdminInventory
-  )
   const dashboard = useMemo(
-    () => getVoltageAdminDashboard(inventory),
-    [inventory]
+    () => getVoltageAdminDashboard(products.products),
+    [products.products]
   )
   const workflow = useSyncExternalStore(
     operationsController.subscribe,
@@ -430,6 +420,18 @@ export const VoltageAdminProvider = () => {
   }, [location.pathname])
 
   useEffect(() => {
+    return productRepository.subscribe(async (mutation) => {
+      const currentProducts = await productRepository.list({
+        includeArchived: true,
+      })
+      await reportingController.prepare(
+        createReportingDataSnapshot(currentProducts),
+        mutation.version
+      )
+    })
+  }, [productRepository, reportingController])
+
+  useEffect(() => {
     void productStore.initialize()
     return () => productStore.dispose()
   }, [productStore])
@@ -442,11 +444,13 @@ export const VoltageAdminProvider = () => {
   }, [operationsController, reportingController])
 
   const prepareProvider = useCallback(async () => {
-    await Promise.all([
-      reportingController.prepare(),
-      productStore.initialize(),
-    ])
-  }, [productStore, reportingController])
+    await productStore.initialize()
+    const snapshot = productStore.getSnapshot()
+    await reportingController.prepare(
+      createReportingDataSnapshot(snapshot.products),
+      productRepository.getVersion()
+    )
+  }, [productRepository, productStore, reportingController])
 
   const getNavigationState = useCallback(() => {
     const historyIndex = window.history.state?.idx
@@ -489,19 +493,28 @@ export const VoltageAdminProvider = () => {
     }
     if (name === "skill_list") return listVoltageAdminSkills()
     if (name === "load_skill") return loadVoltageAdminSkill(args.name)
-    if (name === "get_voltage_admin_dashboard") return dashboard
+    if (name === "get_voltage_admin_dashboard") {
+      return getVoltageAdminDashboard(
+        await productRepository.list({ includeArchived: true })
+      )
+    }
     if (name === "search_voltage_admin_products") {
       const query = typeof args.query === "string" ? args.query : ""
-      return { items: searchVoltageAdminProducts(query, inventory) }
+      return {
+        items: searchVoltageAdminProducts(
+          query,
+          await productRepository.list({ includeArchived: true })
+        ),
+      }
     }
     if (name === "get_voltage_admin_product") {
       const productId = args.productId
       const product =
         typeof productId === "number"
-          ? voltageProductById.get(productId)
-          : undefined
+          ? await productRepository.get(productId)
+          : null
       return product
-        ? { status: "OK", product: toAdminProduct(product, inventory) }
+        ? { status: "OK", product: toAdminProduct(product) }
         : { status: "ARGUMENT_ERROR", message: "Product not found." }
     }
     if (name === "list_voltage_admin_orders") {
@@ -526,8 +539,14 @@ export const VoltageAdminProvider = () => {
     }
     if (name === "list_voltage_admin_inventory") {
       const lowStock = args.lowStockOnly === true
-      const items = searchVoltageAdminProducts("", inventory, 194).filter(
-        (product) => !lowStock || (product.stock > 0 && product.stock <= 12)
+      const items = searchVoltageAdminProducts(
+        "",
+        await productRepository.list({ includeArchived: true }),
+        194
+      ).filter(
+        (product) =>
+          product.status !== "archived" &&
+          (!lowStock || (product.stock > 0 && product.stock <= 12))
       )
       return { items: items.slice(0, 20), total: items.length }
     }
@@ -540,21 +559,23 @@ export const VoltageAdminProvider = () => {
           message: "productId and stock are required.",
         }
       }
-      const nextInventory = setVoltageAdminInventory(
-        inventory,
-        productId,
-        stock
-      )
-      const product = voltageProductById.get(productId)
-      if (!nextInventory || !product) {
+      if (!Number.isInteger(stock) || stock < 0) {
         return {
           status: "ARGUMENT_ERROR",
           message:
             "Use an existing product ID and a non-negative integer stock value.",
         }
       }
-      setInventory(nextInventory)
-      return { status: "OK", product: toAdminProduct(product, nextInventory) }
+      try {
+        const product = await productRepository.setStock(productId, stock)
+        return { status: "OK", product: toAdminProduct(product) }
+      } catch {
+        return {
+          status: "ARGUMENT_ERROR",
+          message:
+            "Use an existing product ID and a non-negative integer stock value.",
+        }
+      }
     }
     if (name === "open_voltage_admin_section") {
       if (!isVoltageAdminView(args.section)) {
@@ -582,18 +603,15 @@ export const VoltageAdminProvider = () => {
   const value = useMemo<VoltageAdminContextValue>(
     () => ({
       dashboard,
-      inventory,
       operationsController,
       productRepository,
       productEditorController,
       products,
       reportingController,
-      setInventory,
       workflow,
     }),
     [
       dashboard,
-      inventory,
       operationsController,
       productRepository,
       productEditorController,

@@ -1,10 +1,8 @@
 import sqlite3InitModule from "@sqlite.org/sqlite-wasm"
 import {
-  REPORTING_DATASET_STATUS,
-  REPORTING_INVENTORY,
-  REPORTING_PRODUCTS,
-  REPORTING_SALES,
+  DEFAULT_REPORTING_DATA,
   REPORTING_SCHEMA_SQL,
+  type ReportingDataSnapshot,
 } from "./reporting-data"
 import {
   ALLOWED_REPORTING_FUNCTIONS,
@@ -98,7 +96,9 @@ export class SqliteReportingDatabase {
     this.database = database
   }
 
-  static async create() {
+  static async create(
+    snapshot: ReportingDataSnapshot = DEFAULT_REPORTING_DATA
+  ) {
     const sqlite3 = await sqlite3InitModule()
     const database = new sqlite3.oo1.DB(":memory:", "c")
     try {
@@ -106,23 +106,23 @@ export class SqliteReportingDatabase {
       database.exec(REPORTING_SCHEMA_SQL)
       insertRows(
         database,
-        "INSERT INTO agent_products VALUES (?, ?, ?, ?)",
-        REPORTING_PRODUCTS
+        "INSERT INTO agent_products VALUES (?, ?, ?, ?, ?, ?, ?)",
+        snapshot.products
       )
       insertRows(
         database,
         "INSERT INTO agent_sales_daily VALUES (?, ?, ?, ?)",
-        REPORTING_SALES
+        snapshot.sales
       )
       insertRows(
         database,
         "INSERT INTO agent_inventory VALUES (?, ?, ?)",
-        REPORTING_INVENTORY
+        snapshot.inventory
       )
       insertRows(
         database,
         "INSERT INTO agent_dataset_status VALUES (?, ?, ?, ?, ?, ?)",
-        REPORTING_DATASET_STATUS
+        snapshot.datasetStatus
       )
       database.exec("PRAGMA query_only = ON")
       const reportingDatabase = new SqliteReportingDatabase(sqlite3, database)
@@ -231,7 +231,10 @@ export class SqliteReportingDatabase {
           const table = typeof arg1 === "string" ? arg1.toLowerCase() : ""
           const schema =
             typeof databaseName === "string" ? databaseName.toLowerCase() : ""
-          return schema === "main" && ALLOWED_REPORTING_TABLES.has(table)
+          // sqlite-wasm may report an empty schema for main-table reads. ATTACH,
+          // temp schema creation, and every non-allowlisted table remain denied.
+          return (schema === "main" || schema === "") &&
+            ALLOWED_REPORTING_TABLES.has(table)
             ? capi.SQLITE_OK
             : capi.SQLITE_DENY
         }

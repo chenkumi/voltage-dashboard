@@ -78,11 +78,21 @@ describe("Voltage Admin skills", () => {
     const text = "text" in actual ? actual.text : ""
 
     expect(text).toMatch(/agent_inventory[\s\S]*stock[\s\S]*單位為件/)
-    expect(text).toContain("2026-08-28T00:00:00+08:00")
+    expect(text).toMatch(/agent_dataset_status[\s\S]*queryId 失效/)
     expect(text).toMatch(/先將.*agent_sales_daily.*聚合[\s\S]*禁止.*重複計算/)
     expect(text).toMatch(
       /agent_products[\s\S]*JOIN agent_products[\s\S]*i\.stock <= \?/
     )
+  })
+
+  it("documents native product currencies without invented conversion", () => {
+    const actual = loadVoltageAdminSkill("voltage-sales-data")
+    const text = "text" in actual ? actual.text : ""
+
+    expect(text).toMatch(
+      /price_amount[\s\S]*currency_code[\s\S]*price_usd[\s\S]*TWD 商品為 NULL[\s\S]*不得自行推測匯率/
+    )
+    expect(text).toMatch(/draft[\s\S]*published[\s\S]*archived/)
   })
 
   it("requires evidence and honest report capability discovery", () => {

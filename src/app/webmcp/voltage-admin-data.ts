@@ -1,8 +1,5 @@
-import {
-  formatVoltageCategory,
-  voltageProducts,
-  type VoltageProduct,
-} from "./voltage-product-data"
+import type { Product } from "./products/types"
+import { formatVoltageCategory } from "./voltage-product-data"
 
 export type VoltageAdminCustomer = {
   id: string
@@ -20,8 +17,6 @@ export type VoltageAdminOrder = {
   createdAt: string
   customerId: string
 }
-
-export type VoltageAdminInventory = Record<number, number>
 
 export type VoltageAdminOrderSummary = Omit<VoltageAdminOrder, "customerId">
 
@@ -120,11 +115,6 @@ export const voltageAdminOrders: VoltageAdminOrder[] = [
   },
 ]
 
-export const createVoltageAdminInventory = (): VoltageAdminInventory =>
-  Object.fromEntries(
-    voltageProducts.map((product) => [product.id, product.stock])
-  )
-
 export const listSafeVoltageAdminOrders = (
   status?: VoltageAdminOrder["status"]
 ): VoltageAdminOrderSummary[] =>
@@ -168,14 +158,16 @@ export const listVoltageAdminCustomerSegments = (
     })
 }
 
-export const getVoltageAdminDashboard = (inventory: VoltageAdminInventory) => {
-  const availableProducts = voltageProducts.filter(
-    (product) => (inventory[product.id] ?? 0) > 0
+export const getVoltageAdminDashboard = (products: readonly Product[]) => {
+  const activeProducts = products.filter(
+    (product) => product.status !== "archived"
   )
-  const lowStockProducts = voltageProducts.filter((product) => {
-    const stock = inventory[product.id] ?? 0
-    return stock > 0 && stock <= 12
-  })
+  const availableProducts = activeProducts.filter(
+    (product) => product.stock > 0
+  )
+  const lowStockProducts = activeProducts.filter(
+    (product) => product.stock > 0 && product.stock <= 12
+  )
   const revenue = voltageAdminOrders.reduce(
     (total, order) => total + order.total,
     0
@@ -191,55 +183,42 @@ export const getVoltageAdminDashboard = (inventory: VoltageAdminInventory) => {
       id: product.id,
       title: product.title,
       category: formatVoltageCategory(product.category),
-      stock: inventory[product.id] ?? 0,
+      stock: product.stock,
     })),
   }
 }
 
 export const searchVoltageAdminProducts = (
   query: string,
-  inventory: VoltageAdminInventory,
+  products: readonly Product[],
   limit = 12
 ) => {
   const normalizedQuery = query.trim().toLocaleLowerCase()
-  return voltageProducts
+  return products
     .filter(
       (product) =>
         !normalizedQuery ||
-        [product.title, product.category, product.brand, ...product.tags]
+        [product.title, product.category, product.brand, product.sku]
           .filter(Boolean)
           .join(" ")
           .toLocaleLowerCase()
           .includes(normalizedQuery)
     )
     .slice(0, limit)
-    .map((product) => toAdminProduct(product, inventory))
+    .map(toAdminProduct)
 }
 
-export const toAdminProduct = (
-  product: VoltageProduct,
-  inventory: VoltageAdminInventory
-) => ({
+export const toAdminProduct = (product: Product) => ({
   id: product.id,
+  sku: product.sku,
   title: product.title,
   category: formatVoltageCategory(product.category),
-  price: product.salePrice,
-  stock: inventory[product.id] ?? 0,
-  rating: product.rating,
+  price: product.price,
+  stock: product.stock,
+  status: product.status,
+  rating:
+    product.reviews.length > 0
+      ? product.reviews.reduce((total, review) => total + review.rating, 0) /
+        product.reviews.length
+      : null,
 })
-
-export const setVoltageAdminInventory = (
-  inventory: VoltageAdminInventory,
-  productId: number,
-  stock: number
-) => {
-  if (
-    !Number.isInteger(stock) ||
-    stock < 0 ||
-    !voltageProducts.some((product) => product.id === productId)
-  ) {
-    return null
-  }
-
-  return { ...inventory, [productId]: stock }
-}

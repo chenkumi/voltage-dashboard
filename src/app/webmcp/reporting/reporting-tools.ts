@@ -1,10 +1,9 @@
 import type { WebMcpRegisteredTool } from "../types"
 import {
-  REPORTING_DATASET_STATUS,
-  REPORTING_INVENTORY,
-  REPORTING_PRODUCTS,
-  REPORTING_SALES,
+  collectReportingStrings,
+  DEFAULT_REPORTING_DATA,
   REPORTING_SCHEMA_SQL,
+  type ReportingDataSnapshot,
 } from "./reporting-data"
 import {
   SqliteReportingRuntime,
@@ -35,7 +34,7 @@ export const EXECUTE_READONLY_SQL_TOOL_NAME = "execute_readonly_sql"
 export const EXECUTE_READONLY_SQL_TOOL: WebMcpRegisteredTool = {
   name: EXECUTE_READONLY_SQL_TOOL_NAME,
   description:
-    "Execute one read-only SQLite SELECT or WITH query against these exact curated columns: agent_products(product_id, title, category, price_usd), agent_sales_daily(sale_date, product_id, quantity, net_revenue_usd), agent_inventory(product_id, stock, updated_at), and agent_dataset_status(dataset_name, updated_at, time_zone, period_start, period_end, completeness). Columns named total_sales, product_name, or stock_quantity do not exist; join agent_inventory to agent_products by product_id for title or category. Use parameters for values; string filters must come from the curated data or be ISO dates, short numeric values, date modifiers, or date formats. Successful results include a workspace-local queryId plus columns, rows, rowCount, truncated, and executionTimeMs; output is limited to 100 rows and long strings are truncated. Use sqlite_schema to discover table definitions. Personal, account, and payment data, writes, PRAGMA, filesystem access, extensions, and unapproved schemas are rejected.",
+    "Run a read-only SQLite SELECT/WITH. Tables: agent_products(product_id,title,category,price_usd,price_amount,currency_code,product_status), agent_sales_daily(net_revenue_usd), agent_inventory(stock), and agent_dataset_status. price_usd is NULL for TWD; never convert currencies. For labels, join agent_inventory to agent_products. 100 rows max; queryIds expire after product changes. No writes or sensitive data. Use for price comparisons, low-stock checks, or sales reports.",
   inputSchema: {
     type: "object",
     properties: {
@@ -70,7 +69,7 @@ export interface ReadonlySqlRuntime {
 }
 
 export interface ManagedReadonlySqlRuntime extends ReadonlySqlRuntime {
-  initialize(): Promise<void>
+  initialize(snapshot?: ReportingDataSnapshot): Promise<void>
   dispose(): Promise<void>
 }
 
@@ -81,6 +80,9 @@ type ReportingRuntimeContext = {
   runtime: ManagedReadonlySqlRuntime
   queryCache: QueryResultCache
   reportState: ReportStateStore
+  dataVersion: number
+  safeStrings: ReadonlySet<string>
+  contextId: string
 }
 
 const isSqlScalar = (value: unknown): value is SqlScalar =>
@@ -131,17 +133,8 @@ const SAFE_DATE_FORMATS = new Set([
   "%f",
 ])
 
-const SAFE_REPORTING_STRINGS = new Set(
-  (
-    [
-      ...REPORTING_PRODUCTS,
-      ...REPORTING_SALES,
-      ...REPORTING_INVENTORY,
-      ...REPORTING_DATASET_STATUS,
-    ].flat() as unknown[]
-  )
-    .filter((value): value is string => typeof value === "string")
-    .map((value) => value.toLowerCase())
+const DEFAULT_SAFE_REPORTING_STRINGS = collectReportingStrings(
+  DEFAULT_REPORTING_DATA
 )
 const SAFE_SCHEMA_DEFINITIONS = new Set(
   REPORTING_SCHEMA_SQL.split(";")
@@ -183,9 +176,12 @@ const containsSensitiveValue = (value: unknown) =>
     PAYMENT_VALUE_PATTERN.test(value) ||
     (PHONE_VALUE_PATTERN.test(value) && !ISO_DATE_VALUE_PATTERN.test(value)))
 
-const isSafeReportingOutputString = (value: string) => {
+const isSafeReportingOutputString = (
+  value: string,
+  safeStrings: ReadonlySet<string>
+) => {
   const normalized = value.toLowerCase()
-  if (SAFE_REPORTING_STRINGS.has(normalized)) return true
+  if (safeStrings.has(normalized)) return true
   return (
     ISO_DATE_VALUE_PATTERN.test(value) ||
     TIME_VALUE_PATTERN.test(value) ||
@@ -197,8 +193,11 @@ const isSafeReportingOutputString = (value: string) => {
   )
 }
 
-const isSafeReportingInputString = (value: string) => {
-  if (isSafeReportingOutputString(value)) return true
+const isSafeReportingInputString = (
+  value: string,
+  safeStrings: ReadonlySet<string>
+) => {
+  if (isSafeReportingOutputString(value, safeStrings)) return true
   if (SAFE_NUMERIC_STRING_PATTERN.test(value)) return true
 
   const searchValue = value
@@ -207,9 +206,7 @@ const isSafeReportingInputString = (value: string) => {
     .replaceAll("_", "")
   return (
     searchValue.length >= 2 &&
-    [...SAFE_REPORTING_STRINGS].some((safeValue) =>
-      safeValue.includes(searchValue)
-    )
+    [...safeStrings].some((safeValue) => safeValue.includes(searchValue))
   )
 }
 
@@ -220,7 +217,8 @@ const extractSqlStringLiterals = (sql: string) =>
 
 const assertSafeReportingInput = (
   sql: string,
-  parameters: SqlScalar[] | undefined
+  parameters: SqlScalar[] | undefined,
+  safeStrings: ReadonlySet<string>
 ) => {
   const stringValues = [
     ...extractSqlStringLiterals(sql),
@@ -255,14 +253,21 @@ const assertSafeReportingInput = (
       "SQL_IDENTIFIER_ERROR",
       "The query contains a suspicious numeric identifier. Use aggregate or curated reporting values only."
     )
-  if (stringValues.some((value) => !isSafeReportingInputString(value)))
+  if (
+    stringValues.some(
+      (value) => !isSafeReportingInputString(value, safeStrings)
+    )
+  )
     throw new SqliteReportingRuntimeError(
       "SQL_LITERAL_ERROR",
       "The query contains an unapproved string value. Use parameters with curated dataset values or supported dates."
     )
 }
 
-const assertSafeReportingResult = (result: SqlQueryResult) => {
+const assertSafeReportingResult = (
+  result: SqlQueryResult,
+  safeStrings: ReadonlySet<string>
+) => {
   const schemaNames = new Set([
     "agent_dataset_status",
     "agent_inventory",
@@ -291,7 +296,8 @@ const assertSafeReportingResult = (result: SqlQueryResult) => {
         (typeof value === "number" &&
           Number.isInteger(value) &&
           Math.abs(value) >= 10_000_000) ||
-        (typeof value === "string" && !isSafeReportingOutputString(value))
+        (typeof value === "string" &&
+          !isSafeReportingOutputString(value, safeStrings))
     )
   )
   if (hasSensitiveColumn || hasSensitiveRow) {
@@ -304,7 +310,8 @@ const assertSafeReportingResult = (result: SqlQueryResult) => {
 
 export const executeReadonlySqlTool = async (
   runtime: ReadonlySqlRuntime,
-  args: unknown
+  args: unknown,
+  safeStrings: ReadonlySet<string> = DEFAULT_SAFE_REPORTING_STRINGS
 ) => {
   if (args === null || typeof args !== "object" || Array.isArray(args)) {
     throw new SqliteReportingRuntimeError(
@@ -339,7 +346,7 @@ export const executeReadonlySqlTool = async (
   }
 
   const parameters = input.parameters as SqlScalar[] | undefined
-  assertSafeReportingInput(input.sql, parameters)
+  assertSafeReportingInput(input.sql, parameters, safeStrings)
   let hasPlaceholder = true
   try {
     hasPlaceholder = hasPositionalSqlPlaceholder(input.sql)
@@ -351,7 +358,7 @@ export const executeReadonlySqlTool = async (
     sql: input.sql,
     parameters: boundParameters,
   })
-  assertSafeReportingResult(result)
+  assertSafeReportingResult(result, safeStrings)
   return result
 }
 
@@ -365,6 +372,8 @@ export class ReportingRuntimeController {
   private readonly reportListeners = new Set<() => void>()
   private unsubscribeReportState: (() => void) | undefined
   private workspaceSnapshot: ReportingWorkspaceSnapshot
+  private prepareQueue: Promise<void> | null = null
+  private lifecycleGeneration = 0
 
   constructor(
     createRuntime: RuntimeFactory = () => new SqliteReportingRuntime(),
@@ -380,8 +389,38 @@ export class ReportingRuntimeController {
     this.bindReportState(this.reportState)
   }
 
-  async prepare() {
+  prepare(
+    snapshot: ReportingDataSnapshot = DEFAULT_REPORTING_DATA,
+    dataVersion = 0
+  ) {
+    const generation = this.lifecycleGeneration
+    const start = () => {
+      if (generation !== this.lifecycleGeneration) {
+        throw new SqliteReportingRuntimeError(
+          "SQLITE_NOT_READY",
+          "SQLite reporting runtime is not ready."
+        )
+      }
+      return this.prepareSnapshot(snapshot, dataVersion)
+    }
+    const scheduled = this.prepareQueue ? this.prepareQueue.then(start) : start()
+    const queueTail = scheduled.catch(() => undefined)
+    this.prepareQueue = queueTail
+    void queueTail.finally(() => {
+      if (this.prepareQueue === queueTail) this.prepareQueue = null
+    })
+    return scheduled
+  }
+
+  private async prepareSnapshot(
+    snapshot: ReportingDataSnapshot,
+    dataVersion: number
+  ) {
     let context = this.context
+    if (context && context.dataVersion !== dataVersion) {
+      await this.disposeContext(context)
+      context = null
+    }
     if (!context) {
       if (this.queryCache.getStatus().state === "disposed")
         this.queryCache = this.createQueryCache()
@@ -391,21 +430,16 @@ export class ReportingRuntimeController {
         runtime: this.createRuntime(),
         queryCache: this.queryCache,
         reportState: this.reportState,
+        dataVersion,
+        safeStrings: collectReportingStrings(snapshot),
+        contextId: crypto.randomUUID(),
       }
       this.context = context
     }
     try {
-      await context.runtime.initialize()
+      await context.runtime.initialize(snapshot)
     } catch (error) {
-      if (this.context === context) this.context = null
-      context.queryCache.dispose()
-      if (this.reportState === context.reportState) {
-        this.unsubscribeReportState?.()
-        this.unsubscribeReportState = undefined
-      }
-      context.reportState.dispose()
-      if (this.reportState === context.reportState) this.emitReportChange()
-      await context.runtime.dispose()
+      await this.disposeContext(context)
       throw error
     }
     if (this.context !== context) {
@@ -424,7 +458,11 @@ export class ReportingRuntimeController {
         "SQLite reporting runtime is not ready."
       )
     }
-    const result = await executeReadonlySqlTool(context.runtime, args)
+    const result = await executeReadonlySqlTool(
+      context.runtime,
+      args,
+      context.safeStrings
+    )
     if (this.context !== context) {
       throw new SqliteReportingRuntimeError(
         "SQLITE_NOT_READY",
@@ -500,6 +538,7 @@ export class ReportingRuntimeController {
   }
 
   createSavedReportSnapshot(): SavedReport | null {
+    const context = this.requireContext()
     const report = this.reportState.getSnapshot()
     if (!report) return null
     const queryIds = report.widgets.flatMap((widget) => {
@@ -509,6 +548,7 @@ export class ReportingRuntimeController {
         : [widget.queryId]
     })
     return {
+      contextId: context.contextId,
       report,
       queryResults: this.queryCache.getEntries(queryIds),
       savedAt: new Date().toISOString(),
@@ -517,6 +557,12 @@ export class ReportingRuntimeController {
 
   loadSavedReport(savedReport: SavedReport) {
     const context = this.requireContext()
+    if (savedReport.contextId !== context.contextId) {
+      throw new SqliteReportingRuntimeError(
+        "SQLITE_CONTEXT_MISMATCH",
+        "Saved query evidence belongs to a different reporting context."
+      )
+    }
     context.queryCache.restore(savedReport.queryResults)
     return context.reportState.loadReport(savedReport.report)
   }
@@ -538,10 +584,15 @@ export class ReportingRuntimeController {
   }
 
   async dispose() {
+    this.lifecycleGeneration += 1
+    this.prepareQueue = null
     const context = this.context
-    this.context = null
-    const queryCache = context?.queryCache ?? this.queryCache
-    const reportState = context?.reportState ?? this.reportState
+    if (context) {
+      await this.disposeContext(context)
+      return
+    }
+    const queryCache = this.queryCache
+    const reportState = this.reportState
     queryCache.dispose()
     if (this.reportState === reportState) {
       this.unsubscribeReportState?.()
@@ -549,7 +600,18 @@ export class ReportingRuntimeController {
     }
     reportState.dispose()
     if (this.reportState === reportState) this.emitReportChange()
-    await context?.runtime.dispose()
+  }
+
+  private async disposeContext(context: ReportingRuntimeContext) {
+    if (this.context === context) this.context = null
+    context.queryCache.dispose()
+    if (this.reportState === context.reportState) {
+      this.unsubscribeReportState?.()
+      this.unsubscribeReportState = undefined
+    }
+    context.reportState.dispose()
+    if (this.reportState === context.reportState) this.emitReportChange()
+    await context.runtime.dispose()
   }
 
   private requireContext() {

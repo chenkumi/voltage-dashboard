@@ -151,6 +151,7 @@ export type SavedQueryResult = {
 }
 
 export type SavedReport = {
+  contextId: string
   report: Report
   queryResults: readonly SavedQueryResult[]
   savedAt: string
@@ -177,7 +178,7 @@ export type ReportErrorCategory =
   | "REPORT_WIDGET_NOT_FOUND"
 
 export type ReportingWorkerRequest =
-  | { id: string; type: "init" }
+  | { id: string; type: "init"; snapshot: ReportingDataSnapshot }
   | ({ id: string; type: "execute" } & SqlQueryInput)
   | { id: string; type: "dispose" }
 
@@ -208,3 +209,4 @@ export interface ReportingWorkerPort {
     listener: (event: ErrorEvent) => void
   ): void
 }
+import type { ReportingDataSnapshot } from "./reporting-data"
