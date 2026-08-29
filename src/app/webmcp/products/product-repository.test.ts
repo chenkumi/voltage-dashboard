@@ -159,6 +159,35 @@ describe("ProductRepository", () => {
     consoleError.mockRestore()
   })
 
+  it("archives a selected batch atomically and emits one refresh event", async () => {
+    const repository = createRepository(`products-${crypto.randomUUID()}`)
+    await repository.initialize()
+    const first = await repository.create(createInput("BATCH-001"), "draft")
+    const second = await repository.create(createInput("BATCH-002"), "draft")
+    const listener = vi.fn()
+    repository.subscribe(listener)
+
+    await repository.archiveMany([first.id, second.id])
+
+    expect((await repository.get(first.id))?.status).toBe("archived")
+    expect((await repository.get(second.id))?.status).toBe("archived")
+    expect(listener).toHaveBeenCalledOnce()
+    expect(listener).toHaveBeenCalledWith(
+      expect.objectContaining({ type: "archive" })
+    )
+  })
+
+  it("rolls back a batch when any selected product is missing", async () => {
+    const repository = createRepository(`products-${crypto.randomUUID()}`)
+    await repository.initialize()
+    const first = await repository.create(createInput("BATCH-001"), "draft")
+
+    await expect(repository.archiveMany([first.id, 999_999])).rejects.toEqual(
+      expect.objectContaining({ code: "PRODUCT_NOT_FOUND" })
+    )
+    expect((await repository.get(first.id))?.status).toBe("draft")
+  })
+
   it("publishes, archives, restores, and hides archived products by default", async () => {
     const repository = createRepository(`products-${crypto.randomUUID()}`)
     await repository.initialize()

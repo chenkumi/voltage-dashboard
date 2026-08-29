@@ -7,15 +7,15 @@ import { CatalogIntakePage } from "@/app/webmcp/operations/catalog-intake-page"
 import { OperationsCasesPage } from "@/app/webmcp/operations/operations-cases-page"
 import {
   ProductAddRoute,
-  ProductDetailRoute,
   ProductEditRoute,
 } from "@/app/webmcp/products/product-route-pages"
+import { ProductListPage } from "@/app/webmcp/products/product-list-page"
+import { ProductDetailPage } from "@/app/webmcp/products/product-detail-page"
 import {
   Customers,
   Dashboard,
   Inventory,
   Orders,
-  Products,
   Reports,
 } from "@/app/webmcp/voltage-admin-pages"
 
@@ -26,9 +26,9 @@ export function App() {
         <Route element={<EnterpriseAdminShell />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
-          <Route path="products" element={<Products />} />
+          <Route path="products" element={<ProductListPage />} />
           <Route path="products/add" element={<ProductAddRoute />} />
-          <Route path="products/:productId" element={<ProductDetailRoute />} />
+          <Route path="products/:productId" element={<ProductDetailPage />} />
           <Route
             path="products/edit/:productId"
             element={<ProductEditRoute />}

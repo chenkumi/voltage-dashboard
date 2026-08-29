@@ -51,6 +51,12 @@ import {
 } from "./reporting/report-tools"
 import { OperationsController } from "./operations/operations-controller"
 import type { WorkflowSnapshot } from "./operations/types"
+import { ProductRepository } from "./products/product-repository"
+import {
+  ProductStore,
+  useProductStore,
+  type ProductStoreSnapshot,
+} from "./products/product-store"
 
 export type VoltageAdminView =
   | "dashboard"
@@ -269,6 +275,8 @@ type VoltageAdminContextValue = {
   dashboard: ReturnType<typeof getVoltageAdminDashboard>
   inventory: VoltageAdminInventory
   operationsController: OperationsController
+  productRepository: ProductRepository
+  products: ProductStoreSnapshot
   reportingController: ReportingRuntimeController
   setInventory: Dispatch<SetStateAction<VoltageAdminInventory>>
   workflow: WorkflowSnapshot
@@ -364,6 +372,9 @@ export const VoltageAdminProvider = () => {
   const location = useLocation()
   const [reportingController] = useState(() => new ReportingRuntimeController())
   const [operationsController] = useState(() => new OperationsController())
+  const [productRepository] = useState(() => new ProductRepository())
+  const [productStore] = useState(() => new ProductStore(productRepository))
+  const products = useProductStore(productStore)
   const [inventory, setInventory] = useState<VoltageAdminInventory>(
     createVoltageAdminInventory
   )
@@ -381,6 +392,11 @@ export const VoltageAdminProvider = () => {
   useEffect(() => {
     sectionRef.current = voltageAdminViewFromPath(location.pathname)
   }, [location.pathname])
+
+  useEffect(() => {
+    void productStore.initialize()
+    return () => productStore.dispose()
+  }, [productStore])
 
   useEffect(() => {
     return () => {
@@ -514,11 +530,21 @@ export const VoltageAdminProvider = () => {
       dashboard,
       inventory,
       operationsController,
+      productRepository,
+      products,
       reportingController,
       setInventory,
       workflow,
     }),
-    [dashboard, inventory, operationsController, reportingController, workflow]
+    [
+      dashboard,
+      inventory,
+      operationsController,
+      productRepository,
+      products,
+      reportingController,
+      workflow,
+    ]
   )
 
   return (

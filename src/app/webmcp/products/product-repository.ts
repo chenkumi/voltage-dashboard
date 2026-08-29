@@ -194,26 +194,47 @@ export class ProductRepository {
   }
 
   async archive(productId: number) {
+    const [product] = await this.archiveMany([productId])
+    if (!product) {
+      throw new ProductRepositoryError(
+        "PRODUCT_NOT_FOUND",
+        "Product was not found."
+      )
+    }
+    return product
+  }
+
+  async archiveMany(productIds: readonly number[]) {
+    const uniqueProductIds = [...new Set(productIds)]
     const result = await this.database.transaction(
       "rw",
       this.database.products,
       async () => {
-        const existing = await this.requireProduct(productId)
-        if (existing.status === "archived") {
-          return { changed: false, product: existing }
+        const products: Product[] = []
+        const changedProducts: Product[] = []
+        for (const productId of uniqueProductIds) {
+          const existing = await this.requireProduct(productId)
+          if (existing.status === "archived") {
+            products.push(existing)
+            continue
+          }
+          const product: Product = {
+            ...existing,
+            status: "archived",
+            archivedFromStatus: existing.status,
+            updatedAt: this.now(),
+          }
+          products.push(product)
+          changedProducts.push(product)
         }
-        const product: Product = {
-          ...existing,
-          status: "archived",
-          archivedFromStatus: existing.status,
-          updatedAt: this.now(),
+        if (changedProducts.length > 0) {
+          await this.database.products.bulkPut(changedProducts)
         }
-        await this.database.products.put(product)
-        return { changed: true, product }
+        return { changed: changedProducts.length > 0, products }
       }
     )
-    if (result.changed) this.emit({ type: "archive", productId })
-    return cloneProduct(result.product)
+    if (result.changed) this.emit({ type: "archive" })
+    return result.products.map(cloneProduct)
   }
 
   async restore(productId: number) {

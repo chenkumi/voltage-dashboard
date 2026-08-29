@@ -1,5 +1,5 @@
-import { useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
+import { useParams } from "react-router-dom"
 import { GridBlock, PageLayout } from "../voltage-admin-page-layout"
 
 const RouteWorkspace = ({ message }: { message: string }) => (
@@ -22,24 +22,6 @@ export const ProductAddRoute = () => {
       ]}
     >
       <RouteWorkspace message={t("Preparing product editor…")} />
-    </PageLayout>
-  )
-}
-
-export const ProductDetailRoute = () => {
-  const { t } = useTranslation()
-  const { productId = "" } = useParams()
-  const productLabel = t("Product #{{id}}", { id: productId })
-  return (
-    <PageLayout
-      ariaLabel={productLabel}
-      pageName={productLabel}
-      breadcrumb={[
-        { label: "Products", to: "/products" },
-        { label: productLabel },
-      ]}
-    >
-      <RouteWorkspace message={t("Loading product details…")} />
     </PageLayout>
   )
 }

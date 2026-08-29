@@ -49,4 +49,21 @@ describe("ProductStore", () => {
     await vi.waitFor(() => expect(store.getSnapshot().version).toBe(2))
     expect(listener).toHaveBeenCalled()
   })
+
+  it("reconnects to repository mutations after a Strict Mode style cleanup", async () => {
+    const unsubscribe = vi.fn()
+    const repository = {
+      initialize: vi.fn(async () => undefined),
+      list: vi.fn(async () => [product]),
+      subscribe: vi.fn(() => unsubscribe),
+    } as unknown as ProductRepository
+    const store = new ProductStore(repository)
+
+    await store.initialize()
+    store.dispose()
+    await store.initialize()
+
+    expect(unsubscribe).toHaveBeenCalledOnce()
+    expect(repository.subscribe).toHaveBeenCalledTimes(2)
+  })
 })

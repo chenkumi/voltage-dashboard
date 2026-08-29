@@ -20,17 +20,16 @@ export class ProductStore {
   private readonly repository: ProductRepository
   private snapshot = initialSnapshot
   private readonly listeners = new Set<() => void>()
-  private readonly unsubscribeRepository: () => void
+  private unsubscribeRepository: (() => void) | null = null
   private loadPromise: Promise<void> | null = null
 
   constructor(repository: ProductRepository) {
     this.repository = repository
-    this.unsubscribeRepository = repository.subscribe(() => {
-      void this.refresh()
-    })
+    this.connect()
   }
 
   initialize() {
+    this.connect()
     if (this.loadPromise) return this.loadPromise
     this.loadPromise = this.load()
     return this.loadPromise
@@ -62,8 +61,16 @@ export class ProductStore {
   }
 
   dispose() {
-    this.unsubscribeRepository()
+    this.unsubscribeRepository?.()
+    this.unsubscribeRepository = null
     this.listeners.clear()
+  }
+
+  private connect() {
+    if (this.unsubscribeRepository) return
+    this.unsubscribeRepository = this.repository.subscribe(() => {
+      void this.refresh()
+    })
   }
 
   private async load() {

@@ -2,7 +2,11 @@ import type { ReactNode } from "react"
 import { useTranslation } from "react-i18next"
 import { Link } from "react-router-dom"
 
-export type PageBreadcrumb = { label: string; to?: string }
+export type PageBreadcrumb = {
+  label: string
+  to?: string
+  translate?: boolean
+}
 
 const derivePageName = (ariaLabel: string) =>
   ariaLabel.replace(/^Voltage Dashboard\s+/i, "").trim()
@@ -15,6 +19,7 @@ const pageNameFromAriaLabel = (ariaLabel: string) => {
 export const PageLayout = ({
   ariaLabel,
   pageName,
+  translatePageName = true,
   breadcrumb,
   status,
   actions,
@@ -22,6 +27,7 @@ export const PageLayout = ({
 }: {
   ariaLabel: string
   pageName?: string
+  translatePageName?: boolean
   breadcrumb?: readonly PageBreadcrumb[]
   status?: ReactNode
   actions?: ReactNode
@@ -35,7 +41,7 @@ export const PageLayout = ({
 }) => {
   const { t } = useTranslation()
   const rawPageName = pageName ?? pageNameFromAriaLabel(ariaLabel)
-  const resolvedPageName = t(rawPageName)
+  const resolvedPageName = translatePageName ? t(rawPageName) : rawPageName
   const resolvedBreadcrumb =
     breadcrumb ??
     (rawPageName === "Dashboard"
@@ -52,7 +58,11 @@ export const PageLayout = ({
                 {resolvedBreadcrumb.map((item, index) => (
                   <li key={`${item.label}-${index}`}>
                     {item.to ? (
-                      <Link to={item.to}>{t(item.label)}</Link>
+                      <Link to={item.to}>
+                        {item.translate === false ? item.label : t(item.label)}
+                      </Link>
+                    ) : item.translate === false ? (
+                      item.label
                     ) : (
                       t(item.label)
                     )}
