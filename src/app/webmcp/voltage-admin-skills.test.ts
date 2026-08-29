@@ -152,8 +152,9 @@ describe("Voltage Admin skills", () => {
       .join("\n")
 
     expect(text).toMatch(
-      /untrustedContentHint[\s\S]*get_workflow_state[\s\S]*immutable facts/
+      /untrustedContentHint[\s\S]*get_product_editor_state[\s\S]*頁面按鈕/
     )
+    expect(text).toMatch(/immutable facts[\s\S]*get_workflow_state/)
     expect(text).toMatch(/needs_human_review[\s\S]*不得退款[\s\S]*draftVersion/)
     expect(text).not.toMatch(/payment_token|card_number|shipping_address/i)
   })

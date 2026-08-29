@@ -247,42 +247,18 @@ describe("fallback Provider and UI workflow integration", () => {
     expect(document.documentElement.lang).toBe("en")
   })
 
-  it("reflects an Agent product draft and requires page buttons to publish", async () => {
-    const user = userEvent.setup()
+  it("does not expose the superseded catalog draft workflow", async () => {
     renderRoute("/catalog-intake")
     const provider = await getFallbackProvider()
-
-    await act(async () => {
-      await executeFallbackTool(provider, "save_product_draft", {
-        candidateId: "CAT-1001",
-        title: "AeroPress Clear Coffee Maker",
-        category: "Kitchen > Coffee",
-        description: "A compact manual brewer ready for human review.",
-        specifications: { material: "Tritan", capacity: "300 ml" },
-      })
-    })
-    expect(await screen.findByText("v1 · agent")).toBeTruthy()
-
-    await act(async () => {
-      await executeFallbackTool(provider, "open_product_review", {
-        candidateId: "CAT-1001",
-      })
-    })
-    expect(
-      await screen.findByRole("heading", { name: "CAT-1001" })
-    ).toBeTruthy()
-
-    await user.click(
-      screen.getByRole("button", { name: "Approve recommendation" })
+    const names = provider.getTools().map(({ name }) => name)
+    expect(names).not.toEqual(
+      expect.arrayContaining([
+        "list_catalog_candidates",
+        "get_catalog_candidate",
+        "save_product_draft",
+        "open_product_review",
+      ])
     )
-    await user.click(screen.getByRole("button", { name: "Publish product" }))
-
-    await expect(
-      executeFallbackTool(provider, "get_workflow_state")
-    ).resolves.toMatchObject({
-      productDrafts: [{ candidateId: "CAT-1001", status: "published" }],
-      reviews: [{ workflowId: "CAT-1001", state: "completed" }],
-    })
   })
 
   it("reflects an Agent return draft and requires page buttons to complete", async () => {

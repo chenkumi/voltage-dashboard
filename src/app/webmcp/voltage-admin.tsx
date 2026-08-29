@@ -52,6 +52,13 @@ import {
 import { OperationsController } from "./operations/operations-controller"
 import type { WorkflowSnapshot } from "./operations/types"
 import { ProductRepository } from "./products/product-repository"
+import { ProductEditorController } from "./products/product-editor-controller"
+import {
+  executeProductTool,
+  isProductTool,
+  PRODUCT_EDITOR_TOOLS,
+  PRODUCT_GLOBAL_TOOLS,
+} from "./products/product-tools"
 import {
   ProductStore,
   useProductStore,
@@ -81,6 +88,16 @@ const schema = (
 
 const noInput = schema({})
 
+const LEGACY_CATALOG_TOOL_NAMES = new Set([
+  "list_catalog_candidates",
+  "get_catalog_candidate",
+  "save_product_draft",
+  "open_product_review",
+])
+const DISCOVERED_OPERATIONS_TOOLS = OPERATIONS_TOOLS.filter(
+  ({ name }) => !LEGACY_CATALOG_TOOL_NAMES.has(name)
+)
+
 const isAbortError = (error: unknown) =>
   error instanceof Error && error.name === "AbortError"
 
@@ -108,9 +125,7 @@ export const voltageAdminViewFromPath = (
   return isVoltageAdminView(view) ? view : "dashboard"
 }
 
-// Exported for WebMCP capability and privacy-boundary tests.
-// eslint-disable-next-line react-refresh/only-export-components
-export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
+const VOLTAGE_ADMIN_COMMON_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "get_voltage_admin_dashboard",
     description:
@@ -120,7 +135,7 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   },
   EXECUTE_READONLY_SQL_TOOL,
   ...REPORT_AUTHORING_TOOLS,
-  ...OPERATIONS_TOOLS,
+  ...DISCOVERED_OPERATIONS_TOOLS,
   {
     name: "search_voltage_admin_products",
     description:
@@ -271,11 +286,19 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   },
 ]
 
+// Exported for WebMCP capability and privacy-boundary tests.
+// eslint-disable-next-line react-refresh/only-export-components
+export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
+  ...VOLTAGE_ADMIN_COMMON_TOOLS,
+  ...PRODUCT_GLOBAL_TOOLS,
+]
+
 type VoltageAdminContextValue = {
   dashboard: ReturnType<typeof getVoltageAdminDashboard>
   inventory: VoltageAdminInventory
   operationsController: OperationsController
   productRepository: ProductRepository
+  productEditorController: ProductEditorController
   products: ProductStoreSnapshot
   reportingController: ReportingRuntimeController
   setInventory: Dispatch<SetStateAction<VoltageAdminInventory>>
@@ -298,7 +321,8 @@ const useVoltageAdminWebMcpTools = (
     name: string,
     args: Record<string, unknown>
   ) => Promise<unknown>,
-  prepareProvider: () => Promise<void>
+  prepareProvider: () => Promise<void>,
+  tools: readonly WebMcpRegisteredTool[]
 ) => {
   const executeRef = useRef(executeTool)
 
@@ -325,7 +349,7 @@ const useVoltageAdminWebMcpTools = (
 
       if (modelContext?.registerTool) {
         await Promise.all(
-          VOLTAGE_ADMIN_TOOLS.map((tool) =>
+          tools.map((tool) =>
             modelContext.registerTool?.(
               {
                 ...tool,
@@ -342,7 +366,7 @@ const useVoltageAdminWebMcpTools = (
       }
 
       ;(window as WebMcpWindow).__webmcpTestProvider = {
-        getTools: () => VOLTAGE_ADMIN_TOOLS,
+        getTools: () => [...tools],
         executeTool: (tool, args) => executeWithDebugLog(tool.name, args),
       } satisfies WebMcpTestProvider
     }
@@ -364,7 +388,7 @@ const useVoltageAdminWebMcpTools = (
       delete currentWindow.__webmcpReady
       delete currentWindow.__webmcpTestProvider
     }
-  }, [prepareProvider])
+  }, [prepareProvider, tools])
 }
 
 export const VoltageAdminProvider = () => {
@@ -373,6 +397,9 @@ export const VoltageAdminProvider = () => {
   const [reportingController] = useState(() => new ReportingRuntimeController())
   const [operationsController] = useState(() => new OperationsController())
   const [productRepository] = useState(() => new ProductRepository())
+  const [productEditorController] = useState(
+    () => new ProductEditorController()
+  )
   const [productStore] = useState(() => new ProductStore(productRepository))
   const products = useProductStore(productStore)
   const [inventory, setInventory] = useState<VoltageAdminInventory>(
@@ -388,6 +415,15 @@ export const VoltageAdminProvider = () => {
     operationsController.getSnapshot
   )
   const sectionRef = useRef(voltageAdminViewFromPath(location.pathname))
+  const routeTools = useMemo(
+    () => [
+      ...VOLTAGE_ADMIN_TOOLS,
+      ...(/^\/products\/(?:add|edit\/\d+)$/.test(location.pathname)
+        ? PRODUCT_EDITOR_TOOLS
+        : []),
+    ],
+    [location.pathname]
+  )
 
   useEffect(() => {
     sectionRef.current = voltageAdminViewFromPath(location.pathname)
@@ -405,9 +441,12 @@ export const VoltageAdminProvider = () => {
     }
   }, [operationsController, reportingController])
 
-  const prepareReportingRuntime = useCallback(async () => {
-    await reportingController.prepare()
-  }, [reportingController])
+  const prepareProvider = useCallback(async () => {
+    await Promise.all([
+      reportingController.prepare(),
+      productStore.initialize(),
+    ])
+  }, [productStore, reportingController])
 
   const getNavigationState = useCallback(() => {
     const historyIndex = window.history.state?.idx
@@ -419,6 +458,21 @@ export const VoltageAdminProvider = () => {
   }, [])
 
   const executeTool = async (name: string, args: Record<string, unknown>) => {
+    if (!routeTools.some((tool) => tool.name === name)) {
+      return {
+        status: "NOT_FOUND",
+        message: "Tool is not available on this route.",
+      }
+    }
+    if (isProductTool(name)) {
+      return executeProductTool({
+        name,
+        args,
+        repository: productRepository,
+        editor: productEditorController,
+        navigate: (path) => navigate(path),
+      })
+    }
     if (name === EXECUTE_READONLY_SQL_TOOL_NAME) {
       return reportingController.execute(args)
     }
@@ -523,7 +577,7 @@ export const VoltageAdminProvider = () => {
     return { status: "NOT_FOUND", message: "Unknown tool." }
   }
 
-  useVoltageAdminWebMcpTools(executeTool, prepareReportingRuntime)
+  useVoltageAdminWebMcpTools(executeTool, prepareProvider, routeTools)
 
   const value = useMemo<VoltageAdminContextValue>(
     () => ({
@@ -531,6 +585,7 @@ export const VoltageAdminProvider = () => {
       inventory,
       operationsController,
       productRepository,
+      productEditorController,
       products,
       reportingController,
       setInventory,
@@ -541,6 +596,7 @@ export const VoltageAdminProvider = () => {
       inventory,
       operationsController,
       productRepository,
+      productEditorController,
       products,
       reportingController,
       workflow,

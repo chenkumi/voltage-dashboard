@@ -22,7 +22,8 @@ const ProductEditorUnavailable = ({ message }: { message: string }) => {
 
 export const ProductAddRoute = () => {
   const { t } = useTranslation()
-  const { productRepository, products } = useVoltageAdmin()
+  const { productEditorController, productRepository, products } =
+    useVoltageAdmin()
   const [searchParams] = useSearchParams()
   const sourceId = Number(searchParams.get("copyFrom"))
   const sourceProduct = Number.isInteger(sourceId)
@@ -33,9 +34,11 @@ export const ProductAddRoute = () => {
   }
   return (
     <ProductEditor
+      key={`create-${sourceProduct?.id ?? "blank"}`}
       mode="create"
       sourceProduct={sourceProduct}
       repository={productRepository}
+      controller={productEditorController}
     />
   )
 }
@@ -43,7 +46,8 @@ export const ProductAddRoute = () => {
 export const ProductEditRoute = () => {
   const { t } = useTranslation()
   const { productId = "" } = useParams()
-  const { productRepository, products } = useVoltageAdmin()
+  const { productEditorController, productRepository, products } =
+    useVoltageAdmin()
   const numericId = Number(productId)
   if (products.state !== "ready") {
     return <ProductEditorUnavailable message={t("Loading products…")} />
@@ -58,6 +62,7 @@ export const ProductEditRoute = () => {
       mode="edit"
       product={product}
       repository={productRepository}
+      controller={productEditorController}
     />
   )
 }

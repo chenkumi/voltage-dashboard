@@ -10,7 +10,13 @@ import {
   Send,
   Trash2,
 } from "lucide-react"
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react"
 import { useTranslation } from "react-i18next"
 import { unstable_usePrompt, useNavigate } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +24,7 @@ import { Button } from "@/components/ui/button"
 import { GridBlock, PageLayout } from "../voltage-admin-page-layout"
 import { createProductContentModel } from "./product-content-model"
 import { ConfirmationDialog } from "./confirmation-dialog"
+import type { ProductEditorController } from "./product-editor-controller"
 import {
   createProductEditorState,
   markProductEditorSaved,
@@ -184,6 +191,7 @@ export const ProductEditor = ({
   product,
   sourceProduct,
   repository,
+  controller,
 }: {
   mode: ProductEditorMode
   product?: Product
@@ -192,6 +200,7 @@ export const ProductEditor = ({
     ProductRepository,
     "create" | "update" | "publish" | "archiveMany" | "restore"
   >
+  controller?: ProductEditorController
 }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -207,6 +216,15 @@ export const ProductEditor = ({
   const [errors, setErrors] = useState<readonly string[]>([])
   const [confirmArchive, setConfirmArchive] = useState(false)
   const [pendingNavigation, setPendingNavigation] = useState("")
+
+  useLayoutEffect(() => {
+    if (!controller) return
+    return controller.attach(state, setState)
+    // The controller receives subsequent state through the update effect below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [controller])
+
+  useLayoutEffect(() => controller?.update(state), [controller, state])
 
   useEffect(() => {
     const guard = (event: BeforeUnloadEvent) => {

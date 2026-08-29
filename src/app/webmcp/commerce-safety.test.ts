@@ -79,13 +79,25 @@ describe("commerce privacy boundaries", () => {
     const names = VOLTAGE_ADMIN_TOOLS.map(({ name }) => name)
 
     expect(names).toEqual(
-      expect.arrayContaining(OPERATIONS_TOOLS.map(({ name }) => name))
+      expect.arrayContaining(
+        OPERATIONS_TOOLS.map(({ name }) => name).filter(
+          (name) =>
+            ![
+              "list_catalog_candidates",
+              "get_catalog_candidate",
+              "save_product_draft",
+              "open_product_review",
+            ].includes(name)
+        )
+      )
     )
     expect(names).not.toEqual(
       expect.arrayContaining([
         "approve_review",
         "complete_review",
         "publish_product",
+        "save_product_draft",
+        "open_product_review",
         "resolve_case",
         "refund_order",
         "submit_payment",
