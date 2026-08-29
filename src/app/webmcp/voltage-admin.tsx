@@ -31,10 +31,15 @@ import {
 } from "./voltage-admin-data"
 import { voltageProductById } from "./voltage-product-data"
 import {
+  getVoltageAdminAgentInstructions,
   listVoltageAdminSkills,
   loadVoltageAdminSkill,
-  VOLTAGE_ADMIN_AGENT_INSTRUCTIONS,
 } from "./voltage-admin-skills"
+import {
+  executeOperationsTool,
+  isOperationsTool,
+  OPERATIONS_TOOLS,
+} from "./operations/operations-tools"
 import {
   EXECUTE_READONLY_SQL_TOOL,
   EXECUTE_READONLY_SQL_TOOL_NAME,
@@ -109,6 +114,7 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   },
   EXECUTE_READONLY_SQL_TOOL,
   ...REPORT_AUTHORING_TOOLS,
+  ...OPERATIONS_TOOLS,
   {
     name: "search_voltage_admin_products",
     description:
@@ -403,8 +409,13 @@ export const VoltageAdminProvider = () => {
     if (isReportAuthoringTool(name)) {
       return reportingController.executeReportTool(name, args)
     }
+    if (isOperationsTool(name)) {
+      return executeOperationsTool(operationsController, name, args, (view) =>
+        navigate(voltageAdminPath(view))
+      )
+    }
     if (name === "agent_instructions") {
-      return { text: VOLTAGE_ADMIN_AGENT_INSTRUCTIONS }
+      return { text: getVoltageAdminAgentInstructions(sectionRef.current) }
     }
     if (name === "skill_list") return listVoltageAdminSkills()
     if (name === "load_skill") return loadVoltageAdminSkill(args.name)

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
 import { VOLTAGE_ADMIN_TOOLS } from "./voltage-admin"
+import { OperationsController } from "./operations/operations-controller"
+import {
+  executeOperationsTool,
+  OPERATIONS_TOOLS,
+} from "./operations/operations-tools"
 
 describe("commerce privacy boundaries", () => {
   it("keeps admin order operations read-only while allowing inventory control", () => {
@@ -67,6 +72,54 @@ describe("commerce privacy boundaries", () => {
       JSON.stringify(reportTools.map((tool) => tool.inputSchema))
     ).not.toMatch(
       /"(?:customerName|email|address|phone|account|cardNumber|payment|html|script)"/i
+    )
+  })
+
+  it("never exposes high-risk commerce final actions as operations tools", () => {
+    const names = VOLTAGE_ADMIN_TOOLS.map(({ name }) => name)
+
+    expect(names).toEqual(
+      expect.arrayContaining(OPERATIONS_TOOLS.map(({ name }) => name))
+    )
+    expect(names).not.toEqual(
+      expect.arrayContaining([
+        "approve_review",
+        "complete_review",
+        "publish_product",
+        "resolve_case",
+        "refund_order",
+        "submit_payment",
+      ])
+    )
+  })
+
+  it("keeps operations schema property names free of personal data fields", () => {
+    const propertyNames: string[] = []
+    const visit = (value: unknown) => {
+      if (!value || typeof value !== "object" || Array.isArray(value)) return
+      const record = value as Record<string, unknown>
+      if (record.properties && typeof record.properties === "object") {
+        propertyNames.push(...Object.keys(record.properties))
+      }
+      Object.values(record).forEach(visit)
+    }
+    OPERATIONS_TOOLS.forEach(({ inputSchema }) => visit(inputSchema))
+
+    expect(propertyNames.join(" ")).not.toMatch(
+      /customerName|email|address|phone|account|card|paymentId|token/i
+    )
+  })
+
+  it("returns only safe status facts from Agent-visible case readers", () => {
+    const controller = new OperationsController()
+    const result = executeOperationsTool(controller, "get_ops_case", {
+      caseId: "CASE-2003",
+    })
+    const serialized = JSON.stringify(result)
+
+    expect(serialized).toContain("address_unverified")
+    expect(serialized).not.toMatch(
+      /customerId|CUST-|@|phone|street|postal|cardNumber|paymentToken/i
     )
   })
 })
