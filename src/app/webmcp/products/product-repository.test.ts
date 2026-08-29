@@ -1,9 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import {
-  ProductRepository,
-  ProductRepositoryError,
-  ProductValidationError,
-} from "./product-repository"
+import { ProductRepository, ProductValidationError } from "./product-repository"
 import type { Product, ProductWriteInput } from "./types"
 
 const repositories: ProductRepository[] = []
@@ -109,7 +105,7 @@ describe("ProductRepository", () => {
     await repository.create(createInput(), "draft")
 
     await expect(repository.create(createInput(), "draft")).rejects.toEqual(
-      expect.objectContaining<ProductRepositoryError>({ code: "DUPLICATE_SKU" })
+      expect.objectContaining({ code: "DUPLICATE_SKU" })
     )
     const incomplete = await repository.create(
       {
@@ -140,9 +136,7 @@ describe("ProductRepository", () => {
     })
     await expect(
       repository.create(createInput("TEST-001"), "draft")
-    ).rejects.toEqual(
-      expect.objectContaining<ProductRepositoryError>({ code: "DUPLICATE_SKU" })
-    )
+    ).rejects.toEqual(expect.objectContaining({ code: "DUPLICATE_SKU" }))
   })
 
   it("persists committed mutations even when a listener fails", async () => {

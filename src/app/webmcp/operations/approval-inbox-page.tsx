@@ -6,6 +6,7 @@ import {
   ShieldCheck,
 } from "lucide-react"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { GridBlock, PageLayout } from "../voltage-admin-page-layout"
@@ -26,6 +27,7 @@ const ReviewSummary = ({
   review: ReviewItem
   workflow: WorkflowSnapshot
 }) => {
+  const { t } = useTranslation()
   if (review.workflowType === "product") {
     const draft = workflow.productDrafts.find(
       ({ candidateId }) => candidateId === review.workflowId
@@ -36,22 +38,25 @@ const ReviewSummary = ({
     return (
       <div className="voltage-admin-review-copy">
         <strong>{draft?.title ?? review.workflowId}</strong>
-        <p>{draft?.description ?? "Product draft details unavailable."}</p>
+        <p>{draft?.description ?? t("Product draft details unavailable.")}</p>
         <dl>
           <div>
-            <dt>Agent suggestion</dt>
+            <dt>{t("Recommendation")}</dt>
             <dd>
-              Publish in {draft?.category ?? "the reviewed category"} after a
-              human checks the draft.
+              {t("Publish in {{category}} after a human checks the draft.", {
+                category: draft?.category
+                  ? t(draft.category)
+                  : t("the reviewed category"),
+              })}
             </dd>
           </div>
           <div>
-            <dt>Evidence source</dt>
-            <dd>{candidate?.sourceLabel ?? "Catalog candidate"}</dd>
+            <dt>{t("Evidence source")}</dt>
+            <dd>{candidate?.sourceLabel ?? t("Catalog candidate")}</dd>
           </div>
           <div>
-            <dt>Human final action</dt>
-            <dd>Publish the product to local demo state.</dd>
+            <dt>{t("Required approval")}</dt>
+            <dd>{t("Publish product")}</dd>
           </div>
         </dl>
       </div>
@@ -65,25 +70,25 @@ const ReviewSummary = ({
   return (
     <div className="voltage-admin-review-copy">
       <strong>
-        {review.workflowId} · {opsCase?.reasonCode ?? "operations case"}
+        {review.workflowId} · {opsCase?.reasonCode ?? t("operations case")}
       </strong>
-      <p>{draft?.supportDraft ?? "Case recommendation unavailable."}</p>
+      <p>{draft?.supportDraft ?? t("Case recommendation unavailable.")}</p>
       <dl>
         <div>
-          <dt>Agent suggestion</dt>
-          <dd>{draft?.recommendation ?? "Review this operations case."}</dd>
+          <dt>{t("Recommendation")}</dt>
+          <dd>{draft?.recommendation ?? t("Review this operations case.")}</dd>
         </div>
         <div>
-          <dt>Source / selected evidence</dt>
+          <dt>{t("Source / selected evidence")}</dt>
           <dd>
-            Source: {opsCase?.facts.join(", ") || "None"}
+            {t("Source")}: {opsCase?.facts.join(", ") || t("None")}
             <br />
-            Selected: {draft?.evidence.join(", ") || "None"}
+            {t("Selected")}: {draft?.evidence.join(", ") || t("None")}
           </dd>
         </div>
         <div>
-          <dt>Human final action</dt>
-          <dd>Complete the case in demo state without changing an order.</dd>
+          <dt>{t("Required approval")}</dt>
+          <dd>{t("Complete the case without changing the linked order.")}</dd>
         </div>
       </dl>
     </div>
@@ -99,6 +104,7 @@ const ReviewCard = ({
   workflow: WorkflowSnapshot
   onMessage: (message: string) => void
 }) => {
+  const { t } = useTranslation()
   const { operationsController } = useVoltageAdmin()
 
   const run = (action: () => void, success: string) => {
@@ -106,7 +112,7 @@ const ReviewCard = ({
       action()
       onMessage(success)
     } catch (error) {
-      onMessage(error instanceof Error ? error.message : "Action failed.")
+      onMessage(error instanceof Error ? error.message : t("Action failed."))
     }
   }
 
@@ -114,19 +120,18 @@ const ReviewCard = ({
     <article className="voltage-admin-review-card">
       <div className="voltage-admin-panel-heading">
         <div>
-          <p>{review.workflowType} review</p>
+          <p>{t("{{type}} review", { type: t(review.workflowType) })}</p>
           <h2>{review.workflowId}</h2>
         </div>
-        <Badge className={reviewTone(review.state)}>
-          {review.state.replace("_", " ")}
-        </Badge>
+        <Badge className={reviewTone(review.state)}>{t(review.state)}</Badge>
       </div>
       <ReviewSummary review={review} workflow={workflow} />
       {review.state === "pending" || review.state === "approved" ? (
         <div className="voltage-admin-action-row">
           <span>
-            Buttons require a direct page interaction; URL or tool input cannot
-            replace them.
+            {t(
+              "Buttons require a direct page interaction; URL or tool input cannot replace them."
+            )}
           </span>
           <div>
             <Button
@@ -136,11 +141,11 @@ const ReviewCard = ({
               onClick={() =>
                 run(
                   () => operationsController.returnReview(review.id, "user"),
-                  `${review.workflowId} returned for revision.`
+                  t("{{id}} returned for revision.", { id: review.workflowId })
                 )
               }
             >
-              <RotateCcw className="size-4" /> Return for changes
+              <RotateCcw className="size-4" /> {t("Return for changes")}
             </Button>
             {review.state === "pending" ? (
               <Button
@@ -149,11 +154,13 @@ const ReviewCard = ({
                 onClick={() =>
                   run(
                     () => operationsController.approveReview(review.id, "user"),
-                    `${review.workflowId} recommendation approved.`
+                    t("{{id}} recommendation approved.", {
+                      id: review.workflowId,
+                    })
                   )
                 }
               >
-                <Check className="size-4" /> Approve recommendation
+                <Check className="size-4" /> {t("Approve recommendation")}
               </Button>
             ) : (
               <Button
@@ -163,7 +170,9 @@ const ReviewCard = ({
                   run(
                     () =>
                       operationsController.completeReview(review.id, "user"),
-                    `${review.workflowId} final demo action completed.`
+                    t("{{id}} final action completed.", {
+                      id: review.workflowId,
+                    })
                   )
                 }
               >
@@ -173,8 +182,8 @@ const ReviewCard = ({
                   <CheckCircle2 className="size-4" />
                 )}
                 {review.requiredAction === "publish_product"
-                  ? "Publish product"
-                  : "Complete case"}
+                  ? t("Publish product")
+                  : t("Complete case")}
               </Button>
             )}
           </div>
@@ -185,6 +194,7 @@ const ReviewCard = ({
 }
 
 export const ApprovalInboxPage = () => {
+  const { t } = useTranslation()
   const { workflow } = useVoltageAdmin()
   const [message, setMessage] = useState("")
   const reviews = [...workflow.reviews].sort((left, right) => {
@@ -197,20 +207,23 @@ export const ApprovalInboxPage = () => {
 
   return (
     <PageLayout
-      ariaLabel="Approval Inbox"
-      eyebrow="Human review"
-      title="Keep final actions in human hands."
-      detail={`${actionable} review items still require a page-level decision.`}
+      ariaLabel={t("Approval Inbox")}
+      pageName="Approval Inbox"
+      eyebrow={t("Human review")}
+      title={t("Keep final actions in human hands.")}
+      detail={t("{{count}} review items still require a page-level decision.", {
+        count: actionable,
+      })}
     >
       <GridBlock className="col-span-12 xl:col-span-8">
         <section
           className="voltage-admin-review-list"
-          aria-label="Review queue"
+          aria-label={t("Review queue")}
         >
           <div className="voltage-admin-panel-heading">
             <div>
-              <p>Cross-module queue</p>
-              <h2>Product and case reviews</h2>
+              <p>{t("Cross-module queue")}</p>
+              <h2>{t("Product and case reviews")}</h2>
             </div>
             <Badge className="bg-[#e2e5df] text-[#4c574e]">{actionable}</Badge>
           </div>
@@ -228,7 +241,7 @@ export const ApprovalInboxPage = () => {
           {reviews.length === 0 ? (
             <div className="voltage-admin-empty-state">
               <ShieldCheck className="mx-auto size-5" />
-              Agent-created product and case reviews will appear here.
+              {t("Product and case reviews will appear here.")}
             </div>
           ) : null}
         </section>
@@ -238,8 +251,8 @@ export const ApprovalInboxPage = () => {
         <aside className="voltage-admin-panel">
           <div className="voltage-admin-panel-heading">
             <div>
-              <p>Structured activity</p>
-              <h2>Audit trail</h2>
+              <p>{t("Structured activity")}</p>
+              <h2>{t("Audit trail")}</h2>
             </div>
             <Badge className="bg-[#e4eaed] text-[#4f6975]">
               {workflow.audit.length}
@@ -252,23 +265,24 @@ export const ApprovalInboxPage = () => {
               .map((entry) => (
                 <div key={entry.id}>
                   <span>
-                    <strong>{entry.action.replaceAll("_", " ")}</strong>
+                    <strong>{t(entry.action.replaceAll("_", " "))}</strong>
                     <small>{entry.workflowId}</small>
                   </span>
                   <span>
                     <Badge className="bg-[#e2e5df] text-[#4c574e]">
-                      {entry.actor}
+                      {t(entry.actor)}
                     </Badge>
                     <small>
-                      {entry.result} · {entry.occurredAt.slice(0, 16)}
+                      {t(entry.result)} · {entry.occurredAt.slice(0, 16)}
                     </small>
                   </span>
                 </div>
               ))}
           </div>
           <p className="voltage-admin-safety-note">
-            Audit entries contain only actor, action, workflow ID, time, and
-            result. Draft text and prompts are never copied here.
+            {t(
+              "Audit entries contain only actor, action, workflow ID, time, and result. Draft text and prompts are never copied here."
+            )}
           </p>
         </aside>
       </GridBlock>

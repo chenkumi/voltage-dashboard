@@ -17,12 +17,14 @@ const initialSnapshot: ProductStoreSnapshot = {
 }
 
 export class ProductStore {
+  private readonly repository: ProductRepository
   private snapshot = initialSnapshot
   private readonly listeners = new Set<() => void>()
   private readonly unsubscribeRepository: () => void
   private loadPromise: Promise<void> | null = null
 
-  constructor(private readonly repository: ProductRepository) {
+  constructor(repository: ProductRepository) {
+    this.repository = repository
     this.unsubscribeRepository = repository.subscribe(() => {
       void this.refresh()
     })

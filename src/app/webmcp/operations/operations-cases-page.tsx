@@ -1,5 +1,6 @@
 import { CheckCircle2, FileCheck2, Save, ShieldAlert } from "lucide-react"
 import { useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { GridBlock, PageLayout } from "../voltage-admin-page-layout"
@@ -49,55 +50,65 @@ const CaseCard = ({
   opsCase: OpsCase
   active: boolean
   onSelect: () => void
-}) => (
-  <button
-    type="button"
-    className={`voltage-admin-candidate ${active ? "is-active" : ""}`}
-    onClick={onSelect}
-    aria-pressed={active}
-  >
-    <span className="voltage-admin-candidate-heading">
-      <span>
-        <small>{opsCase.id}</small>
-        <strong>{typeLabels[opsCase.type]}</strong>
-      </span>
-      <Badge className={statusTone(opsCase.status)}>
-        {opsCase.status.replace("_", " ")}
-      </Badge>
-    </span>
-    <span className="voltage-admin-candidate-meta">
-      Reason code · {opsCase.reasonCode}
-    </span>
-    <span className="voltage-admin-chip-row">
-      <span>{opsCase.priority} priority</span>
-      {opsCase.facts.slice(0, 2).map((fact) => (
-        <span key={fact}>{fact}</span>
-      ))}
-    </span>
-  </button>
-)
+}) => {
+  const { t } = useTranslation()
 
-const EligibilityPanel = ({ result }: { result: EligibilityResult }) => (
-  <section
-    className="voltage-admin-eligibility"
-    aria-label="Return eligibility"
-  >
-    <div>
-      <p>Deterministic policy result</p>
-      <strong>{result.decision.replaceAll("_", " ")}</strong>
-    </div>
-    <dl>
+  return (
+    <button
+      type="button"
+      className={`voltage-admin-candidate ${active ? "is-active" : ""}`}
+      onClick={onSelect}
+      aria-pressed={active}
+    >
+      <span className="voltage-admin-candidate-heading">
+        <span>
+          <small>{opsCase.id}</small>
+          <strong>{t(typeLabels[opsCase.type])}</strong>
+        </span>
+        <Badge className={statusTone(opsCase.status)}>
+          {t(opsCase.status)}
+        </Badge>
+      </span>
+      <span className="voltage-admin-candidate-meta">
+        {t("Reason code · {{code}}", { code: opsCase.reasonCode })}
+      </span>
+      <span className="voltage-admin-chip-row">
+        <span>
+          {t("{{priority}} priority", { priority: t(opsCase.priority) })}
+        </span>
+        {opsCase.facts.slice(0, 2).map((fact) => (
+          <span key={fact}>{fact}</span>
+        ))}
+      </span>
+    </button>
+  )
+}
+
+const EligibilityPanel = ({ result }: { result: EligibilityResult }) => {
+  const { t } = useTranslation()
+
+  return (
+    <section
+      className="voltage-admin-eligibility"
+      aria-label={t("Return eligibility")}
+    >
       <div>
-        <dt>Matched rules</dt>
-        <dd>{result.matchedRules.join(", ") || "None"}</dd>
+        <p>{t("Deterministic policy result")}</p>
+        <strong>{t(result.decision)}</strong>
       </div>
-      <div>
-        <dt>Missing evidence</dt>
-        <dd>{result.missingEvidence.join(", ") || "None"}</dd>
-      </div>
-    </dl>
-  </section>
-)
+      <dl>
+        <div>
+          <dt>{t("Matched rules")}</dt>
+          <dd>{result.matchedRules.join(", ") || t("None")}</dd>
+        </div>
+        <div>
+          <dt>{t("Missing evidence")}</dt>
+          <dd>{result.missingEvidence.join(", ") || t("None")}</dd>
+        </div>
+      </dl>
+    </section>
+  )
+}
 
 const CaseDraftEditor = ({
   opsCase,
@@ -106,6 +117,7 @@ const CaseDraftEditor = ({
   opsCase: OpsCase
   draft?: CaseDraft
 }) => {
+  const { t } = useTranslation()
   const { operationsController } = useVoltageAdmin()
   const [category, setCategory] = useState<CaseDraft["category"]>(
     draft?.category ?? categoryForCase[opsCase.type]
@@ -142,7 +154,7 @@ const CaseDraftEditor = ({
   const save = () => {
     try {
       operationsController.saveCaseDraft(input(), "user")
-      setMessage("Case draft saved without changing the underlying order.")
+      setMessage(t("Case draft saved without changing the underlying order."))
     } catch (error) {
       setMessage(
         error instanceof Error ? error.message : "Draft was not saved."
@@ -154,10 +166,10 @@ const CaseDraftEditor = ({
     try {
       operationsController.saveCaseDraft(input(), "user")
       operationsController.openCaseReview(opsCase.id, "user")
-      setMessage("Case queued for a human final decision.")
+      setMessage(t("Case queued for a human final decision."))
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Review was not opened."
+        error instanceof Error ? error.message : t("Review was not opened.")
       )
     }
   }
@@ -165,10 +177,10 @@ const CaseDraftEditor = ({
   const resolve = () => {
     try {
       operationsController.resolveCase(input(), "user")
-      setMessage("Case completed in demo state. No order action was performed.")
+      setMessage(t("Case completed. No order action was performed."))
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Case was not completed."
+        error instanceof Error ? error.message : t("Case was not completed.")
       )
     }
   }
@@ -177,17 +189,19 @@ const CaseDraftEditor = ({
     <article className="voltage-admin-panel">
       <div className="voltage-admin-panel-heading">
         <div>
-          <p>Classification draft</p>
+          <p>{t("Classification draft")}</p>
           <h2>{opsCase.id}</h2>
         </div>
         <Badge className={statusTone(opsCase.status)}>
-          {draft ? `v${draft.version} · ${draft.lastEditedBy}` : "Not saved"}
+          {draft
+            ? `v${draft.version} · ${t(draft.lastEditedBy)}`
+            : t("Not saved")}
         </Badge>
       </div>
 
       <div className="voltage-admin-form-grid">
         <label className="voltage-admin-field">
-          <span>Category</span>
+          <span>{t("Category")}</span>
           <select
             value={category}
             disabled={resolved}
@@ -197,13 +211,13 @@ const CaseDraftEditor = ({
           >
             {Object.entries(categoryLabels).map(([value, label]) => (
               <option key={value} value={value}>
-                {label}
+                {t(label)}
               </option>
             ))}
           </select>
         </label>
         <label className="voltage-admin-field">
-          <span>Priority</span>
+          <span>{t("Priority")}</span>
           <select
             value={priority}
             disabled={resolved}
@@ -211,13 +225,13 @@ const CaseDraftEditor = ({
               setPriority(event.target.value as CaseDraft["priority"])
             }
           >
-            <option value="low">Low</option>
-            <option value="medium">Medium</option>
-            <option value="high">High</option>
+            <option value="low">{t("Low")}</option>
+            <option value="medium">{t("Medium")}</option>
+            <option value="high">{t("High")}</option>
           </select>
         </label>
         <fieldset className="voltage-admin-field sm:col-span-2">
-          <legend>Evidence status codes</legend>
+          <legend>{t("Evidence status codes")}</legend>
           <div className="voltage-admin-check-grid">
             {opsCase.facts.map((fact) => (
               <label key={fact}>
@@ -239,7 +253,7 @@ const CaseDraftEditor = ({
           </div>
         </fieldset>
         <label className="voltage-admin-field sm:col-span-2">
-          <span>Recommended next step</span>
+          <span>{t("Recommended next step")}</span>
           <textarea
             value={recommendation}
             rows={3}
@@ -249,7 +263,7 @@ const CaseDraftEditor = ({
           />
         </label>
         <label className="voltage-admin-field sm:col-span-2">
-          <span>Customer support draft</span>
+          <span>{t("Customer support draft")}</span>
           <textarea
             value={supportDraft}
             rows={4}
@@ -269,7 +283,7 @@ const CaseDraftEditor = ({
             disabled={resolved}
             onClick={() => setEligibility(checkReturnEligibility(opsCase))}
           >
-            <ShieldAlert className="size-4" /> Check return eligibility
+            <ShieldAlert className="size-4" /> {t("Check return eligibility")}
           </Button>
           {eligibility ? <EligibilityPanel result={eligibility} /> : null}
         </div>
@@ -285,7 +299,7 @@ const CaseDraftEditor = ({
             disabled={resolved}
             onClick={save}
           >
-            <Save className="size-4" /> Save draft
+            <Save className="size-4" /> {t("Save draft")}
           </Button>
           <Button
             type="button"
@@ -294,7 +308,7 @@ const CaseDraftEditor = ({
             disabled={resolved}
             onClick={queueReview}
           >
-            <FileCheck2 className="size-4" /> Queue review
+            <FileCheck2 className="size-4" /> {t("Queue review")}
           </Button>
           <Button
             type="button"
@@ -302,19 +316,22 @@ const CaseDraftEditor = ({
             disabled={resolved}
             onClick={resolve}
           >
-            <CheckCircle2 className="size-4" /> Complete simulated handling
+            <CheckCircle2 className="size-4" />
+            {t("Complete case")}
           </Button>
         </div>
       </div>
       <p className="voltage-admin-safety-note">
-        Human-only demo control. This does not refund, cancel, pay, or modify an
-        order.
+        {t(
+          "Completing this case does not refund, cancel, pay, or modify an order."
+        )}
       </p>
     </article>
   )
 }
 
 export const OperationsCasesPage = () => {
+  const { t } = useTranslation()
   const { workflow } = useVoltageAdmin()
   const [typeFilter, setTypeFilter] = useState<OpsCaseType | "all">("all")
   const [statusFilter, setStatusFilter] = useState<OpsCase["status"] | "all">(
@@ -345,46 +362,49 @@ export const OperationsCasesPage = () => {
 
   return (
     <PageLayout
-      ariaLabel="Operations Cases"
-      eyebrow="Exception operations"
-      title="Triage cases without changing orders."
-      detail={`${openCases} cases are waiting for a classification draft.`}
+      ariaLabel={t("Operations Cases")}
+      pageName="Operations Cases"
+      eyebrow={t("Exception operations")}
+      title={t("Triage cases without changing orders.")}
+      detail={t("{{count}} cases are waiting for a classification draft.", {
+        count: openCases,
+      })}
     >
       <GridBlock>
         <div className="voltage-admin-filter-bar">
           <label className="voltage-admin-field">
-            <span>Case type</span>
+            <span>{t("Case type")}</span>
             <select
               value={typeFilter}
               onChange={(event) =>
                 setTypeFilter(event.target.value as OpsCaseType | "all")
               }
             >
-              <option value="all">All types</option>
+              <option value="all">{t("All types")}</option>
               {Object.entries(typeLabels).map(([value, label]) => (
                 <option key={value} value={value}>
-                  {label}
+                  {t(label)}
                 </option>
               ))}
             </select>
           </label>
           <label className="voltage-admin-field">
-            <span>Status</span>
+            <span>{t("Status")}</span>
             <select
               value={statusFilter}
               onChange={(event) =>
                 setStatusFilter(event.target.value as OpsCase["status"] | "all")
               }
             >
-              <option value="all">All statuses</option>
-              <option value="open">Open</option>
-              <option value="drafted">Drafted</option>
-              <option value="pending_review">Pending review</option>
-              <option value="resolved">Resolved</option>
+              <option value="all">{t("All statuses")}</option>
+              <option value="open">{t("Open")}</option>
+              <option value="drafted">{t("Drafted")}</option>
+              <option value="pending_review">{t("Pending review")}</option>
+              <option value="resolved">{t("Resolved")}</option>
             </select>
           </label>
           <label className="voltage-admin-field">
-            <span>Priority</span>
+            <span>{t("Priority")}</span>
             <select
               value={priorityFilter}
               onChange={(event) =>
@@ -393,20 +413,22 @@ export const OperationsCasesPage = () => {
                 )
               }
             >
-              <option value="all">All priorities</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
+              <option value="all">{t("All priorities")}</option>
+              <option value="low">{t("Low")}</option>
+              <option value="medium">{t("Medium")}</option>
+              <option value="high">{t("High")}</option>
             </select>
           </label>
-          <span>{filteredCases.length} matching cases</span>
+          <span>
+            {t("{{count}} matching cases", { count: filteredCases.length })}
+          </span>
         </div>
       </GridBlock>
 
       <GridBlock className="col-span-12 lg:col-span-4">
         <section
           className="voltage-admin-panel"
-          aria-label="Operations case list"
+          aria-label={t("Operations case list")}
         >
           <div className="voltage-admin-candidate-list">
             {filteredCases.map((opsCase) => (
@@ -419,7 +441,7 @@ export const OperationsCasesPage = () => {
             ))}
             {filteredCases.length === 0 ? (
               <p className="voltage-admin-empty-state">
-                No cases match all three filters.
+                {t("No cases match all three filters.")}
               </p>
             ) : null}
           </div>
@@ -435,7 +457,7 @@ export const OperationsCasesPage = () => {
           />
         ) : (
           <article className="voltage-admin-panel">
-            Select a case to begin a safe classification draft.
+            {t("Select a case to begin a safe classification draft.")}
           </article>
         )}
       </GridBlock>

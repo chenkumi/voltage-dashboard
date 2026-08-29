@@ -31,13 +31,13 @@ type ProductRepositoryOptions = {
 }
 
 export class ProductRepositoryError extends Error {
-  constructor(
-    readonly code:
-      "PRODUCT_NOT_FOUND" | "DUPLICATE_SKU" | "INVALID_STATUS" | "INVALID_SEED",
-    message: string
-  ) {
+  readonly code:
+    "PRODUCT_NOT_FOUND" | "DUPLICATE_SKU" | "INVALID_STATUS" | "INVALID_SEED"
+
+  constructor(code: ProductRepositoryError["code"], message: string) {
     super(message)
     this.name = "ProductRepositoryError"
+    this.code = code
   }
 }
 

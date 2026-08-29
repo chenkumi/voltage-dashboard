@@ -1,9 +1,15 @@
 import { Navigate, Route, Routes } from "react-router-dom"
-import { MainLayout } from "@/app/webmcp/voltage-admin-layout"
+import "./i18n"
+import { EnterpriseAdminShell } from "@/app/webmcp/voltage-admin-shell"
 import { VoltageAdminProvider } from "@/app/webmcp/voltage-admin"
 import { ApprovalInboxPage } from "@/app/webmcp/operations/approval-inbox-page"
 import { CatalogIntakePage } from "@/app/webmcp/operations/catalog-intake-page"
 import { OperationsCasesPage } from "@/app/webmcp/operations/operations-cases-page"
+import {
+  ProductAddRoute,
+  ProductDetailRoute,
+  ProductEditRoute,
+} from "@/app/webmcp/products/product-route-pages"
 import {
   Customers,
   Dashboard,
@@ -17,10 +23,16 @@ export function App() {
   return (
     <Routes>
       <Route element={<VoltageAdminProvider />}>
-        <Route element={<MainLayout />}>
+        <Route element={<EnterpriseAdminShell />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
           <Route path="products" element={<Products />} />
+          <Route path="products/add" element={<ProductAddRoute />} />
+          <Route path="products/:productId" element={<ProductDetailRoute />} />
+          <Route
+            path="products/edit/:productId"
+            element={<ProductEditRoute />}
+          />
           <Route path="orders" element={<Orders />} />
           <Route path="customers" element={<Customers />} />
           <Route path="inventory" element={<Inventory />} />

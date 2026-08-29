@@ -16,6 +16,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import { Markdown } from "@/components/ui/markdown"
 import {
@@ -66,6 +67,7 @@ const EditableTitle = ({
   onCommit: (value: string) => void
   readOnly?: boolean
 }) => {
+  const { t } = useTranslation()
   const [draft, setDraft] = useState(value)
   const [error, setError] = useState("")
   const cancelBlurRef = useRef(false)
@@ -77,7 +79,7 @@ const EditableTitle = ({
       setError("")
     } catch {
       setDraft(value)
-      setError("This title contains unsupported or sensitive content.")
+      setError(t("This title contains unsupported or sensitive content."))
     }
   }
 
@@ -115,21 +117,26 @@ const EditableTitle = ({
   )
 }
 
-const QueryNotice = ({ result }: { result: CachedQueryResult }) => (
-  <>
-    {result.rowCount === 0 ? (
-      <p className="report-query-notice" role="status">
-        This query returned no rows. No value is inferred.
-      </p>
-    ) : null}
-    {result.truncated ? (
-      <p className="report-query-notice" role="status">
-        This query result was truncated. The widget does not represent the full
-        dataset.
-      </p>
-    ) : null}
-  </>
-)
+const QueryNotice = ({ result }: { result: CachedQueryResult }) => {
+  const { t } = useTranslation()
+
+  return (
+    <>
+      {result.rowCount === 0 ? (
+        <p className="report-query-notice" role="status">
+          {t("This query returned no rows. No value is inferred.")}
+        </p>
+      ) : null}
+      {result.truncated ? (
+        <p className="report-query-notice" role="status">
+          {t(
+            "This query result was truncated. The widget does not represent the full dataset."
+          )}
+        </p>
+      ) : null}
+    </>
+  )
+}
 
 const MetricWidget = ({
   result,
@@ -149,9 +156,7 @@ const MetricWidget = ({
         )}
       </strong>
       {widget.detail ? (
-        <span data-tone={widget.detailTone ?? "neutral"}>
-          {widget.detail}
-        </span>
+        <span data-tone={widget.detailTone ?? "neutral"}>{widget.detail}</span>
       ) : null}
       <QueryNotice result={result} />
     </div>
@@ -164,37 +169,43 @@ const TableWidget = ({
 }: {
   result: CachedQueryResult
   widget: Extract<ReportWidget, { type: "table" }>
-}) => (
-  <div>
-    <div className="report-table-wrap">
-      <table className="report-table">
-        <thead>
-          <tr>
-            {widget.columns.map((column) => (
-              <th key={column}>{column}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {result.rows.length === 0 ? (
+}) => {
+  const { t } = useTranslation()
+
+  return (
+    <div>
+      <div className="report-table-wrap">
+        <table className="report-table">
+          <thead>
             <tr>
-              <td colSpan={widget.columns.length}>No rows returned.</td>
+              {widget.columns.map((column) => (
+                <th key={column}>{column}</th>
+              ))}
             </tr>
-          ) : (
-            result.rows.map((row, rowIndex) => (
-              <tr key={rowIndex}>
-                {widget.columns.map((column) => (
-                  <td key={column}>{formatScalar(row[column])}</td>
-                ))}
+          </thead>
+          <tbody>
+            {result.rows.length === 0 ? (
+              <tr>
+                <td colSpan={widget.columns.length}>
+                  {t("No rows returned.")}
+                </td>
               </tr>
-            ))
-          )}
-        </tbody>
-      </table>
+            ) : (
+              result.rows.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {widget.columns.map((column) => (
+                    <td key={column}>{formatScalar(row[column])}</td>
+                  ))}
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+      <QueryNotice result={result} />
     </div>
-    <QueryNotice result={result} />
-  </div>
-)
+  )
+}
 
 const MarkdownWidget = ({
   widget,
@@ -202,16 +213,27 @@ const MarkdownWidget = ({
   widget:
     | Extract<ReportWidget, { type: "markdown" }>
     | Extract<ReportWidget, { type: "text" }>
-}) => (
-  <div className="report-markdown">
-    <Markdown fontLevel="small">{widget.markdown}</Markdown>
-    <p className="report-evidence-count">
-      <Database className="size-3.5" />
-      {widget.evidenceQueryIds.length} evidence quer
-      {widget.evidenceQueryIds.length === 1 ? "y" : "ies"}
-    </p>
-  </div>
-)
+}) => {
+  const { t } = useTranslation()
+  const evidenceCount = widget.evidenceQueryIds.length
+
+  return (
+    <div className="report-markdown">
+      <Markdown fontLevel="small">{widget.markdown}</Markdown>
+      <p className="report-evidence-count">
+        <Database className="size-3.5" />
+        {t(
+          evidenceCount === 1
+            ? "{{count}} evidence query"
+            : "{{count}} evidence queries",
+          {
+            count: evidenceCount,
+          }
+        )}
+      </p>
+    </div>
+  )
+}
 
 const BarWidget = ({
   result,
@@ -220,13 +242,17 @@ const BarWidget = ({
   result: CachedQueryResult
   widget: BarReportWidget
 }) => {
+  const { t } = useTranslation()
   const rows = createBarDisplayRows(widget, result)
   return (
     <div>
       <div
         className="report-bars"
         role="img"
-        aria-label={`${widget.title}: ${rows.length} category values`}
+        aria-label={t("{{title}}: {{count}} category values", {
+          title: widget.title,
+          count: rows.length,
+        })}
       >
         {rows.map((row, index) => (
           <div className="report-bar-row" key={`${row.label}-${index}`}>
@@ -239,11 +265,11 @@ const BarWidget = ({
         ))}
       </div>
       {rows.length === 0 ? (
-        <p className="report-query-notice">No chart rows returned.</p>
+        <p className="report-query-notice">{t("No chart rows returned.")}</p>
       ) : null}
       {result.rows.length > rows.length ? (
         <p className="report-query-notice">
-          Showing the first 12 categories from this query.
+          {t("Showing the first 12 categories from this query.")}
         </p>
       ) : null}
       <QueryNotice result={result} />
@@ -252,10 +278,11 @@ const BarWidget = ({
 }
 
 const CacheLimitNotice = ({ status }: { status: QueryCacheStatus }) => {
+  const { t } = useTranslation()
   const message = getCacheLimitMessage(status)
   return message ? (
     <div className="report-cache-notice" role="status">
-      {message}
+      {t(message)}
     </div>
   ) : null
 }
@@ -267,6 +294,7 @@ const WidgetLayoutControls = ({
   controller: ReportingRuntimeController
   widget: ReportWidget
 }) => {
+  const { t } = useTranslation()
   const xSpace = widget.xSpace ?? (widget.type === "metric" ? 2 : 6)
   const ySpace = widget.ySpace ?? 1
   const [draftYSpace, setDraftYSpace] = useState(String(ySpace))
@@ -280,11 +308,11 @@ const WidgetLayoutControls = ({
   }
 
   return (
-    <fieldset className="report-widget-layout" aria-label="Widget layout">
+    <fieldset className="report-widget-layout" aria-label={t("Widget layout")}>
       <label>
-        <span>Columns</span>
+        <span>{t("Columns")}</span>
         <select
-          aria-label={`${widget.type} widget width`}
+          aria-label={t("{{type}} widget width", { type: t(widget.type) })}
           value={xSpace}
           onChange={(event) => updateLayout(Number(event.target.value), ySpace)}
         >
@@ -296,9 +324,9 @@ const WidgetLayoutControls = ({
         </select>
       </label>
       <label>
-        <span>Rows</span>
+        <span>{t("Rows")}</span>
         <input
-          aria-label={`${widget.type} widget height`}
+          aria-label={t("{{type}} widget height", { type: t(widget.type) })}
           min="1"
           step="1"
           type="number"
@@ -330,6 +358,7 @@ const SavedReportLibrary = ({
     ? T
     : never
 }) => {
+  const { t, i18n } = useTranslation()
   const [savedReports, setSavedReports] = useState<
     readonly SavedReportSummary[]
   >([])
@@ -340,9 +369,9 @@ const SavedReportLibrary = ({
       setSavedReports(await listSavedReports())
       setError("")
     } catch {
-      setError("Saved reports are unavailable in this browser.")
+      setError(t("Saved reports are unavailable in this browser."))
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     let cancelled = false
@@ -355,14 +384,14 @@ const SavedReportLibrary = ({
         }
       } catch {
         if (!cancelled)
-          setError("Saved reports are unavailable in this browser.")
+          setError(t("Saved reports are unavailable in this browser."))
       }
     }
     void loadSavedReports()
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [t])
 
   useEffect(() => {
     const snapshot = controller.createSavedReportSnapshot()
@@ -370,9 +399,9 @@ const SavedReportLibrary = ({
     void saveReportSnapshot(snapshot)
       .then(refresh)
       .catch(() => {
-        setError("This report could not be saved locally.")
+        setError(t("This report could not be saved locally."))
       })
-  }, [controller, refresh, report])
+  }, [controller, refresh, report, t])
 
   const openReport = async (id: string) => {
     try {
@@ -383,28 +412,28 @@ const SavedReportLibrary = ({
       }
       controller.loadSavedReport(savedReport)
     } catch {
-      setError("This saved report could not be opened.")
+      setError(t("This saved report could not be opened."))
     }
   }
 
   const removeReport = async (id: string) => {
-    if (!window.confirm("Delete this saved report? This cannot be undone."))
+    if (!window.confirm(t("Delete this saved report? This cannot be undone.")))
       return
     try {
       await deleteSavedReport(id)
       if (report?.id === id) controller.clearActiveReport()
       await refresh()
     } catch {
-      setError("This saved report could not be deleted.")
+      setError(t("This saved report could not be deleted."))
     }
   }
 
   return (
-    <section className="report-library" aria-label="Saved reports">
+    <section className="report-library" aria-label={t("Saved reports")}>
       <div className="report-library-heading">
         <div>
-          <p>Report library</p>
-          <strong>Saved locally in this browser</strong>
+          <p>{t("Report library")}</p>
+          <strong>{t("Saved locally in this browser")}</strong>
         </div>
         <Button
           className="cursor-pointer"
@@ -412,11 +441,11 @@ const SavedReportLibrary = ({
           type="button"
           onClick={() => controller.createNewReport()}
         >
-          <Plus /> New report
+          <Plus /> {t("New report")}
         </Button>
       </div>
       {savedReports.length === 0 ? (
-        <p className="report-library-empty">No saved reports yet.</p>
+        <p className="report-library-empty">{t("No saved reports yet.")}</p>
       ) : (
         <ul>
           {savedReports.map((savedReport) => (
@@ -430,16 +459,22 @@ const SavedReportLibrary = ({
                 <span>
                   <strong>{savedReport.title}</strong>
                   <small>
-                    {savedReport.widgetCount} widgets · Updated{" "}
-                    {new Date(savedReport.updatedAt).toLocaleString("en-US")}
+                    {t("{{count}} widgets · Updated {{time}}", {
+                      count: savedReport.widgetCount,
+                      time: new Date(savedReport.updatedAt).toLocaleString(
+                        i18n.resolvedLanguage === "zh-TW" ? "zh-TW" : "en-US"
+                      ),
+                    })}
                   </small>
                 </span>
               </button>
               <Button
-                aria-label={`Delete ${savedReport.title}`}
+                aria-label={t("Delete {{title}}", {
+                  title: savedReport.title,
+                })}
                 className="cursor-pointer"
                 size="icon-sm"
-                title="Delete saved report"
+                title={t("Delete saved report")}
                 type="button"
                 variant="ghost"
                 onClick={() => void removeReport(savedReport.id)}
@@ -464,6 +499,7 @@ export const ReportCanvas = ({
 }: {
   controller: ReportingRuntimeController
 }) => {
+  const { t, i18n } = useTranslation()
   const workspace = useSyncExternalStore(
     controller.subscribeReport,
     controller.getWorkspaceSnapshot,
@@ -477,51 +513,51 @@ export const ReportCanvas = ({
       <div className="report-canvas">
         <SavedReportLibrary controller={controller} report={report} />
         <CacheLimitNotice status={cacheStatus} />
-        <section className="report-empty" aria-label="Empty report canvas">
+        <section className="report-empty" aria-label={t("Empty report canvas")}>
           <span>
             <FileChartColumn className="size-6" />
           </span>
-          <p>Editable report canvas</p>
-          <h2>Start with a question, not a template.</h2>
-          <div>
-            Ask the Agent to inspect dataset status, explore the curated data
-            with SQL, and build a report from verified query evidence. No fixed
-            widgets are added in advance.
-          </div>
+          <p>{t("Report workspace")}</p>
+          <h2>{t("No active report")}</h2>
+          <div>{t("Create or open a report to review operational data.")}</div>
         </section>
       </div>
     )
 
   return (
-    <section className="report-canvas" aria-label="Editable report canvas">
+    <section className="report-canvas" aria-label={t("Editable report canvas")}>
       <SavedReportLibrary controller={controller} report={report} />
       <header className="report-canvas-header">
         <div>
-          <p>Active report · editable by you and the Agent</p>
+          <p>{t("Active report")}</p>
           <EditableTitle
             key={`${report.id}-${report.title}`}
             value={report.title}
-            label="Report title"
+            label={t("Report title")}
             className="report-title-input"
             onCommit={(title) => controller.updateReportTitle(title)}
           />
         </div>
         <dl>
           <div>
-            <dt>Period</dt>
+            <dt>{t("Period")}</dt>
             <dd>
               {report.period
                 ? `${report.period.start} — ${report.period.end}`
-                : "Not specified"}
+                : t("Not specified")}
             </dd>
           </div>
           <div>
-            <dt>Time zone</dt>
-            <dd>{report.period?.timeZone ?? "Not specified"}</dd>
+            <dt>{t("Time zone")}</dt>
+            <dd>{report.period?.timeZone ?? t("Not specified")}</dd>
           </div>
           <div>
-            <dt>Updated</dt>
-            <dd>{new Date(report.updatedAt).toLocaleString("en-US")}</dd>
+            <dt>{t("Updated")}</dt>
+            <dd>
+              {new Date(report.updatedAt).toLocaleString(
+                i18n.resolvedLanguage === "zh-TW" ? "zh-TW" : "en-US"
+              )}
+            </dd>
           </div>
         </dl>
       </header>
@@ -530,8 +566,7 @@ export const ReportCanvas = ({
 
       {report.widgets.length === 0 ? (
         <div className="report-widget-empty">
-          The report exists, but it has no widgets yet. Ask the Agent to add a
-          Metric, table, evidence note, or bar chart.
+          {t("This report has no widgets yet.")}
         </div>
       ) : (
         <div className="report-widget-grid">
@@ -541,14 +576,17 @@ export const ReportCanvas = ({
               controller.getQueryResult
             )
             const isEditing = editingWidgetId === widget.id
-            const widgetLabel =
-              widget.type === "space" ? "space" : widget.title
+            const widgetLabel = widget.type === "space" ? "space" : widget.title
             const editorId = `report-widget-editor-${widget.id}`
             return (
               <article
-                className={`report-widget report-widget-${widget.type}${
-                  isEditing ? " report-widget-editing" : ""
-                }`}
+                className={[
+                  "report-widget",
+                  `report-widget-${widget.type}`,
+                  isEditing ? "report-widget-editing" : "",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
                 key={widget.id}
                 style={{
                   gridColumn: `span ${widget.xSpace ?? 6}`,
@@ -564,11 +602,13 @@ export const ReportCanvas = ({
                     />
                     <div className="report-widget-editor-actions">
                       <Button
-                        aria-label={`Move ${widgetLabel} earlier`}
+                        aria-label={t("Move {{widget}} earlier", {
+                          widget: widgetLabel,
+                        })}
                         className="cursor-pointer"
                         disabled={index === 0}
                         size="icon-sm"
-                        title="Move earlier"
+                        title={t("Move earlier")}
                         variant="ghost"
                         onClick={() =>
                           controller.moveReportWidget(widget.id, index - 1)
@@ -577,11 +617,13 @@ export const ReportCanvas = ({
                         <ArrowUp />
                       </Button>
                       <Button
-                        aria-label={`Move ${widgetLabel} later`}
+                        aria-label={t("Move {{widget}} later", {
+                          widget: widgetLabel,
+                        })}
                         className="cursor-pointer"
                         disabled={index === report.widgets.length - 1}
                         size="icon-sm"
-                        title="Move later"
+                        title={t("Move later")}
                         variant="ghost"
                         onClick={() =>
                           controller.moveReportWidget(widget.id, index + 1)
@@ -590,20 +632,24 @@ export const ReportCanvas = ({
                         <ArrowDown />
                       </Button>
                       <Button
-                        aria-label={`Remove ${widgetLabel}`}
+                        aria-label={t("Remove {{widget}}", {
+                          widget: widgetLabel,
+                        })}
                         className="cursor-pointer"
                         size="icon-sm"
-                        title="Remove widget"
+                        title={t("Remove widget")}
                         variant="destructive"
                         onClick={() => controller.removeReportWidget(widget.id)}
                       >
                         <Trash2 />
                       </Button>
                       <Button
-                        aria-label={`Close ${widgetLabel} editor`}
+                        aria-label={t("Close {{widget}} editor", {
+                          widget: widgetLabel,
+                        })}
                         className="cursor-pointer"
                         size="icon-sm"
-                        title="Close widget editor"
+                        title={t("Close widget editor")}
                         variant="ghost"
                         onClick={() => setEditingWidgetId(null)}
                       >
@@ -614,14 +660,16 @@ export const ReportCanvas = ({
                 ) : null}
                 <header>
                   <div>
-                    <span>{widget.type}</span>
+                    <span>{t(widget.type)}</span>
                     {widget.type === "space" ? (
-                      <p className="report-space-title">Layout spacer</p>
+                      <p className="report-space-title">{t("Layout spacer")}</p>
                     ) : (
                       <EditableTitle
                         key={`${widget.id}-${widget.title}`}
                         value={widget.title}
-                        label={`${widget.type} widget title`}
+                        label={t("{{type}} widget title", {
+                          type: t(widget.type),
+                        })}
                         className="report-widget-title-input"
                         readOnly={!isEditing}
                         onCommit={(title) =>
@@ -635,10 +683,12 @@ export const ReportCanvas = ({
                       <Button
                         aria-controls={editorId}
                         aria-expanded={false}
-                        aria-label={`Edit ${widgetLabel}`}
+                        aria-label={t("Edit {{widget}}", {
+                          widget: widgetLabel,
+                        })}
                         className="cursor-pointer"
                         size="icon-sm"
-                        title="Edit widget"
+                        title={t("Edit widget")}
                         variant="ghost"
                         onClick={() =>
                           setEditingWidgetId((activeWidgetId) =>
@@ -655,7 +705,7 @@ export const ReportCanvas = ({
                 {widget.type === "space" ? (
                   <div
                     className="report-space-widget"
-                    aria-label="Layout spacer"
+                    aria-label={t("Layout spacer")}
                   />
                 ) : resolved.status === "error" ? (
                   <div className="report-widget-error" role="alert">
@@ -671,7 +721,7 @@ export const ReportCanvas = ({
                   <BarWidget result={resolved.result} widget={widget} />
                 ) : (
                   <div className="report-widget-error" role="alert">
-                    Widget data is unavailable.
+                    {t("Widget data is unavailable.")}
                   </div>
                 )}
               </article>

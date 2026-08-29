@@ -1,0 +1,449 @@
+import i18n from "i18next"
+import { initReactI18next } from "react-i18next"
+
+export const supportedLanguages = ["en", "zh-TW"] as const
+export type SupportedLanguage = (typeof supportedLanguages)[number]
+
+export const LANGUAGE_STORAGE_KEY = "voltage-dashboard-language"
+
+const zhTW = {
+  "Operations workspace": "營運工作區",
+  "Demo workspace · local data": "示範工作區 · 本機資料",
+  Workspace: "工作區",
+  Dashboard: "儀表板",
+  Products: "商品",
+  Orders: "訂單",
+  Customers: "顧客",
+  Inventory: "庫存",
+  Reports: "報表",
+  "Catalog Intake": "商品建檔",
+  "Operations Cases": "營運案件",
+  "Approval Inbox": "核准收件匣",
+  Language: "語言",
+  English: "English",
+  "Traditional Chinese": "繁體中文",
+  "Switch language": "切換語言",
+  "Open navigation": "開啟導覽",
+  "Close navigation": "關閉導覽",
+  Notifications: "通知",
+  "Account menu": "帳號選單",
+  "Primary navigation": "主要導覽",
+  Overview: "營運總覽",
+  "Product management": "商品管理",
+  "Orders and customers": "訂單與顧客",
+  Operations: "營運管理",
+  Analytics: "分析",
+  "Product sample data from": "商品範例資料來源：",
+  "Add product": "新增商品",
+  "Product #{{id}}": "商品 #{{id}}",
+  "Edit product #{{id}}": "編輯商品 #{{id}}",
+  Edit: "編輯",
+  "Preparing product editor…": "正在準備商品編輯器…",
+  "Loading product details…": "正在載入商品內容…",
+  "Report workspace": "報表工作區",
+  "No active report": "尚無作用中報表",
+  "Create or open a report to review operational data.":
+    "建立或開啟報表以檢視營運資料。",
+  "Active report": "作用中報表",
+  "This report has no widgets yet.": "此報表目前沒有元件。",
+  "Data is sourced from an embedded, anonymous product catalog.":
+    "資料來自內嵌的匿名商品目錄。",
+  "Voltage Dashboard navigation": "Voltage Dashboard 導覽",
+  "Voltage Dashboard Overview": "Voltage Dashboard 總覽",
+  "Voltage Dashboard Products": "Voltage Dashboard 商品",
+  "Voltage Dashboard Orders": "Voltage Dashboard 訂單",
+  "Voltage Dashboard Customers": "Voltage Dashboard 顧客",
+  "Voltage Dashboard Inventory": "Voltage Dashboard 庫存",
+  "Voltage Dashboard Reports": "Voltage Dashboard 報表",
+
+  "Overview · last 7 days": "總覽 · 最近 7 天",
+  "A calm read on the store.": "從容掌握商店營運。",
+  "Built from the embedded operational dataset.": "依據內嵌營運資料集產生。",
+  Revenue: "營收",
+  "+12.4% this week": "本週 +12.4%",
+  "2 need attention": "2 筆需要處理",
+  "Anonymous segments": "匿名客群分組",
+  "Available SKUs": "可售 SKU",
+  "{{count}} low stock": "{{count}} 項低庫存",
+  "Catalog drafts": "商品草稿",
+  "Prepared for review": "已準備送審",
+  "Exception cases": "異常案件",
+  "Safe operational cases": "安全營運案件",
+  "Human approvals": "人工核准",
+  "Final actions stay in UI": "最終操作保留在介面",
+  "Latest activity": "最新動態",
+  "Order queue": "訂單佇列",
+  "All orders": "所有訂單",
+  "Inventory signal": "庫存訊號",
+  "Low stock": "低庫存",
+  "{{count}} left": "剩餘 {{count}}",
+  "Everything is comfortably stocked.": "所有商品庫存均充足。",
+  "Review inventory": "檢視庫存",
+
+  "Catalog management": "商品目錄管理",
+  "Find the item without the clutter.": "快速找到需要的商品。",
+  "Search, scan, and hand the right product to the next task.":
+    "搜尋、瀏覽並將正確商品交給下一個流程。",
+  "Search products": "搜尋商品",
+  "Search products…": "搜尋商品…",
+  "Products, kept focused.": "專注管理商品。",
+  "{{count}} matching products in the current preview.":
+    "目前預覽有 {{count}} 個符合商品。",
+  "Search product, category, brand…": "搜尋商品、分類或品牌…",
+  Product: "商品",
+  Category: "分類",
+  Price: "價格",
+  Rating: "評分",
+  "{{count}} units": "{{count}} 件",
+
+  "Order operations": "訂單營運",
+  "A private, clear queue.": "兼顧隱私且清楚的佇列。",
+  "Records are anonymized; final order actions remain outside WebMCP.":
+    "紀錄均已匿名化；訂單最終操作不開放給 WebMCP。",
+  "See the queue, not the customer.": "只看處理佇列，不揭露顧客資料。",
+  "Order tools expose anonymous references and operational status only.":
+    "訂單工具只提供匿名識別碼與營運狀態。",
+  Order: "訂單",
+  "Customer ref": "顧客代碼",
+  Created: "建立時間",
+  Status: "狀態",
+  Total: "總額",
+  Processing: "處理中",
+  Shipped: "已出貨",
+  Delivered: "已送達",
+  "Action needed": "需要處理",
+
+  "Customer intelligence": "顧客洞察",
+  "Segments without identities.": "不含身分資訊的客群分組。",
+  "Only non-identifying demo references are available to the agent.":
+    "Agent 只能取得無法識別個人的示範參照。",
+  "{{count}} items": "{{count}} 件商品",
+  "{{count}} orders · active {{time}}": "{{count}} 筆訂單 · 活躍於 {{time}}",
+  New: "新客",
+  Returning: "回購客",
+  VIP: "VIP",
+  "Useful segments, anonymous by design.": "有用的客群分組，預設保持匿名。",
+  "No names, email addresses, phone numbers, or account identifiers are exposed.":
+    "不揭露姓名、Email、電話或帳戶識別資料。",
+  customers: "位顧客",
+  "{{count}} orders": "{{count}} 筆訂單",
+  "{{amount}} lifetime value": "累積價值 {{amount}}",
+
+  "Stock control": "庫存管理",
+  "Keep the shelf in view.": "隨時掌握貨架狀態。",
+  "Changes update this local Demo3 workspace only.":
+    "變更只會更新此本機示範工作區。",
+  "Search inventory": "搜尋庫存",
+  "Search inventory…": "搜尋庫存…",
+  "Low stock only": "只顯示低庫存",
+  "Current stock": "目前庫存",
+  "Update stock": "更新庫存",
+  "Inventory updated.": "庫存已更新。",
+  "{{product}} inventory": "{{product}} 庫存",
+
+  "Smart Dashboard · shared workspace": "智慧儀表板 · 共用工作區",
+  "Shape the report together.": "一起整理營運報表。",
+  "Agent-created reports remain editable in the page.":
+    "Agent 建立的報表仍可在頁面中編輯。",
+  "Connected Agent tools and your direct edits update the same in-memory report. Query evidence stays inside this Dashboard page.":
+    "連線的 Agent 工具與你的直接編輯會更新同一份記憶體報表；查詢證據只保留在此儀表板頁面。",
+  "Report library": "報表庫",
+  "Saved locally in this browser": "儲存在此瀏覽器",
+  "No saved reports yet.": "尚無已儲存報表。",
+  "Delete saved report": "刪除已儲存報表",
+  "Editable report canvas": "可編輯報表畫布",
+  "Start with a question, not a template.": "從問題開始，而不是從範本開始。",
+  "Ask the Agent to analyze the curated data and create a report. The resulting widgets will appear here for direct editing.":
+    "請 Agent 分析整理過的資料並建立報表；產生的元件會出現在此供直接編輯。",
+  "Active report · editable by you and the Agent":
+    "作用中報表 · 你與 Agent 都可編輯",
+  "Report title": "報表標題",
+  Period: "期間",
+  "Time zone": "時區",
+  Updated: "更新時間",
+  "Not specified": "未指定",
+  "Widget layout": "元件版面",
+  Columns: "欄數",
+  Rows: "列數",
+  "No rows returned.": "查詢沒有回傳資料列。",
+  "No chart rows returned.": "圖表查詢沒有回傳資料列。",
+  "This title contains unsupported or sensitive content.":
+    "此標題包含不支援或敏感的內容。",
+  "This query returned no rows. No value is inferred.":
+    "此查詢沒有回傳資料列，因此不推論任何值。",
+  "This query result was truncated. The widget does not represent the full dataset.":
+    "此查詢結果已截斷，元件不代表完整資料集。",
+  "{{count}} evidence query": "{{count}} 個證據查詢",
+  "{{count}} evidence queries": "{{count}} 個證據查詢",
+  "{{title}}: {{count}} category values": "{{title}}：{{count}} 個分類值",
+  "Showing the first 12 categories from this query.":
+    "顯示此查詢的前 12 個分類。",
+  "{{type}} widget width": "{{type}}元件寬度",
+  "{{type}} widget height": "{{type}}元件高度",
+  "Saved reports": "已儲存報表",
+  "New report": "新增報表",
+  "{{count}} widgets · Updated {{time}}": "{{count}} 個元件 · 更新於 {{time}}",
+  "Delete {{title}}": "刪除 {{title}}",
+  "Saved reports are unavailable in this browser.":
+    "此瀏覽器無法使用已儲存報表。",
+  "This report could not be saved locally.": "無法在本機儲存此報表。",
+  "This saved report could not be opened.": "無法開啟此已儲存報表。",
+  "Delete this saved report? This cannot be undone.":
+    "要刪除此已儲存報表嗎？此操作無法復原。",
+  "This saved report could not be deleted.": "無法刪除此已儲存報表。",
+  "Empty report canvas": "空白報表畫布",
+  "Ask the Agent to inspect dataset status, explore the curated data with SQL, and build a report from verified query evidence. No fixed widgets are added in advance.":
+    "請 Agent 檢查資料集狀態、使用 SQL 探索整理過的資料，並以經驗證的查詢證據建立報表；系統不會預先加入固定元件。",
+  "The report exists, but it has no widgets yet. Ask the Agent to add a Metric, table, evidence note, or bar chart.":
+    "報表已建立，但尚無元件。請 Agent 加入指標、表格、證據註記或長條圖。",
+  "Move {{widget}} earlier": "將 {{widget}} 向前移動",
+  "Move {{widget}} later": "將 {{widget}} 向後移動",
+  "Remove {{widget}}": "移除 {{widget}}",
+  "Close {{widget}} editor": "關閉 {{widget}} 編輯器",
+  "Edit {{widget}}": "編輯 {{widget}}",
+  "{{type}} widget title": "{{type}}元件標題",
+  "Widget data is unavailable.": "元件資料無法使用。",
+  "Move earlier": "向前移動",
+  "Move later": "向後移動",
+  "Remove widget": "移除元件",
+  "Close widget editor": "關閉元件編輯器",
+  "Edit widget": "編輯元件",
+  "Layout spacer": "版面間隔",
+
+  "Catalog operations": "商品建檔營運",
+  "Prepare product drafts for review.": "準備商品草稿供人工審查。",
+  "{{count}} catalog candidates still need a complete draft.":
+    "尚有 {{count}} 個候選商品需要完整草稿。",
+  "Source queue": "來源佇列",
+  "Catalog candidates": "候選商品",
+  Verified: "已驗證",
+  "Review source": "需檢查來源",
+  "{{field}} missing": "缺少{{field}}",
+  Title: "標題",
+  Description: "描述",
+  Specifications: "規格",
+  "Product draft": "商品草稿",
+  "Published record": "已發布紀錄",
+  "Prepare for human review": "準備人工審查",
+  "Not saved": "尚未儲存",
+  "Product title": "商品標題",
+  Material: "材質",
+  Capacity: "容量",
+  Origin: "產地",
+  Power: "功率",
+  Runtime: "續航時間",
+  Warranty: "保固",
+  "Kitchen > Coffee": "廚房 > 咖啡",
+  "Home > Lighting": "居家 > 照明",
+  "Home > Storage": "居家 > 收納",
+  "Electronics > Accessories": "電子產品 > 配件",
+  "{{count}}/600 characters": "{{count}}/600 字元",
+  "Save draft": "儲存草稿",
+  Preview: "預覽",
+  "Draft saved to the local review workspace.": "草稿已儲存至本機審查工作區。",
+  "Draft was not saved.": "草稿未儲存。",
+  "Publish preview": "發布預覽",
+  "Human-only final action": "僅限人工的最終操作",
+  "Untitled product": "未命名商品",
+  "This publishes only to local demo state. No external service is called.":
+    "這只會發布到本機示範狀態，不會呼叫外部服務。",
+  "Keep editing": "繼續編輯",
+  "Publish product": "發布商品",
+  "Product published in the demo workspace.": "商品已發布至示範工作區。",
+  "Product was not published.": "商品未發布。",
+  "Untrusted source · display only": "不可信來源 · 僅供顯示",
+  "Manufacturer data": "原廠資料",
+  "Never rendered as HTML": "絕不渲染為 HTML",
+  Draft: "草稿",
+  draft: "草稿",
+  pending_review: "等待審查",
+  published: "已發布",
+  agent: "Agent",
+  user: "使用者",
+  "No description supplied.": "尚未提供描述。",
+
+  "Exception operations": "異常營運",
+  "Triage cases without changing orders.": "不變更訂單即可分類處理案件。",
+  "{{count}} cases are waiting for a classification draft.":
+    "有 {{count}} 個案件等待分類草稿。",
+  "Case type": "案件類型",
+  "All types": "所有類型",
+  Fulfillment: "履約",
+  "Payment check": "付款檢核",
+  "Address validation": "地址驗證",
+  "Return request": "退貨申請",
+  "All statuses": "所有狀態",
+  Open: "待處理",
+  Drafted: "已有草稿",
+  "Pending review": "等待審查",
+  Resolved: "已解決",
+  Priority: "優先級",
+  "All priorities": "所有優先級",
+  Low: "低",
+  Medium: "中",
+  High: "高",
+  "{{count}} matching cases": "{{count}} 個符合案件",
+  "Operations case list": "營運案件清單",
+  "Reason code · {{code}}": "原因代碼 · {{code}}",
+  "{{priority}} priority": "{{priority}}優先級",
+  "Classification draft": "分類草稿",
+  "Payment status review": "付款狀態審查",
+  "Address validation review": "地址驗證審查",
+  "Return policy review": "退貨政策審查",
+  "Fulfillment follow-up": "履約追蹤",
+  "Evidence status codes": "證據狀態碼",
+  "Recommended next step": "建議下一步",
+  "Customer support draft": "客服回覆草稿",
+  "Queue review": "送交審查",
+  "Complete simulated handling": "完成模擬處理",
+  "Human-only demo control. This does not refund, cancel, pay, or modify an order.":
+    "僅限人工的示範操作；不會退款、取消、付款或修改訂單。",
+  "Return eligibility": "退貨資格",
+  "Check return eligibility": "檢查退貨資格",
+  "Deterministic policy result": "確定性政策結果",
+  "Matched rules": "符合規則",
+  "Missing evidence": "缺少證據",
+  None: "無",
+  "Case draft saved without changing the underlying order.":
+    "案件草稿已儲存，未變更原始訂單。",
+  "Case queued for a human final decision.": "案件已送交人工進行最終決定。",
+  "Case completed. No order action was performed.":
+    "案件已完成，未執行任何訂單操作。",
+  "Review was not opened.": "未能開啟審查。",
+  "Case completed in demo state. No order action was performed.":
+    "案件已在示範狀態完成，未執行任何訂單操作。",
+  "Case was not completed.": "案件未完成。",
+  "No cases match all three filters.": "沒有案件同時符合三個篩選條件。",
+  "Select a case to begin a safe classification draft.":
+    "選擇案件以開始安全的分類草稿。",
+  eligible: "符合資格",
+  ineligible: "不符合資格",
+  needs_human_review: "需要人工審查",
+  open: "待處理",
+  drafted: "已有草稿",
+  resolved: "已解決",
+  low: "低",
+  medium: "中",
+  high: "高",
+
+  "Human review": "人工審查",
+  "Keep final actions in human hands.": "最終操作由人員掌控。",
+  "{{count}} review items still require a page-level decision.":
+    "尚有 {{count}} 個審查項目需要在頁面決定。",
+  "Review queue": "審查佇列",
+  "Cross-module queue": "跨模組佇列",
+  "Product and case reviews": "商品與案件審查",
+  "Agent suggestion": "Agent 建議",
+  Recommendation: "處理建議",
+  "Required approval": "必要核准",
+  "Product draft details unavailable.": "無法取得商品草稿內容。",
+  "Publish in {{category}} after a human checks the draft.":
+    "由人工檢查草稿後發布至 {{category}}。",
+  "the reviewed category": "已審查分類",
+  "Catalog candidate": "候選商品",
+  "operations case": "營運案件",
+  "Case recommendation unavailable.": "無法取得案件建議。",
+  "Review this operations case.": "請審查此營運案件。",
+  "Evidence source": "證據來源",
+  "Source / selected evidence": "來源／已選證據",
+  Source: "來源",
+  Selected: "已選",
+  "Human final action": "人工最終操作",
+  "Publish the product to local demo state.": "將商品發布至本機示範狀態。",
+  "Complete the case in demo state without changing an order.":
+    "在不變更訂單的情況下完成示範案件。",
+  "Complete the case without changing the linked order.":
+    "完成案件，但不變更關聯訂單。",
+  "Completing this case does not refund, cancel, pay, or modify an order.":
+    "完成此案件不會退款、取消、付款或修改訂單。",
+  "Buttons require a direct page interaction; URL or tool input cannot replace them.":
+    "必須直接操作頁面按鈕；URL 或工具輸入無法取代。",
+  "Return for changes": "退回修改",
+  "Approve recommendation": "核准建議",
+  "Complete case": "完成案件",
+  "Structured activity": "結構化活動",
+  "Audit trail": "稽核軌跡",
+  "Agent-created product and case reviews will appear here.":
+    "Agent 建立的商品與案件審查會顯示在這裡。",
+  "Product and case reviews will appear here.": "商品與案件審查會顯示在這裡。",
+  "Audit entries contain only actor, action, workflow ID, time, and result. Draft text and prompts are never copied here.":
+    "稽核紀錄只包含執行者、動作、工作流 ID、時間與結果，不會複製草稿或提示文字。",
+  "{{type}} review": "{{type}}審查",
+  product: "商品",
+  case: "案件",
+  pending: "等待審查",
+  approved: "已核准",
+  returned: "已退回",
+  completed: "已完成",
+  "Action failed.": "操作失敗。",
+  "{{id}} returned for revision.": "{{id}} 已退回修改。",
+  "{{id}} recommendation approved.": "{{id}} 建議已核准。",
+  "{{id}} final demo action completed.": "{{id}} 最終示範操作已完成。",
+  "{{id}} final action completed.": "{{id}} 最終操作已完成。",
+  "product draft saved": "商品草稿已儲存",
+  "case draft saved": "案件草稿已儲存",
+  "review opened": "已開啟審查",
+  "review approved": "審查已核准",
+  "review returned": "審查已退回",
+  "product published": "商品已發布",
+  "case resolved": "案件已解決",
+  saved: "已儲存",
+  queued: "已排入佇列",
+  metric: "指標",
+  table: "表格",
+  markdown: "Markdown",
+  text: "文字",
+  bar: "長條圖",
+  space: "間隔",
+} as const
+
+const normalizeLanguage = (
+  value: string | null | undefined
+): SupportedLanguage => (value?.toLowerCase().startsWith("zh") ? "zh-TW" : "en")
+
+const getInitialLanguage = (): SupportedLanguage => {
+  if (typeof window === "undefined") return "en"
+  try {
+    return normalizeLanguage(
+      window.localStorage.getItem(LANGUAGE_STORAGE_KEY) ??
+        window.navigator.language
+    )
+  } catch {
+    return normalizeLanguage(window.navigator.language)
+  }
+}
+
+const initialLanguage = getInitialLanguage()
+
+void i18n.use(initReactI18next).init({
+  resources: {
+    en: { translation: {} },
+    "zh-TW": { translation: zhTW },
+  },
+  lng: initialLanguage,
+  fallbackLng: "en",
+  supportedLngs: supportedLanguages,
+  interpolation: { escapeValue: false },
+  returnNull: false,
+})
+
+const syncDocumentLanguage = (language: string) => {
+  if (typeof document !== "undefined") {
+    document.documentElement.lang = normalizeLanguage(language)
+  }
+}
+
+syncDocumentLanguage(initialLanguage)
+i18n.on("languageChanged", (language) => {
+  const normalized = normalizeLanguage(language)
+  syncDocumentLanguage(normalized)
+  if (typeof window !== "undefined") {
+    try {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, normalized)
+    } catch {
+      // Language switching still works when browser storage is unavailable.
+    }
+  }
+})
+
+export default i18n

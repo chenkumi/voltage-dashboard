@@ -171,10 +171,12 @@ export const validateProductInput = (
 
 export class ProductValidationError extends Error {
   readonly code = "PRODUCT_VALIDATION_ERROR"
+  readonly issues: readonly ProductValidationIssue[]
 
-  constructor(readonly issues: readonly ProductValidationIssue[]) {
+  constructor(issues: readonly ProductValidationIssue[]) {
     super(issues[0]?.message ?? "Product validation failed.")
     this.name = "ProductValidationError"
+    this.issues = issues
   }
 }
 

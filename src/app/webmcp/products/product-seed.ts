@@ -32,11 +32,12 @@ type RawProduct = {
 }
 
 type RawCatalog = { products?: unknown[] }
+type SeedRawProduct = RawProduct & { id: number; sku: string }
 
 export const DUMMYJSON_PRODUCTS_SOURCE = "https://dummyjson.com/products"
 const SEED_TIMESTAMP = "2026-08-29T00:00:00.000Z"
 
-const isRawProduct = (value: unknown): value is RawProduct => {
+const isRawProduct = (value: unknown): value is SeedRawProduct => {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false
   const product = value as Partial<RawProduct>
   return (

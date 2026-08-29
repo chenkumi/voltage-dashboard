@@ -4,8 +4,9 @@ import { act } from "react"
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 import { MemoryRouter } from "react-router-dom"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import App from "../../../App"
+import i18n, { LANGUAGE_STORAGE_KEY } from "../../../i18n"
 import { OperationsController } from "./operations-controller"
 import { executeOperationsTool } from "./operations-tools"
 
@@ -72,6 +73,11 @@ const renderRoute = (route: string) =>
       <App />
     </MemoryRouter>
   )
+
+beforeEach(async () => {
+  window.localStorage.clear()
+  await i18n.changeLanguage("en")
+})
 
 afterEach(() => cleanup())
 
@@ -218,6 +224,29 @@ describe("fallback operations workflows", () => {
 })
 
 describe("fallback Provider and UI workflow integration", () => {
+  it("switches between English and Traditional Chinese and persists the choice", async () => {
+    const user = userEvent.setup()
+    renderRoute("/dashboard")
+
+    expect(screen.getByRole("button", { name: "Dashboard" })).toBeTruthy()
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "Switch language" }),
+      "zh-TW"
+    )
+
+    expect(screen.getByRole("button", { name: "儀表板" })).toBeTruthy()
+    expect(screen.getByRole("heading", { name: "儀表板" })).toBeTruthy()
+    expect(document.documentElement.lang).toBe("zh-TW")
+    expect(window.localStorage.getItem(LANGUAGE_STORAGE_KEY)).toBe("zh-TW")
+
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: "切換語言" }),
+      "en"
+    )
+    expect(screen.getByRole("button", { name: "Dashboard" })).toBeTruthy()
+    expect(document.documentElement.lang).toBe("en")
+  })
+
   it("reflects an Agent product draft and requires page buttons to publish", async () => {
     const user = userEvent.setup()
     renderRoute("/catalog-intake")

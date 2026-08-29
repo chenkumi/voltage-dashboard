@@ -1,5 +1,6 @@
 import { Check, Eye, FilePenLine, ShieldCheck } from "lucide-react"
 import { useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { GridBlock, PageLayout } from "../voltage-admin-page-layout"
@@ -38,43 +39,51 @@ const CatalogCandidateCard = ({
   active: boolean
   draft?: ProductDraft
   onSelect: () => void
-}) => (
-  <button
-    type="button"
-    className={`voltage-admin-candidate ${active ? "is-active" : ""}`}
-    onClick={onSelect}
-    aria-pressed={active}
-  >
-    <span className="voltage-admin-candidate-heading">
-      <span>
-        <small>{candidate.id}</small>
-        <strong>{candidate.sourceTitle}</strong>
+}) => {
+  const { t } = useTranslation()
+
+  return (
+    <button
+      type="button"
+      className={`voltage-admin-candidate ${active ? "is-active" : ""}`}
+      onClick={onSelect}
+      aria-pressed={active}
+    >
+      <span className="voltage-admin-candidate-heading">
+        <span>
+          <small>{candidate.id}</small>
+          <strong>{candidate.sourceTitle}</strong>
+        </span>
+        <Badge
+          className={
+            candidate.sourceTrust === "verified"
+              ? "bg-[#e5eee7] text-[#48614c]"
+              : "bg-[#ece8d9] text-[#6e6746]"
+          }
+        >
+          {candidate.sourceTrust === "verified"
+            ? t("Verified")
+            : t("Review source")}
+        </Badge>
       </span>
-      <Badge
-        className={
-          candidate.sourceTrust === "verified"
-            ? "bg-[#e5eee7] text-[#48614c]"
-            : "bg-[#ece8d9] text-[#6e6746]"
-        }
-      >
-        {candidate.sourceTrust === "verified" ? "Verified" : "Review source"}
-      </Badge>
-    </span>
-    <span className="voltage-admin-candidate-meta">
-      {candidate.sourceLabel} · {candidate.sourceUpdatedAt.slice(0, 10)}
-    </span>
-    <span className="voltage-admin-chip-row">
-      {candidate.missingFields.map((field) => (
-        <span key={field}>{fieldLabel[field]} missing</span>
-      ))}
-    </span>
-    {draft ? (
-      <span className="voltage-admin-candidate-status">
-        <Check className="size-3.5" /> Draft {draft.status.replace("_", " ")}
+      <span className="voltage-admin-candidate-meta">
+        {candidate.sourceLabel} · {candidate.sourceUpdatedAt.slice(0, 10)}
       </span>
-    ) : null}
-  </button>
-)
+      <span className="voltage-admin-chip-row">
+        {candidate.missingFields.map((field) => (
+          <span key={field}>
+            {t("{{field}} missing", { field: t(fieldLabel[field]) })}
+          </span>
+        ))}
+      </span>
+      {draft ? (
+        <span className="voltage-admin-candidate-status">
+          <Check className="size-3.5" /> {t("Draft")} {t(draft.status)}
+        </span>
+      ) : null}
+    </button>
+  )
+}
 
 const ProductDraftEditor = ({
   candidate,
@@ -83,6 +92,7 @@ const ProductDraftEditor = ({
   candidate: CatalogCandidate
   draft?: ProductDraft
 }) => {
+  const { t } = useTranslation()
   const { operationsController } = useVoltageAdmin()
   const [title, setTitle] = useState(draft?.title ?? candidate.sourceTitle)
   const [category, setCategory] = useState(
@@ -111,10 +121,10 @@ const ProductDraftEditor = ({
   const save = () => {
     try {
       operationsController.saveProductDraft(input(), "user")
-      setMessage("Draft saved to the local review workspace.")
+      setMessage(t("Draft saved to the local review workspace."))
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Draft was not saved."
+        error instanceof Error ? error.message : t("Draft was not saved.")
       )
     }
   }
@@ -123,10 +133,10 @@ const ProductDraftEditor = ({
     try {
       operationsController.publishProduct(input(), "user")
       setPreview(false)
-      setMessage("Product published in the demo workspace.")
+      setMessage(t("Product published in the demo workspace."))
     } catch (error) {
       setMessage(
-        error instanceof Error ? error.message : "Product was not published."
+        error instanceof Error ? error.message : t("Product was not published.")
       )
     }
   }
@@ -135,17 +145,21 @@ const ProductDraftEditor = ({
     <article className="voltage-admin-panel">
       <div className="voltage-admin-panel-heading">
         <div>
-          <p>Product draft</p>
-          <h2>{published ? "Published record" : "Prepare for human review"}</h2>
+          <p>{t("Product draft")}</p>
+          <h2>
+            {published ? t("Published record") : t("Prepare for human review")}
+          </h2>
         </div>
         <Badge className="bg-[#e4eaed] text-[#4f6975]">
-          {draft ? `v${draft.version} · ${draft.lastEditedBy}` : "Not saved"}
+          {draft
+            ? `v${draft.version} · ${t(draft.lastEditedBy)}`
+            : t("Not saved")}
         </Badge>
       </div>
 
       <div className="voltage-admin-form-grid">
         <label className="voltage-admin-field sm:col-span-2">
-          <span>Product title</span>
+          <span>{t("Product title")}</span>
           <input
             value={title}
             maxLength={120}
@@ -154,7 +168,7 @@ const ProductDraftEditor = ({
           />
         </label>
         <label className="voltage-admin-field sm:col-span-2">
-          <span>Category</span>
+          <span>{t("Category")}</span>
           <select
             value={category}
             disabled={published}
@@ -163,12 +177,14 @@ const ProductDraftEditor = ({
             }
           >
             {PRODUCT_CATEGORIES.map((item) => (
-              <option key={item}>{item}</option>
+              <option key={item} value={item}>
+                {t(item)}
+              </option>
             ))}
           </select>
         </label>
         <label className="voltage-admin-field sm:col-span-2">
-          <span>Description</span>
+          <span>{t("Description")}</span>
           <textarea
             value={description}
             maxLength={600}
@@ -176,11 +192,13 @@ const ProductDraftEditor = ({
             disabled={published}
             onChange={(event) => setDescription(event.target.value)}
           />
-          <small>{description.length}/600 characters</small>
+          <small>
+            {t("{{count}}/600 characters", { count: description.length })}
+          </small>
         </label>
         {specificationFields.map(([key, label]) => (
           <label key={key} className="voltage-admin-field">
-            <span>{label}</span>
+            <span>{t(label)}</span>
             <input
               value={specifications[key] ?? ""}
               maxLength={120}
@@ -206,7 +224,7 @@ const ProductDraftEditor = ({
             disabled={published}
             onClick={save}
           >
-            <FilePenLine className="size-4" /> Save draft
+            <FilePenLine className="size-4" /> {t("Save draft")}
           </Button>
           <Button
             type="button"
@@ -214,37 +232,46 @@ const ProductDraftEditor = ({
             disabled={published}
             onClick={() => setPreview(true)}
           >
-            <Eye className="size-4" /> Preview
+            <Eye className="size-4" /> {t("Preview")}
           </Button>
         </div>
       </div>
 
       {preview ? (
-        <section className="voltage-admin-preview" aria-label="Publish preview">
+        <section
+          className="voltage-admin-preview"
+          aria-label={t("Publish preview")}
+        >
           <div className="voltage-admin-panel-heading">
             <div>
-              <p>Human-only final action</p>
-              <h2>{title || "Untitled product"}</h2>
+              <p>{t("Human-only final action")}</p>
+              <h2>{title || t("Untitled product")}</h2>
             </div>
             <ShieldCheck className="size-5" />
           </div>
-          <p>{description || "No description supplied."}</p>
+          <p>{description || t("No description supplied.")}</p>
           <dl>
             <div>
-              <dt>Category</dt>
-              <dd>{category}</dd>
+              <dt>{t("Category")}</dt>
+              <dd>{t(category)}</dd>
             </div>
             {Object.entries(input().specifications).map(([key, value]) => (
               <div key={key}>
-                <dt>{key}</dt>
+                <dt>
+                  {t(
+                    specificationFields.find(([name]) => name === key)?.[1] ??
+                      key
+                  )}
+                </dt>
                 <dd>{value}</dd>
               </div>
             ))}
           </dl>
           <div className="voltage-admin-action-row">
             <span>
-              This publishes only to local demo state. No external service is
-              called.
+              {t(
+                "This publishes only to local demo state. No external service is called."
+              )}
             </span>
             <div>
               <Button
@@ -253,14 +280,14 @@ const ProductDraftEditor = ({
                 className="cursor-pointer"
                 onClick={() => setPreview(false)}
               >
-                Keep editing
+                {t("Keep editing")}
               </Button>
               <Button
                 type="button"
                 className="cursor-pointer"
                 onClick={publish}
               >
-                Publish product
+                {t("Publish product")}
               </Button>
             </div>
           </div>
@@ -271,6 +298,7 @@ const ProductDraftEditor = ({
 }
 
 export const CatalogIntakePage = () => {
+  const { t } = useTranslation()
   const { workflow } = useVoltageAdmin()
   const [selectedId, setSelectedId] = useState(workflow.candidates[0]?.id ?? "")
   const selected = workflow.candidates.find(({ id }) => id === selectedId)
@@ -286,20 +314,23 @@ export const CatalogIntakePage = () => {
 
   return (
     <PageLayout
-      ariaLabel="Catalog Intake"
-      eyebrow="Catalog operations"
-      title="Prepare product drafts for review."
-      detail={`${unfinished} catalog candidates still need a complete draft.`}
+      ariaLabel={t("Catalog Intake")}
+      pageName="Catalog Intake"
+      eyebrow={t("Catalog operations")}
+      title={t("Prepare product drafts for review.")}
+      detail={t("{{count}} catalog candidates still need a complete draft.", {
+        count: unfinished,
+      })}
     >
       <GridBlock className="col-span-12 lg:col-span-4">
         <section
           className="voltage-admin-panel"
-          aria-label="Catalog candidates"
+          aria-label={t("Catalog candidates")}
         >
           <div className="voltage-admin-panel-heading">
             <div>
-              <p>Source queue</p>
-              <h2>Catalog candidates</h2>
+              <p>{t("Source queue")}</p>
+              <h2>{t("Catalog candidates")}</h2>
             </div>
             <Badge className="bg-[#e2e5df] text-[#4c574e]">
               {workflow.candidates.length}
@@ -336,11 +367,11 @@ export const CatalogIntakePage = () => {
           <article className="voltage-admin-panel">
             <div className="voltage-admin-panel-heading">
               <div>
-                <p>Untrusted source · display only</p>
-                <h2>Manufacturer data</h2>
+                <p>{t("Untrusted source · display only")}</p>
+                <h2>{t("Manufacturer data")}</h2>
               </div>
               <Badge className="bg-[#f4e5d7] text-[#8b5d3c]">
-                Never rendered as HTML
+                {t("Never rendered as HTML")}
               </Badge>
             </div>
             <p className="voltage-admin-source-copy">
@@ -349,7 +380,12 @@ export const CatalogIntakePage = () => {
             <dl className="voltage-admin-source-specs">
               {Object.entries(selected.specifications).map(([key, value]) => (
                 <div key={key}>
-                  <dt>{key}</dt>
+                  <dt>
+                    {t(
+                      specificationFields.find(([name]) => name === key)?.[1] ??
+                        key
+                    )}
+                  </dt>
                   <dd>{value}</dd>
                 </div>
               ))}

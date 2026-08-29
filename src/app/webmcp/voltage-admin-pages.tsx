@@ -1,5 +1,6 @@
 import { ChevronRight, CircleAlert, Search } from "lucide-react"
 import { useMemo, useState, type ReactNode } from "react"
+import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -13,8 +14,8 @@ import { useVoltageAdmin, voltageAdminPath } from "./voltage-admin"
 import { GridBlock, PageLayout } from "./voltage-admin-page-layout"
 import { ReportCanvas } from "./reporting/report-canvas"
 
-const formatMoney = (value: number) =>
-  new Intl.NumberFormat("en-US", {
+const formatMoney = (value: number, language = "en") =>
+  new Intl.NumberFormat(language === "zh-TW" ? "zh-TW" : "en-US", {
     style: "currency",
     currency: "USD",
     maximumFractionDigits: 0,
@@ -34,6 +35,7 @@ const DataTable = ({ children }: { children: ReactNode }) => (
 )
 
 export const Dashboard = () => {
+  const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { dashboard, workflow } = useVoltageAdmin()
   const workflowMetrics = [
@@ -62,19 +64,24 @@ export const Dashboard = () => {
 
   return (
     <PageLayout
-      ariaLabel="Voltage Dashboard Overview"
-      eyebrow="Overview · last 7 days"
-      title="A calm read on the store."
-      detail="Built from the embedded operational dataset."
+      ariaLabel={t("Voltage Dashboard Overview")}
+      pageName="Dashboard"
+      eyebrow={t("Overview · last 7 days")}
+      title={t("A calm read on the store.")}
+      detail={t("Built from the embedded operational dataset.")}
     >
       {[
-        ["Revenue", formatMoney(dashboard.revenue), "+12.4% this week"],
+        [
+          "Revenue",
+          formatMoney(dashboard.revenue, i18n.resolvedLanguage),
+          "+12.4% this week",
+        ],
         ["Orders", dashboard.orderCount.toString(), "2 need attention"],
         ["Customers", dashboard.customerCount.toString(), "Anonymous segments"],
         [
           "Available SKUs",
           dashboard.availableProductCount.toString(),
-          `${dashboard.lowStockCount} low stock`,
+          t("{{count}} low stock", { count: dashboard.lowStockCount }),
         ],
       ].map(([label, value, detail]) => (
         <GridBlock
@@ -82,9 +89,9 @@ export const Dashboard = () => {
           className="col-span-12 sm:col-span-6 xl:col-span-3"
         >
           <article className="voltage-admin-metric">
-            <span>{label}</span>
+            <span>{t(label)}</span>
             <strong>{value}</strong>
-            <small>{detail}</small>
+            <small>{t(detail)}</small>
           </article>
         </GridBlock>
       ))}
@@ -94,9 +101,9 @@ export const Dashboard = () => {
           className="col-span-12 sm:col-span-6 xl:col-span-4"
         >
           <article className="voltage-admin-metric voltage-admin-workflow-metric">
-            <span>{label}</span>
+            <span>{t(label)}</span>
             <strong>{value}</strong>
-            <small>{detail}</small>
+            <small>{t(detail)}</small>
           </article>
         </GridBlock>
       ))}
@@ -104,8 +111,8 @@ export const Dashboard = () => {
         <article className="voltage-admin-panel">
           <div className="voltage-admin-panel-heading">
             <div>
-              <p>Latest activity</p>
-              <h2>Order queue</h2>
+              <p>{t("Latest activity")}</p>
+              <h2>{t("Order queue")}</h2>
             </div>
             <Button
               variant="ghost"
@@ -113,7 +120,7 @@ export const Dashboard = () => {
               className="cursor-pointer"
               onClick={() => navigate(voltageAdminPath("orders"))}
             >
-              All orders <ChevronRight className="size-4" />
+              {t("All orders")} <ChevronRight className="size-4" />
             </Button>
           </div>
           <div className="space-y-1">
@@ -122,14 +129,17 @@ export const Dashboard = () => {
                 <span>
                   <strong>{order.id}</strong>
                   <small>
-                    {order.itemCount} items · {order.createdAt}
+                    {t("{{count}} items", { count: order.itemCount })} ·{" "}
+                    {order.createdAt}
                   </small>
                 </span>
                 <span>
                   <Badge className={statusClass(order.status)}>
-                    {order.status}
+                    {t(order.status)}
                   </Badge>
-                  <strong>{formatMoney(order.total)}</strong>
+                  <strong>
+                    {formatMoney(order.total, i18n.resolvedLanguage)}
+                  </strong>
                 </span>
               </div>
             ))}
@@ -140,8 +150,8 @@ export const Dashboard = () => {
         <article className="voltage-admin-panel voltage-admin-alert">
           <div className="voltage-admin-panel-heading">
             <div>
-              <p>Inventory signal</p>
-              <h2>Low stock</h2>
+              <p>{t("Inventory signal")}</p>
+              <h2>{t("Low stock")}</h2>
             </div>
             <CircleAlert className="size-5" />
           </div>
@@ -149,18 +159,18 @@ export const Dashboard = () => {
             dashboard.lowStockProducts.slice(0, 4).map((product) => (
               <div key={product.id} className="voltage-admin-alert-row">
                 <span>{product.title}</span>
-                <strong>{product.stock} left</strong>
+                <strong>{t("{{count}} left", { count: product.stock })}</strong>
               </div>
             ))
           ) : (
-            <p>Everything is comfortably stocked.</p>
+            <p>{t("Everything is comfortably stocked.")}</p>
           )}
           <Button
             variant="outline"
             className="mt-5 w-full cursor-pointer"
             onClick={() => navigate(voltageAdminPath("inventory"))}
           >
-            Review inventory
+            {t("Review inventory")}
           </Button>
         </article>
       </GridBlock>
@@ -169,6 +179,7 @@ export const Dashboard = () => {
 }
 
 export const Products = () => {
+  const { t, i18n } = useTranslation()
   const { inventory } = useVoltageAdmin()
   const [query, setQuery] = useState("")
   const products = useMemo(
@@ -178,20 +189,23 @@ export const Products = () => {
 
   return (
     <PageLayout
-      ariaLabel="Voltage Dashboard Products"
-      eyebrow="Catalog management"
-      title="Products, kept focused."
-      detail={`${products.length} matching products in the current preview.`}
+      ariaLabel={t("Voltage Dashboard Products")}
+      pageName="Products"
+      eyebrow={t("Catalog management")}
+      title={t("Products, kept focused.")}
+      detail={t("{{count}} matching products in the current preview.", {
+        count: products.length,
+      })}
     >
       <GridBlock>
         <div className="voltage-admin-toolbar">
           <label className="voltage-admin-search">
             <Search className="size-4" />
-            <span className="sr-only">Search products</span>
+            <span className="sr-only">{t("Search products")}</span>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search product, category, brand…"
+              placeholder={t("Search product, category, brand…")}
             />
           </label>
         </div>
@@ -201,11 +215,11 @@ export const Products = () => {
           <table>
             <thead>
               <tr>
-                <th>Product</th>
-                <th>Category</th>
-                <th>Price</th>
-                <th>Rating</th>
-                <th>Inventory</th>
+                <th>{t("Product")}</th>
+                <th>{t("Category")}</th>
+                <th>{t("Price")}</th>
+                <th>{t("Rating")}</th>
+                <th>{t("Inventory")}</th>
               </tr>
             </thead>
             <tbody>
@@ -216,7 +230,7 @@ export const Products = () => {
                     <small>#{product.id}</small>
                   </td>
                   <td>{product.category}</td>
-                  <td>{formatMoney(product.price)}</td>
+                  <td>{formatMoney(product.price, i18n.resolvedLanguage)}</td>
                   <td>{product.rating.toFixed(1)} / 5</td>
                   <td>
                     <Badge
@@ -226,7 +240,7 @@ export const Products = () => {
                           : "bg-[#e5eee7] text-[#48614c]"
                       }
                     >
-                      {product.stock} units
+                      {t("{{count}} units", { count: product.stock })}
                     </Badge>
                   </td>
                 </tr>
@@ -239,85 +253,107 @@ export const Products = () => {
   )
 }
 
-export const Orders = () => (
-  <PageLayout
-    ariaLabel="Voltage Dashboard Orders"
-    eyebrow="Order operations"
-    title="A private, clear queue."
-    detail="Records are anonymized; final order actions remain outside WebMCP."
-  >
-    <GridBlock>
-      <DataTable>
-        <table>
-          <thead>
-            <tr>
-              <th>Order</th>
-              <th>Customer ref</th>
-              <th>Created</th>
-              <th>Status</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            {voltageAdminOrders.map((order) => (
-              <tr key={order.id}>
-                <td>
-                  <strong>{order.id}</strong>
-                  <small>{order.itemCount} items</small>
-                </td>
-                <td>{order.customerId}</td>
-                <td>{order.createdAt}</td>
-                <td>
-                  <Badge className={statusClass(order.status)}>
-                    {order.status}
-                  </Badge>
-                </td>
-                <td>{formatMoney(order.total)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </DataTable>
-    </GridBlock>
-  </PageLayout>
-)
+export const Orders = () => {
+  const { t, i18n } = useTranslation()
 
-export const Customers = () => (
-  <PageLayout
-    ariaLabel="Voltage Dashboard Customers"
-    eyebrow="Customer intelligence"
-    title="Segments without identities."
-    detail="Only non-identifying demo references are available to the agent."
-  >
-    {voltageAdminCustomers.map((customer) => (
-      <GridBlock
-        key={customer.id}
-        className="col-span-12 sm:col-span-6 xl:col-span-4"
-      >
-        <article className="voltage-admin-customer">
-          <div>
-            <span>{customer.id}</span>
-            <Badge
-              className={
-                customer.segment === "VIP"
-                  ? "bg-[#e4eaed] text-[#4f6975]"
-                  : "bg-[#e5eee7] text-[#48614c]"
-              }
-            >
-              {customer.segment}
-            </Badge>
-          </div>
-          <strong>{formatMoney(customer.lifetimeValue)}</strong>
-          <p>
-            {customer.orders} orders · active {customer.lastActive}
-          </p>
-        </article>
+  return (
+    <PageLayout
+      ariaLabel={t("Voltage Dashboard Orders")}
+      pageName="Orders"
+      eyebrow={t("Order operations")}
+      title={t("A private, clear queue.")}
+      detail={t(
+        "Records are anonymized; final order actions remain outside WebMCP."
+      )}
+    >
+      <GridBlock>
+        <DataTable>
+          <table>
+            <thead>
+              <tr>
+                <th>{t("Order")}</th>
+                <th>{t("Customer ref")}</th>
+                <th>{t("Created")}</th>
+                <th>{t("Status")}</th>
+                <th>{t("Total")}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {voltageAdminOrders.map((order) => (
+                <tr key={order.id}>
+                  <td>
+                    <strong>{order.id}</strong>
+                    <small>
+                      {t("{{count}} items", { count: order.itemCount })}
+                    </small>
+                  </td>
+                  <td>{order.customerId}</td>
+                  <td>{order.createdAt}</td>
+                  <td>
+                    <Badge className={statusClass(order.status)}>
+                      {t(order.status)}
+                    </Badge>
+                  </td>
+                  <td>{formatMoney(order.total, i18n.resolvedLanguage)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </DataTable>
       </GridBlock>
-    ))}
-  </PageLayout>
-)
+    </PageLayout>
+  )
+}
+
+export const Customers = () => {
+  const { t, i18n } = useTranslation()
+
+  return (
+    <PageLayout
+      ariaLabel={t("Voltage Dashboard Customers")}
+      pageName="Customers"
+      eyebrow={t("Customer intelligence")}
+      title={t("Segments without identities.")}
+      detail={t(
+        "Only non-identifying demo references are available to the agent."
+      )}
+    >
+      {voltageAdminCustomers.map((customer) => (
+        <GridBlock
+          key={customer.id}
+          className="col-span-12 sm:col-span-6 xl:col-span-4"
+        >
+          <article className="voltage-admin-customer">
+            <div>
+              <span>{customer.id}</span>
+              <Badge
+                className={
+                  customer.segment === "VIP"
+                    ? "bg-[#e4eaed] text-[#4f6975]"
+                    : "bg-[#e5eee7] text-[#48614c]"
+                }
+              >
+                {t(customer.segment)}
+              </Badge>
+            </div>
+            <strong>
+              {formatMoney(customer.lifetimeValue, i18n.resolvedLanguage)}
+            </strong>
+            <p>
+              {t("{{count}} orders · active {{time}}", {
+                count: customer.orders,
+                time: customer.lastActive,
+              })}
+            </p>
+          </article>
+        </GridBlock>
+      ))}
+    </PageLayout>
+  )
+}
 
 export const Inventory = () => {
+  const { t } = useTranslation()
   const { inventory, setInventory } = useVoltageAdmin()
   const [query, setQuery] = useState("")
   const [lowStockOnly, setLowStockOnly] = useState(false)
@@ -331,20 +367,21 @@ export const Inventory = () => {
 
   return (
     <PageLayout
-      ariaLabel="Voltage Dashboard Inventory"
-      eyebrow="Stock control"
-      title="Keep the shelf in view."
-      detail="Changes update this local Demo3 workspace only."
+      ariaLabel={t("Voltage Dashboard Inventory")}
+      pageName="Inventory"
+      eyebrow={t("Stock control")}
+      title={t("Keep the shelf in view.")}
+      detail={t("Changes update this local Demo3 workspace only.")}
     >
       <GridBlock>
         <div className="voltage-admin-toolbar">
           <label className="voltage-admin-search">
             <Search className="size-4" />
-            <span className="sr-only">Search inventory</span>
+            <span className="sr-only">{t("Search inventory")}</span>
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search inventory…"
+              placeholder={t("Search inventory…")}
             />
           </label>
           <Button
@@ -353,7 +390,7 @@ export const Inventory = () => {
             className="voltage-admin-toolbar-action cursor-pointer"
             onClick={() => setLowStockOnly((current) => !current)}
           >
-            Low stock only
+            {t("Low stock only")}
           </Button>
         </div>
       </GridBlock>
@@ -362,10 +399,10 @@ export const Inventory = () => {
           <table>
             <thead>
               <tr>
-                <th>Product</th>
-                <th>Category</th>
-                <th>Current stock</th>
-                <th>Update stock</th>
+                <th>{t("Product")}</th>
+                <th>{t("Category")}</th>
+                <th>{t("Current stock")}</th>
+                <th>{t("Update stock")}</th>
               </tr>
             </thead>
             <tbody>
@@ -384,12 +421,14 @@ export const Inventory = () => {
                           : "bg-[#e5eee7] text-[#48614c]"
                       }
                     >
-                      {product.stock} units
+                      {t("{{count}} units", { count: product.stock })}
                     </Badge>
                   </td>
                   <td>
                     <input
-                      aria-label={`${product.title} inventory`}
+                      aria-label={t("{{product}} inventory", {
+                        product: product.title,
+                      })}
                       type="number"
                       min="0"
                       step="1"
@@ -415,14 +454,18 @@ export const Inventory = () => {
 }
 
 export const Reports = () => {
+  const { t } = useTranslation()
   const { reportingController } = useVoltageAdmin()
 
   return (
     <PageLayout
-      ariaLabel="Voltage Dashboard Reports"
-      eyebrow="Smart Dashboard · shared workspace"
-      title="Shape the report together."
-      detail="Connected Agent tools and your direct edits update the same in-memory report. Query evidence stays inside this Dashboard page."
+      ariaLabel={t("Voltage Dashboard Reports")}
+      pageName="Reports"
+      eyebrow={t("Smart Dashboard · shared workspace")}
+      title={t("Shape the report together.")}
+      detail={t(
+        "Connected Agent tools and your direct edits update the same in-memory report. Query evidence stays inside this Dashboard page."
+      )}
     >
       <GridBlock>
         <ReportCanvas controller={reportingController} />
