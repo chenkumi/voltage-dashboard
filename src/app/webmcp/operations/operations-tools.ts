@@ -403,12 +403,16 @@ export const executeOperationsTool = (
       if (!hasExactKeys(args, ["candidateId"])) return errorResult()
       const candidateId = readString(args.candidateId)
       if (!candidateId) return errorResult()
-      controller.openProductReview(candidateId, "agent")
+      const next = controller.openProductReview(candidateId, "agent")
+      const review = next.reviews.find(
+        (item) =>
+          item.workflowType === "product" && item.workflowId === candidateId
+      )
       navigate("approvals")
       return bounded({
         status: "OK",
         candidateId,
-        reviewState: "pending",
+        reviewState: review?.state,
         next: "Human review is required in Approval Inbox.",
       })
     }
@@ -500,12 +504,15 @@ export const executeOperationsTool = (
       if (!hasExactKeys(args, ["caseId"])) return errorResult()
       const caseId = readString(args.caseId)
       if (!caseId) return errorResult()
-      controller.openCaseReview(caseId, "agent")
+      const next = controller.openCaseReview(caseId, "agent")
+      const review = next.reviews.find(
+        (item) => item.workflowType === "case" && item.workflowId === caseId
+      )
       navigate("approvals")
       return bounded({
         status: "OK",
         caseId,
-        reviewState: "pending",
+        reviewState: review?.state,
         next: "Human review is required in Approval Inbox.",
       })
     }
@@ -547,12 +554,14 @@ export const executeOperationsTool = (
 export const expectedCategoryForCase = (
   type: OpsCaseType
 ): CaseDraft["category"] =>
-  ({
-    fulfillment: "fulfillment_follow_up",
-    payment_check: "payment_review",
-    address_validation: "address_review",
-    return_request: "return_review",
-  })[type]
+  (
+    ({
+      fulfillment: "fulfillment_follow_up",
+      payment_check: "payment_review",
+      address_validation: "address_review",
+      return_request: "return_review",
+    }) satisfies Record<OpsCaseType, CaseDraft["category"]>
+  )[type]
 
 export const isEligibilityResult = (
   value: unknown

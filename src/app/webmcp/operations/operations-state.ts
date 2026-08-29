@@ -57,10 +57,10 @@ export class OperationsStateError extends Error {
   }
 }
 
-const assertRecord = (
+const assertRecord: (
   value: unknown,
   field: string
-): asserts value is Record<string, unknown> => {
+) => asserts value is Record<string, unknown> = (value, field) => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new OperationsStateError(`${field} must be an object.`)
   }
@@ -77,17 +77,19 @@ const assertExactKeys = (
   }
 }
 
-const assertEnum = <T extends string>(
+function assertEnum<T extends string>(
   value: unknown,
   allowed: readonly T[],
   field: string
-): asserts value is T => {
+): asserts value is T {
   if (typeof value !== "string" || !allowed.includes(value as T)) {
     throw new OperationsStateError(`${field} is invalid.`)
   }
 }
 
-const assertUserActor = (actor: unknown): asserts actor is "user" => {
+const assertUserActor: (actor: unknown) => asserts actor is "user" = (
+  actor
+) => {
   if (actor !== "user") {
     throw new OperationsStateError(
       "Final review actions require an explicit user actor."

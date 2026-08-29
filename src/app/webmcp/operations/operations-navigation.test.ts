@@ -39,16 +39,13 @@ describe("operations navigation", () => {
 
   it("keeps the shared outlet layout grid and block spacing contract", () => {
     const markup = renderToStaticMarkup(
-      createElement(
-        PageLayout,
-        {
-          ariaLabel: "Test operations page",
-          eyebrow: "Operations",
-          title: "Shared layout",
-          detail: "Layout contract",
-        },
-        createElement(GridBlock, null, "Content")
-      )
+      createElement(PageLayout, {
+        ariaLabel: "Test operations page",
+        eyebrow: "Operations",
+        title: "Shared layout",
+        detail: "Layout contract",
+        children: createElement(GridBlock, null, "Content"),
+      })
     )
 
     expect(markup).toContain('class="p-1"')

@@ -7,6 +7,23 @@ Dashboard 主體，不包含 Market storefront、Chat Room、內建 Agent 或網
 Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報表編輯 tools；
 瀏覽器尚未支援原生 API 時，使用同頁測試 provider。
 
+## 參賽目標與產品敘事
+
+<!-- user-specified -->
+
+- 本專案以參加 [OpenAI WebMCP 挑戰賽](https://openai.com/zh-Hant/webmcp-challenge/)
+  為當前產品目標，定位為「電商營運自動化平台」。
+- 核心敘事不是「做一個可以讓 AI 操作的頁面」，而是「讓既有企業 Web 系統透過
+  WebMCP 將商品、訂單、售後、庫存與報表等既有模組暴露給 Agent，使 Agent 能跨功能
+  蒐集資料、填寫內容、分類案件、建立草稿並推進原本需要大量人工操作的行政流程」。
+- 產品設計應優先形成可展示的端到端營運流程，而不是加入孤立的 AI 按鈕、聊天介面或
+  與業務狀態分離的工具。
+- 代表性場景包含：商品資料蒐集、規格與描述填寫、分類及上架草稿；未出貨、付款失敗
+  與地址異常的訂單辨識及分類；退貨原因、訂單狀態與政策資格的交叉判斷及客服建議。
+- Agent 負責低風險且可追蹤的資料搜尋、內容生成、資料填寫、分類、分析與草稿工作；
+  使用者負責檢查結果，並在頁面中直接完成商品發布、訂單變更、退款、付款及其他
+  高風險最終核准。
+
 ## 環境與基線
 
 - 使用繁體中文回答，文字檔預設以 UTF-8 讀取。 <!-- user-specified -->
@@ -32,6 +49,8 @@ Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報�
 - `src/app/webmcp/reporting/`：SQLite runtime、查詢限制、query cache、報表狀態與
   Report Canvas。
 - `src/app/webmcp/voltage-admin-skills.ts`：Dashboard instructions 與 skills。
+- `src/app/webmcp/operations/`：Catalog Intake、Operations Cases、Approval Inbox、同步
+  workflow controller、內容安全、退貨政策與 WebMCP tools。
 - `src/components/ui/`：共用 shadcn 元件與 Markdown renderer。
 
 ## 核心邊界
@@ -61,3 +80,5 @@ Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報�
 
 - [docs/SMART-DASHBOARD.md](docs/SMART-DASHBOARD.md)：修改 SQLite、skills、報表 tools
   或 Report Canvas 前閱讀其架構與安全限制。
+- [docs/COMMERCE-AUTOMATION.md](docs/COMMERCE-AUTOMATION.md)：修改商品草稿、營運案件、
+  退貨政策、Approval Inbox、operations tools 或人工核准邊界前閱讀。

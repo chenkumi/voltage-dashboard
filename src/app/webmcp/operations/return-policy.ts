@@ -21,6 +21,9 @@ export const checkReturnEligibility = (opsCase: OpsCase): EligibilityResult => {
   ].filter((value): value is string => value !== null)
 
   if (missingEvidence.length > 0) return needsReview(missingEvidence)
+  if (daysSinceDelivery === undefined) {
+    return needsReview(["days_since_delivery"])
+  }
   if (!Number.isInteger(daysSinceDelivery) || daysSinceDelivery < 0) {
     return needsReview(["valid_delivery_timeline"])
   }

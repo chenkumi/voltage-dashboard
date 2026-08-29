@@ -54,11 +54,11 @@ export class OperationsContentError extends Error {
   }
 }
 
-export const assertSafeOperationsText = (
+export const assertSafeOperationsText: (
   value: unknown,
   field: string,
-  options: { maxLength?: number; allowEmpty?: boolean } = {}
-): asserts value is string => {
+  options?: { maxLength?: number; allowEmpty?: boolean }
+) => asserts value is string = (value, field, options = {}) => {
   if (typeof value !== "string") {
     throw new OperationsContentError(`${field} must be a string.`)
   }
@@ -81,21 +81,21 @@ export const assertSafeOperationsText = (
   }
 }
 
-export const assertSafeShortText = (
+export const assertSafeShortText: (
   value: unknown,
   field: string,
-  allowEmpty = false
-): asserts value is string =>
+  allowEmpty?: boolean
+) => asserts value is string = (value, field, allowEmpty = false) =>
   assertSafeOperationsText(value, field, {
     maxLength: MAX_SHORT_TEXT_LENGTH,
     allowEmpty,
   })
 
-export const assertSafeTextList = (
+export const assertSafeTextList: (
   value: unknown,
   field: string,
-  options: { maxItems?: number; itemLength?: number } = {}
-): asserts value is string[] => {
+  options?: { maxItems?: number; itemLength?: number }
+) => asserts value is string[] = (value, field, options = {}) => {
   const maxItems = options.maxItems ?? 8
   if (!Array.isArray(value) || value.length > maxItems) {
     throw new OperationsContentError(
@@ -109,9 +109,9 @@ export const assertSafeTextList = (
   )
 }
 
-export const assertSafeSpecifications = (
+export const assertSafeSpecifications: (
   value: unknown
-): asserts value is Record<string, string> => {
+) => asserts value is Record<string, string> = (value) => {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new OperationsContentError("specifications must be an object.")
   }

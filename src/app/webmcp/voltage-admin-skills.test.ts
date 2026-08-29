@@ -122,7 +122,8 @@ describe("Voltage Admin skills", () => {
     "loads operations skill %s with workflow and safety guidance",
     (name) => {
       const skill = loadVoltageAdminSkill(name)
-      const text = "text" in skill ? skill.text : ""
+      const text =
+        "text" in skill && typeof skill.text === "string" ? skill.text : ""
 
       expect(skill).toMatchObject({ type: "skill", name })
       expect(text.length).toBeGreaterThan(120)
