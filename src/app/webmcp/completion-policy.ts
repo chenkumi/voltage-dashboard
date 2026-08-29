@@ -4,23 +4,6 @@ export type CompletionVerifierMap = Readonly<Record<string, string>>
 export const COMPLETION_VERIFIER_SCHEMA_KEY =
   "x-webmcp-completion-verifier" as const
 
-type CompletionPart = {
-  type: string
-  toolName?: string
-}
-
-export type CompletionStep = {
-  content?: readonly CompletionPart[]
-  toolResults?: readonly { toolName: string }[]
-}
-
-export type CompletionState = Readonly<{
-  pendingVerifiers: readonly string[]
-  failedVerifiers: readonly string[]
-  failedTools: readonly string[]
-  unverified: boolean
-}>
-
 const normalizeSchema = (schema: unknown) => {
   if (typeof schema !== "string") return schema
   try {
@@ -75,53 +58,4 @@ export const createCompletionVerifierMap = (
   }
 
   return Object.freeze(Object.fromEntries(entries))
-}
-
-export const evaluateCompletionState = (
-  steps: readonly CompletionStep[],
-  verifierMap: CompletionVerifierMap
-): CompletionState => {
-  const pending = new Set<string>()
-  const failed = new Set<string>()
-  const unresolvedFailures = new Set<string>()
-  const verifierNames = new Set(Object.values(verifierMap))
-
-  for (const step of steps) {
-    const successfulTools = new Set(
-      (step.toolResults ?? []).map((result) => result.toolName)
-    )
-    const stepFailedTools = new Set(
-      (step.content ?? [])
-        .filter((part) => part.type === "tool-error")
-        .map((part) => part.toolName)
-        .filter((name): name is string => typeof name === "string")
-    )
-
-    for (const verifier of successfulTools) {
-      pending.delete(verifier)
-      failed.delete(verifier)
-    }
-    for (const verifier of stepFailedTools) {
-      if (
-        verifierNames.has(verifier) &&
-        (pending.delete(verifier) || failed.has(verifier))
-      )
-        failed.add(verifier)
-      else unresolvedFailures.add(verifier)
-    }
-    for (const mutation of successfulTools) {
-      const verifier = verifierMap[mutation]
-      if (verifier) pending.add(verifier)
-    }
-  }
-
-  const pendingVerifiers = Object.freeze([...pending].sort())
-  const failedVerifiers = Object.freeze([...failed].sort())
-  const unresolvedFailedTools = Object.freeze([...unresolvedFailures].sort())
-  return Object.freeze({
-    pendingVerifiers,
-    failedVerifiers,
-    failedTools: unresolvedFailedTools,
-    unverified: pendingVerifiers.length > 0 || failedVerifiers.length > 0,
-  })
 }

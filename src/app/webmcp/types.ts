@@ -1,9 +1,3 @@
-export type WebMcpSite = {
-  id: string
-  name: string
-  url: string
-}
-
 export type WebMcpRegisteredTool = {
   name: string
   description?: string
@@ -17,21 +11,23 @@ export type WebMcpRegisteredTool = {
 export type WebMcpModelContext = {
   registerTool?: (
     tool: WebMcpRegisteredTool,
-    options?: { signal?: AbortSignal },
+    options?: { signal?: AbortSignal }
   ) => Promise<void>
-  getTools: (options?: { fromOrigins?: string[] }) => Promise<WebMcpRegisteredTool[]>
+  getTools: (options?: {
+    fromOrigins?: string[]
+  }) => Promise<WebMcpRegisteredTool[]>
   executeTool: (
     tool: WebMcpRegisteredTool,
     input: string | Record<string, unknown>,
-    options?: { signal?: AbortSignal },
+    options?: { signal?: AbortSignal }
   ) => Promise<unknown>
   addEventListener?: (
     type: "toolchange",
-    listener: EventListenerOrEventListenerObject,
+    listener: EventListenerOrEventListenerObject
   ) => void
   removeEventListener?: (
     type: "toolchange",
-    listener: EventListenerOrEventListenerObject,
+    listener: EventListenerOrEventListenerObject
   ) => void
 }
 
@@ -39,22 +35,8 @@ export type WebMcpTestProvider = {
   getTools: () => WebMcpRegisteredTool[]
   executeTool: (
     tool: WebMcpRegisteredTool,
-    input: Record<string, unknown>,
+    input: Record<string, unknown>
   ) => Promise<unknown>
-}
-
-export type WebMcpNavigationState = {
-  page: string
-  canGoBack: boolean
-  canGoForward: boolean
-}
-
-export type WebMcpSessionState = {
-  frameWindow: Window | null
-  tools: WebMcpRegisteredTool[]
-  navigation: WebMcpNavigationState | null
-  status: "idle" | "loading" | "ready" | "unsupported" | "error"
-  error: string | null
 }
 
 export type WebMcpDocument = Document & {

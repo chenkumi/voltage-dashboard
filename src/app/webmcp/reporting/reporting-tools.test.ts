@@ -42,7 +42,7 @@ describe("execute_readonly_sql WebMCP tool", () => {
     )
   })
 
-  it("delegates SQL and scalar parameters to the iframe-local runtime", async () => {
+  it("delegates SQL and scalar parameters to the page-local runtime", async () => {
     const execute = vi.fn(async () => result)
     const runtime = { execute } satisfies ReadonlySqlRuntime
 

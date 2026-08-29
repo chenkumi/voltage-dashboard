@@ -75,8 +75,8 @@ const queryEvidence = async (controller: ReportingRuntimeController) => {
 
 const createReport = (controller: ReportingRuntimeController) =>
   controller.executeReportTool("create_report", {
-    title: "Voltage Market 本週營運報表 (2026-08-21 至 2026-08-27)",
-    audience: "Voltage Market 店長",
+    title: "Voltage Dashboard 本週營運報表 (2026-08-21 至 2026-08-27)",
+    audience: "營運主管",
     period: PERIOD,
   })
 
@@ -133,8 +133,8 @@ const expectCompleteReport = (
   expect(state).toMatchObject({
     status: "OK",
     report: {
-      title: "Voltage Market 本週營運報表 (2026-08-21 至 2026-08-27)",
-      audience: "Voltage Market 店長",
+      title: "Voltage Dashboard 本週營運報表 (2026-08-21 至 2026-08-27)",
+      audience: "營運主管",
       period: PERIOD,
       widgets: [
         {

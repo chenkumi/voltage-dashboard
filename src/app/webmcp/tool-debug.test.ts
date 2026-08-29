@@ -60,7 +60,7 @@ describe("WebMCP tool debug logging", () => {
     const logger = vi.fn()
 
     await executeWebMcpToolWithDebugLog({
-      site: "voltage-market",
+      site: "voltage-dashboard",
       toolName: "unsafe_test",
       args: {
         email: "private@example.com",

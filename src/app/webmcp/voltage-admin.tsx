@@ -1,27 +1,16 @@
 import {
-  BarChart3,
-  Boxes,
-  ChevronRight,
-  CircleAlert,
-  ClipboardList,
-  FileChartColumn,
-  LayoutDashboard,
-  PackageSearch,
-  Search,
-  Sparkles,
-  Users,
-} from "lucide-react"
-import {
+  createContext,
   useCallback,
+  useContext,
   useEffect,
   useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  type Dispatch,
+  type SetStateAction,
 } from "react"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { useWebMcpNavigation } from "./navigation"
+import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import type {
   WebMcpDocument,
   WebMcpRegisteredTool,
@@ -39,7 +28,7 @@ import {
   voltageAdminOrders,
   type VoltageAdminInventory,
 } from "./voltage-admin-data"
-import { voltageProductById } from "./voltage-market-data"
+import { voltageProductById } from "./voltage-product-data"
 import {
   listVoltageAdminSkills,
   loadVoltageAdminSkill,
@@ -54,10 +43,8 @@ import {
   isReportAuthoringTool,
   REPORT_AUTHORING_TOOLS,
 } from "./reporting/report-tools"
-import { ReportCanvas } from "./reporting/report-canvas"
-import "./voltage-admin.css"
 
-type VoltageAdminView =
+export type VoltageAdminView =
   "dashboard" | "products" | "orders" | "customers" | "inventory" | "reports"
 
 const schema = (
@@ -72,17 +59,12 @@ const schema = (
 
 const noInput = schema({})
 
-const formatMoney = (value: number) =>
-  new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value)
-
 const isAbortError = (error: unknown) =>
   error instanceof Error && error.name === "AbortError"
 
-const isSection = (value: unknown): value is VoltageAdminView =>
+// Route utilities are shared by the nested route layout and WebMCP provider.
+// eslint-disable-next-line react-refresh/only-export-components
+export const isVoltageAdminView = (value: unknown): value is VoltageAdminView =>
   value === "dashboard" ||
   value === "products" ||
   value === "orders" ||
@@ -90,13 +72,24 @@ const isSection = (value: unknown): value is VoltageAdminView =>
   value === "inventory" ||
   value === "reports"
 
+// eslint-disable-next-line react-refresh/only-export-components
+export const voltageAdminPath = (view: VoltageAdminView) => `/${view}`
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const voltageAdminViewFromPath = (
+  pathname: string
+): VoltageAdminView => {
+  const view = pathname.split("/")[1]
+  return isVoltageAdminView(view) ? view : "dashboard"
+}
+
 // Exported for WebMCP capability and privacy-boundary tests.
 // eslint-disable-next-line react-refresh/only-export-components
 export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "get_voltage_admin_dashboard",
     description:
-      "Purpose: read the Voltage Market operations summary. Call when asked about revenue, orders, customers, or low stock. Examples: ‘How is today’s operation?’, ‘How many orders?’, ‘Low-stock products’, ‘Admin summary’. Do not call when a single product’s details are needed.",
+      "Purpose: read the Voltage Dashboard operations summary. Call when asked about revenue, orders, customers, or low stock. Examples: ‘How is today’s operation?’, ‘How many orders?’, ‘Low-stock products’, ‘Admin summary’. Do not call when a single product’s details are needed.",
     inputSchema: noInput,
     annotations: { readOnlyHint: true },
   },
@@ -122,7 +115,7 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
       {
         productId: {
           type: "number",
-          description: "Voltage Market product ID.",
+          description: "Voltage Dashboard product ID.",
         },
       },
       ["productId"]
@@ -249,13 +242,30 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
   },
 ]
 
+type VoltageAdminContextValue = {
+  dashboard: ReturnType<typeof getVoltageAdminDashboard>
+  inventory: VoltageAdminInventory
+  reportingController: ReportingRuntimeController
+  setInventory: Dispatch<SetStateAction<VoltageAdminInventory>>
+}
+
+const VoltageAdminContext = createContext<VoltageAdminContextValue | null>(null)
+
+// eslint-disable-next-line react-refresh/only-export-components
+export const useVoltageAdmin = () => {
+  const context = useContext(VoltageAdminContext)
+  if (!context) {
+    throw new Error("useVoltageAdmin must be used inside VoltageAdminProvider.")
+  }
+  return context
+}
+
 const useVoltageAdminWebMcpTools = (
-  toolDefinitions: WebMcpRegisteredTool[],
   executeTool: (
     name: string,
     args: Record<string, unknown>
   ) => Promise<unknown>,
-  prepareProvider?: () => Promise<void>
+  prepareProvider: () => Promise<void>
 ) => {
   const executeRef = useRef(executeTool)
 
@@ -277,34 +287,29 @@ const useVoltageAdminWebMcpTools = (
         execute: () => executeRef.current(toolName, args),
       })
     const registerTools = async () => {
-      await prepareProvider?.()
+      await prepareProvider()
       if (controller.signal.aborted) return
 
       if (modelContext?.registerTool) {
-        try {
-          await Promise.all(
-            toolDefinitions.map((tool) =>
-              modelContext.registerTool?.(
-                {
-                  ...tool,
-                  execute: (args: Record<string, unknown>) =>
-                    executeWithDebugLog(tool.name, args),
-                } as WebMcpRegisteredTool & {
-                  execute: (args: Record<string, unknown>) => Promise<unknown>
-                },
-                { signal: controller.signal }
-              )
+        await Promise.all(
+          VOLTAGE_ADMIN_TOOLS.map((tool) =>
+            modelContext.registerTool?.(
+              {
+                ...tool,
+                execute: (args: Record<string, unknown>) =>
+                  executeWithDebugLog(tool.name, args),
+              } as WebMcpRegisteredTool & {
+                execute: (args: Record<string, unknown>) => Promise<unknown>
+              },
+              { signal: controller.signal }
             )
           )
-        } catch (error) {
-          if (controller.signal.aborted || isAbortError(error)) return
-          throw error
-        }
+        )
         return
       }
 
       ;(window as WebMcpWindow).__webmcpTestProvider = {
-        getTools: () => toolDefinitions,
+        getTools: () => VOLTAGE_ADMIN_TOOLS,
         executeTool: (tool, args) => executeWithDebugLog(tool.name, args),
       } satisfies WebMcpTestProvider
     }
@@ -326,43 +331,25 @@ const useVoltageAdminWebMcpTools = (
       delete currentWindow.__webmcpReady
       delete currentWindow.__webmcpTestProvider
     }
-  }, [prepareProvider, toolDefinitions])
+  }, [prepareProvider])
 }
 
-const statusClass = (status: string) => {
-  if (status === "Delivered") return "bg-[#e5eee7] text-[#48614c]"
-  if (status === "Action needed") return "bg-[#f4e5d7] text-[#8b5d3c]"
-  if (status === "Shipped") return "bg-[#e4eaed] text-[#4f6975]"
-  return "bg-[#ece8d9] text-[#6e6746]"
-}
-
-const SectionTitle = ({
-  eyebrow,
-  title,
-  detail,
-}: {
-  eyebrow: string
-  title: string
-  detail: string
-}) => (
-  <div className="voltage-admin-title">
-    <p>{eyebrow}</p>
-    <h1>{title}</h1>
-    <span>{detail}</span>
-  </div>
-)
-
-const DataTable = ({ children }: { children: React.ReactNode }) => (
-  <div className="voltage-admin-data-table overflow-x-auto border border-[#cfd3cb] bg-[#f5f6f1]">
-    {children}
-  </div>
-)
-
-export const VoltageAdminDemo = () => {
+export const VoltageAdminProvider = () => {
+  const navigate = useNavigate()
+  const location = useLocation()
   const [reportingController] = useState(() => new ReportingRuntimeController())
-  const prepareReportingRuntime = useCallback(async () => {
-    await reportingController.prepare()
-  }, [reportingController])
+  const [inventory, setInventory] = useState<VoltageAdminInventory>(
+    createVoltageAdminInventory
+  )
+  const dashboard = useMemo(
+    () => getVoltageAdminDashboard(inventory),
+    [inventory]
+  )
+  const sectionRef = useRef(voltageAdminViewFromPath(location.pathname))
+
+  useEffect(() => {
+    sectionRef.current = voltageAdminViewFromPath(location.pathname)
+  }, [location.pathname])
 
   useEffect(() => {
     return () => {
@@ -370,29 +357,18 @@ export const VoltageAdminDemo = () => {
     }
   }, [reportingController])
 
-  const { view, setView, goBack, goForward, getNavigationState } =
-    useWebMcpNavigation<VoltageAdminView>("reports")
-  const [inventory, setInventory] = useState<VoltageAdminInventory>(
-    createVoltageAdminInventory
-  )
-  const [productQuery, setProductQuery] = useState("")
-  const [inventoryQuery, setInventoryQuery] = useState("")
-  const [lowStockOnly, setLowStockOnly] = useState(false)
-  const dashboard = useMemo(
-    () => getVoltageAdminDashboard(inventory),
-    [inventory]
-  )
-  const products = useMemo(
-    () => searchVoltageAdminProducts(productQuery, inventory),
-    [inventory, productQuery]
-  )
-  const inventoryProducts = useMemo(
-    () =>
-      searchVoltageAdminProducts(inventoryQuery, inventory, 194).filter(
-        (product) => !lowStockOnly || (product.stock > 0 && product.stock <= 12)
-      ),
-    [inventory, inventoryQuery, lowStockOnly]
-  )
+  const prepareReportingRuntime = useCallback(async () => {
+    await reportingController.prepare()
+  }, [reportingController])
+
+  const getNavigationState = useCallback(() => {
+    const historyIndex = window.history.state?.idx
+    return {
+      page: sectionRef.current,
+      canGoBack: typeof historyIndex === "number" && historyIndex > 0,
+      canGoForward: false,
+    }
+  }, [])
 
   const executeTool = async (name: string, args: Record<string, unknown>) => {
     if (name === EXECUTE_READONLY_SQL_TOOL_NAME) {
@@ -404,14 +380,9 @@ export const VoltageAdminDemo = () => {
     if (name === "agent_instructions") {
       return { text: VOLTAGE_ADMIN_AGENT_INSTRUCTIONS }
     }
-    if (name === "skill_list") {
-      return listVoltageAdminSkills()
-    }
-    if (name === "load_skill") {
-      return loadVoltageAdminSkill(args.name)
-    }
-    if (name === "get_voltage_admin_dashboard")
-      return getVoltageAdminDashboard(inventory)
+    if (name === "skill_list") return listVoltageAdminSkills()
+    if (name === "load_skill") return loadVoltageAdminSkill(args.name)
+    if (name === "get_voltage_admin_dashboard") return dashboard
     if (name === "search_voltage_admin_products") {
       const query = typeof args.query === "string" ? args.query : ""
       return { items: searchVoltageAdminProducts(query, inventory) }
@@ -476,426 +447,36 @@ export const VoltageAdminDemo = () => {
       return { status: "OK", product: toAdminProduct(product, nextInventory) }
     }
     if (name === "open_voltage_admin_section") {
-      if (!isSection(args.section))
+      if (!isVoltageAdminView(args.section)) {
         return { status: "ARGUMENT_ERROR", message: "Unknown admin section." }
-      setView(args.section)
+      }
+      navigate(voltageAdminPath(args.section))
       return { status: "OK", section: args.section }
     }
-    if (name === "navigate_state")
+    if (name === "navigate_state") {
       return { status: "OK", ...getNavigationState() }
+    }
     if (name === "navigate_back") {
-      goBack()
+      navigate(-1)
       return { status: "OK", ...getNavigationState() }
     }
     if (name === "navigate_forward") {
-      goForward()
+      navigate(1)
       return { status: "OK", ...getNavigationState() }
     }
     return { status: "NOT_FOUND", message: "Unknown tool." }
   }
 
-  useVoltageAdminWebMcpTools(
-    VOLTAGE_ADMIN_TOOLS,
-    executeTool,
-    prepareReportingRuntime
+  useVoltageAdminWebMcpTools(executeTool, prepareReportingRuntime)
+
+  const value = useMemo<VoltageAdminContextValue>(
+    () => ({ dashboard, inventory, reportingController, setInventory }),
+    [dashboard, inventory, reportingController]
   )
 
-  const navigation = [
-    ["dashboard", "Dashboard", LayoutDashboard],
-    ["products", "Products", PackageSearch],
-    ["orders", "Orders", ClipboardList],
-    ["customers", "Customers", Users],
-    ["inventory", "Inventory", Boxes],
-    ["reports", "Reports", FileChartColumn],
-  ] as const
-
   return (
-    <main className="voltage-admin min-h-full p-4 sm:p-6">
-      <div className="mx-auto max-w-7xl">
-        <header className="voltage-admin-header">
-          <button
-            type="button"
-            onClick={() => setView("dashboard")}
-            className="voltage-admin-brand"
-          >
-            <span>
-              <Sparkles className="size-5" />
-            </span>
-            <span>
-              <small>Voltage Market</small>
-              <strong>Voltage Dashboard</strong>
-            </span>
-          </button>
-          <Badge className="hidden border-0 bg-[#e2e5df] text-[#4c574e] sm:inline-flex">
-            Demo workspace · local data
-          </Badge>
-        </header>
-
-        <div className="grid gap-6 lg:grid-cols-[13.5rem_minmax(0,1fr)]">
-          <nav
-            className="voltage-admin-nav"
-            aria-label="Voltage Dashboard navigation"
-          >
-            <p>Workspace</p>
-            <div>
-              {navigation.map(([target, label, Icon]) => (
-                <button
-                  key={target}
-                  type="button"
-                  onClick={() => setView(target)}
-                  className={view === target ? "is-active" : ""}
-                >
-                  <Icon className="size-4" />
-                  {label}
-                  {target === "inventory" && dashboard.lowStockCount > 0 ? (
-                    <span>{dashboard.lowStockCount}</span>
-                  ) : null}
-                </button>
-              ))}
-            </div>
-            <aside>
-              <BarChart3 className="size-4" />
-              <p>
-                Data is shared in spirit with Voltage Market’s embedded catalog.
-              </p>
-            </aside>
-          </nav>
-
-          <div className="min-w-0">
-            {view === "dashboard" ? (
-              <section aria-label="Voltage Dashboard Overview">
-                <SectionTitle
-                  eyebrow="Overview · last 7 days"
-                  title="A calm read on the store."
-                  detail="Built from the same embedded catalog as Voltage Market."
-                />
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  {[
-                    [
-                      "Revenue",
-                      formatMoney(dashboard.revenue),
-                      "+12.4% this week",
-                    ],
-                    [
-                      "Orders",
-                      dashboard.orderCount.toString(),
-                      "2 need attention",
-                    ],
-                    [
-                      "Customers",
-                      dashboard.customerCount.toString(),
-                      "Anonymous segments",
-                    ],
-                    [
-                      "Available SKUs",
-                      dashboard.availableProductCount.toString(),
-                      `${dashboard.lowStockCount} low stock`,
-                    ],
-                  ].map(([label, value, detail]) => (
-                    <article key={label} className="voltage-admin-metric">
-                      <span>{label}</span>
-                      <strong>{value}</strong>
-                      <small>{detail}</small>
-                    </article>
-                  ))}
-                </div>
-                <div className="mt-6 grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-                  <article className="voltage-admin-panel">
-                    <div className="voltage-admin-panel-heading">
-                      <div>
-                        <p>Latest activity</p>
-                        <h2>Order queue</h2>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="cursor-pointer"
-                        onClick={() => setView("orders")}
-                      >
-                        All orders <ChevronRight className="size-4" />
-                      </Button>
-                    </div>
-                    <div className="space-y-1">
-                      {voltageAdminOrders.slice(0, 4).map((order) => (
-                        <div key={order.id} className="voltage-admin-list-row">
-                          <span>
-                            <strong>{order.id}</strong>
-                            <small>
-                              {order.itemCount} items · {order.createdAt}
-                            </small>
-                          </span>
-                          <span>
-                            <Badge className={statusClass(order.status)}>
-                              {order.status}
-                            </Badge>
-                            <strong>{formatMoney(order.total)}</strong>
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </article>
-                  <article className="voltage-admin-panel voltage-admin-alert">
-                    <div className="voltage-admin-panel-heading">
-                      <div>
-                        <p>Inventory signal</p>
-                        <h2>Low stock</h2>
-                      </div>
-                      <CircleAlert className="size-5" />
-                    </div>
-                    {dashboard.lowStockProducts.length > 0 ? (
-                      dashboard.lowStockProducts.slice(0, 4).map((product) => (
-                        <div
-                          key={product.id}
-                          className="voltage-admin-alert-row"
-                        >
-                          <span>{product.title}</span>
-                          <strong>{product.stock} left</strong>
-                        </div>
-                      ))
-                    ) : (
-                      <p>Everything is comfortably stocked.</p>
-                    )}
-                    <Button
-                      variant="outline"
-                      className="mt-5 w-full cursor-pointer"
-                      onClick={() => setView("inventory")}
-                    >
-                      Review inventory
-                    </Button>
-                  </article>
-                </div>
-              </section>
-            ) : null}
-
-            {view === "products" ? (
-              <section aria-label="Voltage Dashboard Products">
-                <SectionTitle
-                  eyebrow="Catalog management"
-                  title="Products, kept focused."
-                  detail={`${products.length} matching products in the current preview.`}
-                />
-                <div className="voltage-admin-toolbar">
-                  <label className="voltage-admin-search">
-                    <Search className="size-4" />
-                    <span className="sr-only">Search products</span>
-                    <input
-                      value={productQuery}
-                      onChange={(event) => setProductQuery(event.target.value)}
-                      placeholder="Search product, category, brand…"
-                    />
-                  </label>
-                </div>
-                <DataTable>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Product</th>
-                        <th>Category</th>
-                        <th>Price</th>
-                        <th>Rating</th>
-                        <th>Inventory</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {products.map((product) => (
-                        <tr key={product.id}>
-                          <td>
-                            <strong>{product.title}</strong>
-                            <small>#{product.id}</small>
-                          </td>
-                          <td>{product.category}</td>
-                          <td>{formatMoney(product.price)}</td>
-                          <td>{product.rating.toFixed(1)} / 5</td>
-                          <td>
-                            <Badge
-                              className={
-                                product.stock <= 12
-                                  ? "bg-[#f4e5d7] text-[#8b5d3c]"
-                                  : "bg-[#e5eee7] text-[#48614c]"
-                              }
-                            >
-                              {product.stock} units
-                            </Badge>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </DataTable>
-              </section>
-            ) : null}
-
-            {view === "orders" ? (
-              <section aria-label="Voltage Dashboard Orders">
-                <SectionTitle
-                  eyebrow="Order operations"
-                  title="A private, clear queue."
-                  detail="Records are anonymized; final order actions remain outside WebMCP."
-                />
-                <DataTable>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Order</th>
-                        <th>Customer ref</th>
-                        <th>Created</th>
-                        <th>Status</th>
-                        <th>Total</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {voltageAdminOrders.map((order) => (
-                        <tr key={order.id}>
-                          <td>
-                            <strong>{order.id}</strong>
-                            <small>{order.itemCount} items</small>
-                          </td>
-                          <td>{order.customerId}</td>
-                          <td>{order.createdAt}</td>
-                          <td>
-                            <Badge className={statusClass(order.status)}>
-                              {order.status}
-                            </Badge>
-                          </td>
-                          <td>{formatMoney(order.total)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </DataTable>
-              </section>
-            ) : null}
-
-            {view === "customers" ? (
-              <section aria-label="Voltage Dashboard Customers">
-                <SectionTitle
-                  eyebrow="Customer intelligence"
-                  title="Segments without identities."
-                  detail="Only non-identifying demo references are available to the agent."
-                />
-                <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {voltageAdminCustomers.map((customer) => (
-                    <article
-                      key={customer.id}
-                      className="voltage-admin-customer"
-                    >
-                      <div>
-                        <span>{customer.id}</span>
-                        <Badge
-                          className={
-                            customer.segment === "VIP"
-                              ? "bg-[#e4eaed] text-[#4f6975]"
-                              : "bg-[#e5eee7] text-[#48614c]"
-                          }
-                        >
-                          {customer.segment}
-                        </Badge>
-                      </div>
-                      <strong>{formatMoney(customer.lifetimeValue)}</strong>
-                      <p>
-                        {customer.orders} orders · active {customer.lastActive}
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
-            {view === "inventory" ? (
-              <section aria-label="Voltage Dashboard Inventory">
-                <SectionTitle
-                  eyebrow="Stock control"
-                  title="Keep the shelf in view."
-                  detail="Changes update this local Demo3 workspace only."
-                />
-                <div className="voltage-admin-toolbar">
-                  <label className="voltage-admin-search">
-                    <Search className="size-4" />
-                    <span className="sr-only">Search inventory</span>
-                    <input
-                      value={inventoryQuery}
-                      onChange={(event) =>
-                        setInventoryQuery(event.target.value)
-                      }
-                      placeholder="Search inventory…"
-                    />
-                  </label>
-                  <Button
-                    type="button"
-                    variant={lowStockOnly ? "default" : "outline"}
-                    className="voltage-admin-toolbar-action cursor-pointer"
-                    onClick={() => setLowStockOnly((current) => !current)}
-                  >
-                    Low stock only
-                  </Button>
-                </div>
-                <DataTable>
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Product</th>
-                        <th>Category</th>
-                        <th>Current stock</th>
-                        <th>Update stock</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {inventoryProducts.slice(0, 24).map((product) => (
-                        <tr key={product.id}>
-                          <td>
-                            <strong>{product.title}</strong>
-                            <small>#{product.id}</small>
-                          </td>
-                          <td>{product.category}</td>
-                          <td>
-                            <Badge
-                              className={
-                                product.stock <= 12
-                                  ? "bg-[#f4e5d7] text-[#8b5d3c]"
-                                  : "bg-[#e5eee7] text-[#48614c]"
-                              }
-                            >
-                              {product.stock} units
-                            </Badge>
-                          </td>
-                          <td>
-                            <input
-                              aria-label={`${product.title} inventory`}
-                              type="number"
-                              min="0"
-                              step="1"
-                              value={product.stock}
-                              onChange={(event) => {
-                                const next = setVoltageAdminInventory(
-                                  inventory,
-                                  product.id,
-                                  Number(event.target.value)
-                                )
-                                if (next) setInventory(next)
-                              }}
-                            />
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </DataTable>
-              </section>
-            ) : null}
-
-            {view === "reports" ? (
-              <section aria-label="Voltage Dashboard Reports">
-                <SectionTitle
-                  eyebrow="Smart Dashboard · shared workspace"
-                  title="Shape the report together."
-                  detail="Agent tools and your direct edits update the same in-memory report. Query evidence stays inside this Admin iframe."
-                />
-                <ReportCanvas controller={reportingController} />
-              </section>
-            ) : null}
-          </div>
-        </div>
-      </div>
-    </main>
+    <VoltageAdminContext.Provider value={value}>
+      <Outlet />
+    </VoltageAdminContext.Provider>
   )
 }

@@ -15,13 +15,12 @@ Agent 根據使用者目標載入所需的領域 skill，自行規劃 SQL、分�
 > 網站透過 SQLite 暴露結構化資料，透過 skills 暴露領域知識，透過報表 tools
 > 暴露創作能力；同一個通用 Agent 在執行時組合三者，適應不同網站與用途。
 
-這個設計用來證明 Agent 核心不需要包含網站專用邏輯。Market 展示 Agent 執行既有
-網站流程；Smart Dashboard 則展示同一個 Agent 探索資料、套用領域方法，並與人共同
-創造原本不存在的成果。
+這個設計用來證明 WebMCP Provider 能以受控資料、領域方法與編輯工具，協助外部
+Agent 探索資料、套用分析規則，並與人共同創造原本不存在的成果。
 
 ## 2. 設計目標
 
-- 使用同一個 `ToolLoopAgent` 核心適應不同用途的 WebMCP 網站。
+- 讓相容 WebMCP 的外部 Agent 能探索並操作 Dashboard capabilities。
 - 不為每一種指標或分析情境建立專用查詢 tool。
 - 允許 Agent 使用 SQL 自由探索、關聯、聚合與比較 Agent 可見資料。
 - 讓網站透過 skills 提供資料語意、分析方法與操作規範。
@@ -41,7 +40,7 @@ Agent 根據使用者目標載入所需的領域 skill，自行規劃 SQL、分�
 
 已完成的 Smart Dashboard 垂直切片：
 
-- Voltage Market Admin iframe 內的 SQLite3 WASM module Worker 與 `:memory:`
+- Voltage Dashboard 內的 SQLite3 WASM module Worker 與 `:memory:`
   database；不使用 OPFS，也不跨 iframe/session 共用。
 - 四個 deterministic curated datasets：`agent_products`、
   `agent_sales_daily`、`agent_inventory`、`agent_dataset_status`。
@@ -63,8 +62,8 @@ Agent 根據使用者目標載入所需的領域 skill，自行規劃 SQL、分�
 - 可共同編輯的 Reports Canvas，支援 KPI、table、受限的商務 Markdown text 與 bar；
   使用者與 Agent 修改同一份 report state。
 
-Capability inspector 尚未實作；目前 `/chat` 的 session log 可用來確認 discovered tools，
-但不把它包裝成獨立產品功能。
+Capability inspector 尚未實作；目前可從瀏覽器 DevTools 或外部 WebMCP client 確認
+discovered tools，但不把它包裝成獨立產品功能。
 
 ## 4. 整體架構
 
@@ -101,22 +100,23 @@ agent_instructions   skill_list/load_skill
 
 ### 4.1 元件責任
 
-| 元件 | 責任 |
-| --- | --- |
-| SQLite3 WASM | 保存本次頁面 session 的 Agent 可見資料並執行唯讀 SQL |
-| WebMCP SQL tool | 驗證、限制、執行查詢並管理 query result |
-| Data skills | 說明資料表、欄位、單位、時區、enum、join 與使用限制 |
-| Analysis skills | 提供營運分析、庫存風險、管理摘要等方法 |
-| Report tools | 建立及修改結構化報表與 widget |
-| Report Canvas | 顯示同一份報表狀態，讓人類直接編輯與確認 |
-| Agent core | 理解需求、載入 skills、規劃查詢並協調 tools |
+| 元件            | 責任                                                 |
+| --------------- | ---------------------------------------------------- |
+| SQLite3 WASM    | 保存本次頁面 session 的 Agent 可見資料並執行唯讀 SQL |
+| WebMCP SQL tool | 驗證、限制、執行查詢並管理 query result              |
+| Data skills     | 說明資料表、欄位、單位、時區、enum、join 與使用限制  |
+| Analysis skills | 提供營運分析、庫存風險、管理摘要等方法               |
+| Report tools    | 建立及修改結構化報表與 widget                        |
+| Report Canvas   | 顯示同一份報表狀態，讓人類直接編輯與確認             |
+| Agent core      | 理解需求、載入 skills、規劃查詢並協調 tools          |
 
 ## 5. SQLite3 WASM 資料層
 
 ### 5.1 資料來源
 
 頁面初始化時，將已篩選且允許 Agent 使用的資料載入 SQLite3 WASM memory database。
-資料庫只存在目前 iframe context，不跨網站共享，也不是 IndexedDB 聊天持久化的一部分。
+資料庫只存在目前頁面 context，不跨頁面 runtime 共享，也不屬於報表 library 的
+IndexedDB 持久化資料。
 
 第一階段實際提供以下專為 Agent 設計的 curated tables：
 
@@ -461,7 +461,7 @@ Agent：
 4. 使用 `execute_readonly_sql` 查詢核心 KPI、分類趨勢及庫存風險。
 5. 呼叫 `create_report` 建立報表。
 6. 使用 `add_report_widget` 加入 KPI、圖表、風險表格和證據式摘要。
-7. 在 chat 說明已建立的內容與已知限制。
+7. 向使用者說明已建立的內容與已知限制。
 
 使用者：
 
@@ -473,8 +473,8 @@ widgets。第一版只支援 bar，不支援 stacked bar；Agent 應說明限制
 
 ### 11.1 可重現 demo 流程
 
-1. 在 `/chat` 選擇 Voltage Market Admin，確認 session log discovery 到 21 個 tools。
-2. 請 Agent 列出並載入 sales、inventory、report-authoring 三個 skills。
+1. 開啟根路徑，使用外部 WebMCP client 確認 discovery 到 Dashboard tools。
+2. 請外部 Agent 列出並載入 sales、inventory、report-authoring 三個 skills。
 3. 查詢 `agent_dataset_status`，確認 `2026-08-21` 至 `2026-08-27`、
    `Asia/Taipei`、更新時間與完整度。
 4. 查詢本週總營收、以營收降冪排序且 `LIMIT 3` 的前三分類，以及 stock 小於或等於
@@ -483,30 +483,28 @@ widgets。第一版只支援 bar，不支援 stacked bar；Agent 應說明限制
    evidence 的商務 Markdown 摘要。
 6. 在 Reports Canvas 直接修改 report/widget 標題、移除或排序 widget，再要求 Agent
    先讀取 `get_report_state`，延續修改同一份 report。
-7. 切到 Market，確認 SQL 與 report tools 消失；切回 Admin 或 reload iframe 時，舊
-   `queryId`／report state 不得被新 context 接受。
+7. Reload Dashboard，確認舊 `queryId`／active report state 不得被新 runtime context
+   接受；已儲存的 report library 仍依其 IndexedDB lifecycle 管理。
 
 Demo 中若要展示截斷狀態，可用核准資料做大於 100 列的唯讀查詢；Canvas 必須顯示
 `truncated` 提示，不得宣稱結果代表完整資料集。
 
 ## 12. Hackathon 展示重點
 
-Demo 應讓「同一個 Agent 核心」這件事在畫面上可見：
+Demo 應讓 Dashboard 的 WebMCP capabilities 與共同編輯流程清楚可見：
 
-1. 在 Market 完成商品搜尋、比較與購物車任務。
-2. 切換到 Smart Dashboard，不更換 Agent core。
-3. 顯示新 iframe 動態暴露的 SQL、report tools、instructions 與 skills。
-4. 由自然語言目標建立原本不存在的營運報表。
-5. 讓使用者在 Canvas 編輯，再要求 Agent 延續修改。
-6. 展示網站切換時的 session、thread、tool 與資料隔離。
+1. 顯示 Dashboard 動態暴露的 SQL、report tools、instructions 與 skills。
+2. 由自然語言目標建立原本不存在的營運報表。
+3. 讓使用者在 Canvas 編輯，再要求外部 Agent 延續修改。
+4. 展示 reload 後 runtime、query cache 與 active report 的隔離。
 
 建議在 workspace 顯示精簡 capability inspector：
 
-- 目前網站與 iframe context。
+- 目前頁面與 WebMCP context。
 - discovered tools 數量與名稱。
 - available/loaded skills。
 - Agent database 可見 datasets。
-- `Agent core unchanged` 狀態。
+- 原生或 fallback provider 狀態。
 
 提交敘事不應將作品描述為 SQL chatbot，而應強調：
 
@@ -539,14 +537,14 @@ inspector。不在第一版加入任意程式碼 widget、跨來源資料匯入�
   database；production build/preview 的 Worker 與 WASM assets 可載入。
 - production Chromium fallback provider 已實際 discovery `execute_readonly_sql`，並通過
   schema discovery、參數化 join/aggregation、CTE、100-row 截斷、mutation 拒絕與
-  Market/Admin 切換隔離。
+  runtime lifecycle 隔離。
 - fallback provider 已完成一條 dataset status → 三組分析 SQL → query IDs →
   KPI/table/text/bar → 人工修改 → Agent 延續修改流程；Canvas 與 report tools 讀寫
   同一份 iframe-local state。
 - 375、768、1024 與 1440 px 已驗證無 body overflow；窄 viewport 的 table 由自身
   容器水平捲動，bar label、具名輸入與鍵盤操作可用。
-- Market 不暴露 SQL/reporting capabilities；Admin reload、網站／thread 切換不會把舊
-  query IDs、report、skills 或 executor 綁到新 iframe context。
+- Dashboard reload 不會把舊 query IDs、active report、skills 或 executor 綁到新的
+  page context。
 - 自動化 Chromium 沒有原生 `document.modelContext`；不可把 fallback 結果宣稱為原生
   WebMCP 驗證。
 - 固定 workflow regression 已使用真實 SQLite WASM 驗證 SQL-first 與 create-first
@@ -558,14 +556,13 @@ inspector。不在第一版加入任意程式碼 widget、跨來源資料匯入�
 
 原生 WebMCP 實機驗證步驟（待支援環境執行）：
 
-1. 在已啟用 WebMCP 的 Chrome 或 ChatGPT in-app browser 開啟 `/chat` 並切換 Admin。
+1. 在已啟用 WebMCP 的 Chrome 或 ChatGPT in-app browser 開啟根路徑。
 2. 確認原生 `document.modelContext` discovery 包含 `skill_list`／`load_skill`、SQL tool
    與六個 report tools；再呼叫 `skill_list({})`，確認結果包含三個 Smart Dashboard
    skills。不得依賴 `__webmcpTestProvider`。
 3. 執行 dataset status 與一個 aggregation，使用回傳 `queryId` 建立 KPI 與 text widget，
    再直接於 Canvas 修改標題。
-4. 切到 Market，確認 reporting capabilities 消失；切回 Admin，確認建立的是新 iframe
-   context，舊 query ID 不可用。
+4. Reload Dashboard，確認建立的是新 page context，舊 query ID 不可用。
 5. 記錄 Chrome 版本、WebMCP flag/origin-trial 狀態、console 與畫面證據。
 
 目前自動化環境沒有原生 API，因此上述狀態明確標記為「待實機」，不以 fallback 結果

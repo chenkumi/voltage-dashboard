@@ -6,8 +6,8 @@ import {
   setVoltageAdminInventory,
 } from "./voltage-admin-data"
 
-describe("Voltage Market Admin data", () => {
-  it("uses the embedded Voltage Market catalog for product search", () => {
+describe("Voltage Dashboard data", () => {
+  it("uses the embedded product catalog for product search", () => {
     const inventory = createVoltageAdminInventory()
 
     expect(searchVoltageAdminProducts("mascara", inventory)).toEqual(

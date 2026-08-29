@@ -117,7 +117,7 @@ describe("QueryResultCache", () => {
     )
   })
 
-  it("keeps identical IDs isolated between iframe-local cache instances", () => {
+  it("keeps identical IDs isolated between page-local cache instances", () => {
     const queryId = "01K00000000000000000000000"
     const first = new QueryResultCache({ createId: () => queryId })
     const second = new QueryResultCache({ createId: () => queryId })

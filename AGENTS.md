@@ -2,56 +2,58 @@
 
 ## 專案概覽
 
-`webmcp-agent` 是純前端 Vite Web Agent，用來操作其他提供 WebMCP 的網站。本專案不是 WebMCP Provider：`/chat` 以 split view 呈現，左側約 70% 載入目標網站 iframe，右側約 30% 為 Chat Room。
+`voltage-dashboard` 是純前端 Vite WebMCP Dashboard Provider。應用程式只有一個
+Dashboard 主體，不包含 Market storefront、Chat Room、內建 Agent 或網站切換器。
+Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報表編輯 tools；
+瀏覽器尚未支援原生 API 時，使用同頁測試 provider。
+
+## 環境與基線
+
+- 使用繁體中文回答，文字檔預設以 UTF-8 讀取。 <!-- user-specified -->
+- 使用 Node.js、npm、React 19、TypeScript、shadcn/ui、Tailwind CSS 與 Vite。
+  <!-- user-specified -->
+- 本專案目前沒有後端；未來新增後端時使用 Node.js 與 Hono。
+  <!-- user-specified -->
+- 安裝依賴：`npm install`；開發伺服器：`npm run dev`，預設
+  `http://localhost:6171`。
+- 完成修改至少執行 `npm run test`、`npm run typecheck`、`npm run lint` 與
+  `npm run build`；UI 修改需在根路徑驗證 Dashboard、WebMCP discovery 與相關工具。
 
 ## 專案結構與入口
 
-- `src/main.tsx`、`src/App.tsx`：應用程式啟動、主題與路由。
-- `src/app/assistant/`：Chat Room、AI SDK `useChat` runtime、訊息持久化。
-- `src/app/webmcp/`：網站 registry、iframe workspace、每個聊天 session
-  專屬的 `WebMcpSession`、AI SDK `ToolLoopAgent`、同源測試 demos。
-- `src/app/db.ts`、`src/app/types.ts`：IndexedDB schema 與訊息/執行緒 envelope 型別。
-- `src/components/ui/`：目前使用的 shadcn/ui 元件與 Markdown renderer。
+- `src/main.tsx`、`src/App.tsx`：單一 Dashboard 應用程式入口。
+- `src/app/webmcp/voltage-admin.tsx`：Dashboard UI、WebMCP tool 註冊與 fallback
+  executor。
+- `src/app/webmcp/voltage-admin-data.ts`、`voltage-product-data.ts`：匿名化營運資料。
+- `src/app/webmcp/reporting/`：SQLite runtime、查詢限制、query cache、報表狀態與
+  Report Canvas。
+- `src/app/webmcp/voltage-admin-skills.ts`：Dashboard instructions 與 skills。
+- `src/components/ui/`：共用 shadcn 元件與 Markdown renderer。
 
-## WebMCP Agent 邊界
+## 核心邊界
 
-- `/chat` 只使用 iframe 當下透過該聊天 session 的 `WebMcpSession` 暴露的
-  tools；不得混入 filesystem、網路、script、本地 tools 或本地 skills。
-- `src/app/webmcp/sites.ts` 是網站 registry；目前提供兩個同源 demo：`/webmcp-demo/shop-a` 與 `/webmcp-demo/shop-b`。每個網站必須有獨立的 tools、instructions、skills 與 iframe URL。
-- `WebMcpSession` 優先讀取 iframe 的 `document.modelContext.getTools()`，瀏覽器不支援原生 API 時才使用對應 demo 的同源測試 provider。工具執行必須回到建立該回合快照時所捕捉的同一個 iframe context。
-- 每次 user input 都先以 `WebMcpSession.prepareTurn()` 重新執行 iframe 特殊 tools，再建立當次 `ToolLoopAgent` 與 system prompt；不可在 module 初始化時快取 iframe tools 或特殊 prompt。切換 iframe 後，舊回合必須失效而不得落到新網站。
-- `agent_instructions({})` 不掛載給 Agent；每次 user input 前呼叫，將 `{ text: string }` 放入 system prompt。
-- 只有同時存在 `skill_list({})` 與 `load_skill({ name })` 才啟用特殊 skill 流程：`skill_list` 每次 user input 前呼叫並將 `{ skills: { name, description }[] }` 放入 system prompt；`load_skill` 掛載給 Agent，回傳 `{ type: "skill", name: string, text: string }`。不成對時，兩者皆視為一般 iframe tool。
-- 每個 `ChatThread` 必須只屬於一個 `siteId/url`；`siteId/url` 組成 thread 的目標快照，直接開啟舊 thread 時不得因 registry URL 更新而被重新導向。網站切換、New Thread 與訊息儲存都要更新該網站的最後 active thread，禁止跨網站重用對話。
-- iframe schema 只協助模型選擇工具；executor 必須處理錯誤，敏感副作用需保留使用者確認。跨來源整合前，確認 iframe `allow="tools"`、`exposedTo`、`fromOrigins` 與 Permissions Policy，不得繞過來源安全模型。
-- <!-- user-specified --> 個資與付款屬高風險步驟：Agent 不得在 Chat 索取、接收、重述或保存姓名、Email、地址、電話、帳戶識別或付款資料；相關 WebMCP tool 不得接受這些欄位，亦不得在結果中回傳它們。Agent 只能使用 iframe 暴露的導航工具，請使用者直接在頁面完成輸入。
-- <!-- user-specified --> 建立／確認／取消訂單、付款與其他高風險副作用，必須由使用者直接在 iframe 頁面按下最終確認；Agent 不得呼叫可提交、確認或繞過該頁面確認的工具。工具、system prompt 與 site skills 必須一致遵守此界線。
+- 根路徑直接渲染 Dashboard；不得重新加入 Market、Chat、AI SDK runtime 或多網站
+  registry，除非使用者明確要求。
+- WebMCP schema 只協助外部 Agent 選擇工具；executor 必須獨立驗證輸入、處理錯誤，
+  並遵守瀏覽器來源與 Permissions Policy。
+- SQL 僅允許安全的唯讀查詢；不得放寬 single-statement、row/column、字串資料、VM
+  steps、逾時或 SQLite authorizer 限制。
+- query result 與 active report 綁定目前頁面 runtime；不得跨 context 重用。
+- 個資與付款屬高風險資料：tools 不得接受或回傳姓名、Email、地址、電話、帳戶識別
+  或付款資料。 <!-- user-specified -->
+- 訂單只能唯讀查看；不得新增可建立、確認、取消訂單或提交付款的 tool。高風險最終
+  確認必須由使用者直接操作頁面。 <!-- user-specified -->
+- 存量修改只接受明確商品與非負整數，並保留 UI 端確認與 executor 驗證。
 
-## 資料與 runtime
+## 開發與 Git
 
-- 使用 AI SDK `ToolLoopAgent`、`useChat` 與自訂 `WebMcpChatTransport`；不維護舊自製 Agent core 或 datasource/controller runtime。
-- IndexedDB 只保存薄 envelope：`StoredMessage` 以 ULID 作為主鍵與排序依據，包住 AI SDK `UIMessage`，並附 `threadId`、`createdAt`、`updatedAt`；`siteLastThreads` 以 `siteId` 對應最後 active thread。使用 `webmcp-agent-db-v2`，不支援舊 schema 遷移。
-- Chat message lifecycle：開啟 thread 時只讀取既有 `[threadId+id]` primary key 清單，virtual row 再依 message ID 讀取單筆內容；完整 history 僅在送出模型請求時載入。user message 送出前先持久化；assistant streaming 只存在記憶體，僅正常完成的 assistant 可寫入 IndexedDB，abort、disconnect、error 或切換 thread 的 partial assistant 必須捨棄。
-- LLM 使用 `@ai-sdk/openai-compatible` 連接本地模型；設定讀取 `VITE_APP_LLM_MODEL`、`VITE_APP_LLM_BASE_URL`、`VITE_APP_AUTH_KEY`。
+- 遵循 Prettier：2 spaces、LF、無分號、雙引號、80 欄寬；Tailwind class 由 plugin
+  排序。元件使用 PascalCase，hooks 使用 `use-*.ts`。
+- 本機密鑰只放 `.env`，不可提交 API key 或 secrets。
+- 不得使用破壞性 Git 操作；保留工作樹中與任務無關的修改。
+- Commit 使用簡短命令式訊息，例如 `feat: focus app on dashboard`。
 
-## 基線設定
+## 參考文件
 
-- 使用 Node.js、npm 與 `package-lock.json`；安裝依賴執行 `npm install`。
-- 開發伺服器：`npm run dev`（Vite 預設 `http://localhost:6171`）。
-- 完成修改至少執行 `npm run typecheck`、`npm run lint`、`npm run build`；UI 行為需確認 `/chat`、兩個 `/webmcp-demo/*` 路徑、iframe discovery、網站切換與 tool execution。
-- <!-- user-specified -->前端使用 React 19、TypeScript、shadcn/ui、Tailwind CSS；本專案目前不架設後端，若未來新增後端則使用 Node.js 與 Hono。
-
-## 開發原則與安全邊界
-
-- 本機密鑰放在 `.env`，不可提交 API key 或其他 secrets。
-- 改變 IndexedDB schema、iframe 權限、訊息持久化或跨模組邊界前，先確認影響範圍；不得使用破壞性 git 操作或未確認的廣泛資料刪除。
-- 遵循 Prettier：2 spaces、LF、無分號、雙引號、80 欄寬；Tailwind class 由 plugin 排序。元件採 PascalCase，hooks 採 `use-*.ts`。
-
-## Commit 與 Pull Request
-
-提交訊息使用簡短、命令式描述，例如 `feat: add iframe tool bridge`。PR 說明目的、影響範圍與驗證指令；UI 變更附截圖，並標註瀏覽器支援、跨來源權限或設定限制。
-
-## 參考資料
-
-- [WebMCP GitHub](https://github.com/webmachinelearning/webmcp)：規格草案、API 設計、實作狀態與安全考量。
-- [Chrome WebMCP 文件](https://developer.chrome.com/docs/ai/webmcp?hl=zh-tw)：Chrome API、Origin Trial、命令式/宣告式 API、最佳做法與工具安全性。
+- [docs/SMART-DASHBOARD.md](docs/SMART-DASHBOARD.md)：修改 SQLite、skills、報表 tools
+  或 Report Canvas 前閱讀其架構與安全限制。

@@ -2,8 +2,6 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
-@import "tw-shimmer";
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -141,6 +139,5 @@ body {
 #root {
   width: 100%;
   height: 100%;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
 }

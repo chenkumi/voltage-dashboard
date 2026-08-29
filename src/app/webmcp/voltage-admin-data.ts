@@ -2,7 +2,7 @@ import {
   formatVoltageCategory,
   voltageProducts,
   type VoltageProduct,
-} from "./voltage-market-data"
+} from "./voltage-product-data"
 
 export type VoltageAdminCustomer = {
   id: string
