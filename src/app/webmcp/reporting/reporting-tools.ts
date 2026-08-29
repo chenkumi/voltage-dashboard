@@ -538,9 +538,9 @@ export class ReportingRuntimeController {
   }
 
   createSavedReportSnapshot(): SavedReport | null {
-    const context = this.requireContext()
     const report = this.reportState.getSnapshot()
     if (!report) return null
+    const context = this.requireContext()
     const queryIds = report.widgets.flatMap((widget) => {
       if (widget.type === "space") return []
       return widget.type === "markdown" || widget.type === "text"

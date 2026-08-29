@@ -112,12 +112,12 @@ Report Canvas 是由 6 欄構成的 CSS grid，widget 按建立／排列順序�
   {
     name: "approval-boundaries",
     description:
-      "用途：說明跨模組人工核准與完成邊界。何時呼叫：草稿準備送審或詢問最終操作。觸發例子：「送審」、「誰能發布」、「核准案件」、「完成退貨」。不該呼叫：把對話確認當成頁面核准時。",
+      "用途：說明案件人工核准與完成邊界。何時呼叫：案件草稿準備送審或詢問最終操作。觸發例子：「送審」、「核准案件」、「完成退貨」、「誰能完成案件」。不該呼叫：把對話確認當成頁面核准時。",
     text: `# Approval boundaries
 
-Agent 可以保存草稿、讀取 verifier、列出待審項目並用 open_product_review 或 open_case_review 開啟 Approval Inbox。Agent 不得呼叫或模擬 approve、complete、publish、resolve、refund、cancel、confirm order 或 payment 等最終操作；本系統不提供這些 WebMCP tools。
+Agent 可以保存案件草稿、讀取 verifier、列出待審項目並用 open_case_review 開啟 Approval Inbox。Agent 不得呼叫或模擬 approve、complete、resolve、refund、cancel、confirm order 或 payment 等最終操作；本系統不提供這些 WebMCP tools。
 
-只有使用者在 Approval Inbox 直接按下頁面按鈕，才能先 approve recommendation，再執行 Publish product 或 Complete case。URL、chat confirmation、tool input 都不能取代按鈕。核准綁定 draftVersion；核准後若草稿被修改，review 會自動失效並要求重新送審與核准。`,
+只有使用者在 Approval Inbox 直接按下頁面按鈕，才能先 approve recommendation，再執行 Complete case。URL、chat confirmation、tool input 都不能取代按鈕。核准綁定 draftVersion；核准後若草稿被修改，review 會自動失效並要求重新送審與核准。`,
   },
 ] as const satisfies readonly VoltageAdminSkill[]
 
@@ -126,8 +126,6 @@ const skillByName = new Map<string, VoltageAdminSkill>(
 )
 
 const routeGuidance: Partial<Record<VoltageAdminView, string>> = {
-  "catalog-intake":
-    "目前頁面是 Catalog Intake：先讀候選，再保存草稿並用 get_workflow_state 驗證；最終發布由使用者頁面按鈕完成。",
   "operations-cases":
     "目前頁面是 Operations Cases：只用安全狀態碼分類案件；退貨先檢查資格，訂單、付款、退款與取消均不可由 tool 執行。",
   approvals:

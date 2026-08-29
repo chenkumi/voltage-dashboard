@@ -114,9 +114,10 @@ agent_instructions   skill_list/load_skill
 
 ### 5.1 資料來源
 
-頁面初始化時，將已篩選且允許 Agent 使用的資料載入 SQLite3 WASM memory database。
-資料庫只存在目前頁面 context，不跨頁面 runtime 共享，也不屬於報表 library 的
-IndexedDB 持久化資料。
+頁面初始化時，先從統一 Product Repository 取得包含 draft、published、archived 的
+商品 snapshot，再將已篩選且允許 Agent 使用的商品、庫存與歷史 fixture 載入 SQLite3
+WASM memory database。SQLite 只存在目前頁面 context，不跨頁面 runtime 共享，也不
+屬於商品 IndexedDB 持久化資料。
 
 第一階段實際提供以下專為 Agent 設計的 curated tables：
 
@@ -126,6 +127,14 @@ agent_sales_daily
 agent_inventory
 agent_dataset_status
 ```
+
+`agent_products` 以 `product_id` 對應 Product Repository，保存 `price_amount`、
+`currency_code` 與 `product_status`。相容欄位 `price_usd` 只在原生幣別為 USD 時有值；
+TWD 為 NULL，不在沒有匯率資料時換算。`agent_inventory` 使用同一商品的目前 stock。
+
+`agent_sales_daily.net_revenue_usd` 是既有示範 fixture 的歷史 USD 數值，只能在穩定
+seed ID 與 SKU 同時相符時掛接。新建商品與 TWD 商品沒有對應 fixture 時不產生銷售列，
+不得因商品清單排序、缺列或 SKU 被重用而改掛歷史銷售。
 
 不要將原始客戶、付款或完整訂單資料複製進 Agent database。若來源資料包含敏感欄位，
 必須在載入 memory database 前移除或匿名化。
@@ -279,6 +288,9 @@ type SqlQueryResult = {
 workspace 內的 immutable query result；建立資料 widget 時只傳 `queryId` 與明確欄位
 mapping，不需讓模型再次回傳整批資料。cache 最多 32 筆／8 MiB，不設 TTL；iframe
 dispose、reload、context replay 或網站切換後，舊 `queryId` 立即失效且不會落入新 context。
+Product Repository 的商品或庫存版本改變時也會序列化重建 SQLite context，清除 query
+cache 與 active report；mutation tool 回傳前必須完成這次同步。Saved report evidence
+另綁定 `contextId`，不得還原到不同資料版本或不同 Provider context。
 
 ### 7.2 報表操作工具
 

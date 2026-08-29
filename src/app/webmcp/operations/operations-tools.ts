@@ -3,14 +3,12 @@ import type { VoltageAdminView } from "../voltage-admin"
 import type { WebMcpRegisteredTool } from "../types"
 import { OperationsController } from "./operations-controller"
 import { checkReturnEligibility } from "./return-policy"
-import { PRODUCT_CATEGORIES } from "./types"
 import type {
   CaseDraft,
   CaseDraftInput,
   EligibilityResult,
   OpsCase,
   OpsCaseType,
-  ProductDraftInput,
 } from "./types"
 
 const schema = (
@@ -54,30 +52,6 @@ const eligibilitySchema = schema(
   },
   ["decision", "matchedRules", "missingEvidence"]
 )
-
-const productDraftProperties = {
-  candidateId: shortText("Catalog candidate ID returned by a catalog tool."),
-  title: shortText("Safe product title, at most 120 characters."),
-  category: {
-    type: "string",
-    enum: [...PRODUCT_CATEGORIES],
-    description: "One supported catalog category.",
-  },
-  description: {
-    type: "string",
-    minLength: 1,
-    maxLength: 600,
-    description: "Safe plain-text product description.",
-  },
-  specifications: schema({
-    material: shortText("Material specification."),
-    capacity: shortText("Capacity specification."),
-    origin: shortText("Origin specification without an address."),
-    power: shortText("Power specification."),
-    runtime: shortText("Runtime specification."),
-    warranty: shortText("Warranty specification."),
-  }),
-}
 
 const caseCategories: CaseDraft["category"][] = [
   "fulfillment_follow_up",
@@ -124,10 +98,6 @@ const caseDraftProperties = {
 }
 
 export const OPERATIONS_TOOL_NAMES = [
-  "list_catalog_candidates",
-  "get_catalog_candidate",
-  "save_product_draft",
-  "open_product_review",
   "list_ops_cases",
   "get_ops_case",
   "save_case_draft",
@@ -140,55 +110,6 @@ export const OPERATIONS_TOOL_NAMES = [
 export type OperationsToolName = (typeof OPERATIONS_TOOL_NAMES)[number]
 
 export const OPERATIONS_TOOLS: WebMcpRegisteredTool[] = [
-  {
-    name: "list_catalog_candidates",
-    description:
-      "Purpose: list safe catalog candidate summaries. Call before drafting a product. Examples: ‘Find products to onboard’, ‘Catalog queue’, ‘Missing product fields’. Do not call for published catalog search or final publication.",
-    inputSchema: schema({}),
-    annotations: { readOnlyHint: true, untrustedContentHint: true },
-  },
-  {
-    name: "get_catalog_candidate",
-    description:
-      "Purpose: read one catalog candidate and its untrusted source text. Call after listing candidates. Examples: ‘Inspect CAT-1001’, ‘Read source specs’, ‘What fields are missing?’. Do not call to save or publish a product.",
-    inputSchema: schema(
-      {
-        candidateId: shortText("Catalog candidate ID from the candidate list."),
-      },
-      ["candidateId"]
-    ),
-    annotations: { readOnlyHint: true, untrustedContentHint: true },
-  },
-  {
-    name: "save_product_draft",
-    description:
-      "Purpose: save a reversible product draft from a catalog candidate. Call after checking source data. Examples: ‘Draft CAT-1001’, ‘Fill product fields’, ‘Revise description’. Do not call to publish, approve, or bypass human review.",
-    inputSchema: schema(
-      productDraftProperties,
-      ["candidateId", "title", "category", "description", "specifications"],
-      { [COMPLETION_VERIFIER_SCHEMA_KEY]: "get_workflow_state" }
-    ),
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      openWorldHint: false,
-      completionVerifier: "get_workflow_state",
-    },
-  },
-  {
-    name: "open_product_review",
-    description:
-      "Purpose: queue an existing product draft and open Approval Inbox. Call after the draft verifier confirms it. Examples: ‘Send CAT-1001 to review’, ‘Open product approval’, ‘Let a human publish’. Do not call to approve or publish.",
-    inputSchema: schema(
-      { candidateId: shortText("Candidate ID with a saved product draft.") },
-      ["candidateId"]
-    ),
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      openWorldHint: false,
-    },
-  },
   {
     name: "list_ops_cases",
     description:
@@ -277,14 +198,14 @@ export const OPERATIONS_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "list_pending_reviews",
     description:
-      "Purpose: list safe product and case reviews awaiting human work. Examples: ‘What needs approval?’, ‘Pending product reviews’, ‘Cases ready for a decision’. Call for queue status; do not approve, complete, publish, refund, or change orders.",
+      "Purpose: list safe case reviews awaiting human work. Examples: ‘What needs approval?’, ‘Pending case reviews’, ‘Cases ready for a decision’. Call for queue status; do not approve, complete, refund, or change orders.",
     inputSchema: schema({}),
     annotations: { readOnlyHint: true },
   },
   {
     name: "get_workflow_state",
     description:
-      "Purpose: verify same-turn product and case draft mutations. Call after save_product_draft or save_case_draft. Examples: ‘Verify saved draft’, ‘Read workflow version’, ‘Confirm draft status’. Do not use as approval or final-action confirmation.",
+      "Purpose: verify same-turn case draft mutations. Call after save_case_draft. Examples: ‘Verify saved draft’, ‘Read workflow version’, ‘Confirm case status’. Do not use as approval or final-action confirmation.",
     inputSchema: schema({}),
     annotations: { readOnlyHint: true, openWorldHint: false },
   },
@@ -326,12 +247,6 @@ const workflowState = (controller: OperationsController) => {
   return {
     status: "OK",
     version: snapshot.version,
-    productDrafts: snapshot.productDrafts.slice(0, 20).map((draft) => ({
-      candidateId: draft.candidateId,
-      status: draft.status,
-      version: draft.version,
-      lastEditedBy: draft.lastEditedBy,
-    })),
     caseDrafts: snapshot.caseDrafts.slice(0, 20).map((draft) => ({
       caseId: draft.caseId,
       status: draft.status,
@@ -340,7 +255,6 @@ const workflowState = (controller: OperationsController) => {
     })),
     reviews: snapshot.reviews.slice(0, 20).map((review) => ({
       id: review.id,
-      workflowType: review.workflowType,
       workflowId: review.workflowId,
       state: review.state,
       draftVersion: review.draftVersion,
@@ -360,62 +274,6 @@ export const executeOperationsTool = (
 ) => {
   try {
     const snapshot = controller.getSnapshot()
-    if (name === "list_catalog_candidates") {
-      if (!hasExactKeys(args, [])) return errorResult()
-      return bounded({
-        status: "OK",
-        items: snapshot.candidates.map((candidate) => ({
-          id: candidate.id,
-          sourceLabel: candidate.sourceLabel,
-          sourceUpdatedAt: candidate.sourceUpdatedAt,
-          sourceTrust: candidate.sourceTrust,
-          sourceTitle: candidate.sourceTitle,
-          suggestedCategory: candidate.suggestedCategory,
-          missingFields: candidate.missingFields,
-        })),
-      })
-    }
-    if (name === "get_catalog_candidate") {
-      if (!hasExactKeys(args, ["candidateId"])) return errorResult()
-      const candidateId = readString(args.candidateId)
-      const candidate = snapshot.candidates.find(({ id }) => id === candidateId)
-      return bounded(candidate ? { status: "OK", candidate } : errorResult())
-    }
-    if (name === "save_product_draft") {
-      const next = controller.saveProductDraft(
-        args as unknown as ProductDraftInput,
-        "agent"
-      )
-      const draft = next.productDrafts.find(
-        ({ candidateId }) => candidateId === args.candidateId
-      )
-      return bounded({
-        status: "OK",
-        draft: draft && {
-          candidateId: draft.candidateId,
-          status: draft.status,
-          version: draft.version,
-        },
-        verifier: "get_workflow_state",
-      })
-    }
-    if (name === "open_product_review") {
-      if (!hasExactKeys(args, ["candidateId"])) return errorResult()
-      const candidateId = readString(args.candidateId)
-      if (!candidateId) return errorResult()
-      const next = controller.openProductReview(candidateId, "agent")
-      const review = next.reviews.find(
-        (item) =>
-          item.workflowType === "product" && item.workflowId === candidateId
-      )
-      navigate("approvals")
-      return bounded({
-        status: "OK",
-        candidateId,
-        reviewState: review?.state,
-        next: "Human review is required in Approval Inbox.",
-      })
-    }
     if (name === "list_ops_cases") {
       if (!hasExactKeys(args, ["type", "status", "priority"])) {
         return errorResult()
@@ -506,7 +364,7 @@ export const executeOperationsTool = (
       if (!caseId) return errorResult()
       const next = controller.openCaseReview(caseId, "agent")
       const review = next.reviews.find(
-        (item) => item.workflowType === "case" && item.workflowId === caseId
+        (item) => item.workflowId === caseId
       )
       navigate("approvals")
       return bounded({
@@ -525,14 +383,12 @@ export const executeOperationsTool = (
           .map(
             ({
               id,
-              workflowType,
               workflowId,
               state,
               draftVersion,
               requiredAction,
             }) => ({
               id,
-              workflowType,
               workflowId,
               state,
               draftVersion,

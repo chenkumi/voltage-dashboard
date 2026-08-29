@@ -3,18 +3,11 @@ import {
   completeReview,
   createInitialOperationsState,
   openCaseReview,
-  openProductReview,
-  publishProduct,
   resolveCase,
   returnReview,
   saveCaseDraft,
-  saveProductDraft,
 } from "./operations-state"
-import type {
-  CaseDraftInput,
-  ProductDraftInput,
-  WorkflowSnapshot,
-} from "./types"
+import type { CaseDraftInput, WorkflowSnapshot } from "./types"
 
 type Listener = () => void
 
@@ -58,23 +51,8 @@ export class OperationsController {
     return this.snapshot
   }
 
-  saveProductDraft(
-    input: ProductDraftInput,
-    actor: "agent" | "user" = "agent"
-  ) {
-    return this.update(
-      saveProductDraft(this.snapshot, input, actor, this.now())
-    )
-  }
-
   saveCaseDraft(input: CaseDraftInput, actor: "agent" | "user" = "agent") {
     return this.update(saveCaseDraft(this.snapshot, input, actor, this.now()))
-  }
-
-  openProductReview(candidateId: string, actor: "agent" | "user" = "agent") {
-    return this.update(
-      openProductReview(this.snapshot, candidateId, actor, this.now())
-    )
   }
 
   openCaseReview(caseId: string, actor: "agent" | "user" = "agent") {
@@ -85,10 +63,6 @@ export class OperationsController {
     return this.update(
       approveReview(this.snapshot, reviewId, actor, this.now())
     )
-  }
-
-  publishProduct(input: ProductDraftInput, actor: unknown) {
-    return this.update(publishProduct(this.snapshot, input, actor, this.now()))
   }
 
   resolveCase(input: CaseDraftInput, actor: unknown) {

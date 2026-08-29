@@ -8,14 +8,6 @@ import {
   OPERATIONS_TOOLS,
 } from "./operations-tools"
 
-const productDraft = {
-  candidateId: "CAT-1001",
-  title: "AeroPress Clear Coffee Maker",
-  category: "Kitchen > Coffee",
-  description: "A compact manual brewer for a clear and consistent cup.",
-  specifications: { material: "Tritan", capacity: "300 ml" },
-}
-
 const assertClosedObjects = (schema: unknown) => {
   if (!schema || typeof schema !== "object" || Array.isArray(schema)) return
   const record = schema as Record<string, unknown>
@@ -44,6 +36,10 @@ describe("operations WebMCP tools", () => {
         "approve_review",
         "complete_review",
         "publish_product",
+        "list_catalog_candidates",
+        "get_catalog_candidate",
+        "save_product_draft",
+        "open_product_review",
         "resolve_case",
         "refund_order",
         "cancel_order",
@@ -73,9 +69,8 @@ describe("operations WebMCP tools", () => {
     }
   })
 
-  it("maps both draft mutations to the synchronous state verifier", () => {
-    expect(createCompletionVerifierMap(OPERATIONS_TOOLS)).toMatchObject({
-      save_product_draft: "get_workflow_state",
+  it("maps the case draft mutation to the synchronous state verifier", () => {
+    expect(createCompletionVerifierMap(OPERATIONS_TOOLS)).toEqual({
       save_case_draft: "get_workflow_state",
     })
 
@@ -83,24 +78,30 @@ describe("operations WebMCP tools", () => {
       ...tool,
       inputSchema: JSON.stringify(tool.inputSchema),
       annotations:
-        tool.name === "save_product_draft" || tool.name === "save_case_draft"
+        tool.name === "save_case_draft"
           ? { readOnlyHint: false }
           : tool.annotations,
     })) satisfies WebMcpRegisteredTool[]
-    expect(createCompletionVerifierMap(nativeRoundTrip)).toMatchObject({
-      save_product_draft: "get_workflow_state",
+    expect(createCompletionVerifierMap(nativeRoundTrip)).toEqual({
       save_case_draft: "get_workflow_state",
     })
   })
 
-  it("saves and verifies product drafts in the same turn", () => {
+  it("saves and verifies case drafts in the same turn", () => {
     const controller = new OperationsController()
 
     expect(
-      executeOperationsTool(controller, "save_product_draft", productDraft)
+      executeOperationsTool(controller, "save_case_draft", {
+        caseId: "CASE-2001",
+        category: "fulfillment_follow_up",
+        priority: "high",
+        evidence: ["dispatch_sla_exceeded"],
+        recommendation: "Review the fulfillment status.",
+        supportDraft: "The dispatch status is under review.",
+      })
     ).toMatchObject({
       status: "OK",
-      draft: { candidateId: "CAT-1001", status: "draft", version: 1 },
+      draft: { caseId: "CASE-2001", status: "draft", version: 1 },
       verifier: "get_workflow_state",
     })
     expect(
@@ -108,7 +109,7 @@ describe("operations WebMCP tools", () => {
     ).toMatchObject({
       status: "OK",
       version: 1,
-      productDrafts: [{ candidateId: "CAT-1001", version: 1 }],
+      caseDrafts: [{ caseId: "CASE-2001", version: 1 }],
     })
   })
 
@@ -151,18 +152,6 @@ describe("operations WebMCP tools", () => {
     const controller = new OperationsController()
 
     expect(
-      executeOperationsTool(controller, "save_product_draft", {
-        ...productDraft,
-        debug: true,
-      })
-    ).toMatchObject({ status: "ARGUMENT_ERROR" })
-    expect(
-      executeOperationsTool(controller, "save_product_draft", {
-        ...productDraft,
-        description: "Contact demo@example.com",
-      })
-    ).toMatchObject({ status: "ARGUMENT_ERROR" })
-    expect(
       executeOperationsTool(controller, "save_case_draft", {
         caseId: "CASE-2001",
         category: "fulfillment_follow_up",
@@ -170,6 +159,17 @@ describe("operations WebMCP tools", () => {
         evidence: ["invented_status"],
         recommendation: "Review this case.",
         supportDraft: "The dispatch status is under review.",
+        debug: true,
+      })
+    ).toMatchObject({ status: "ARGUMENT_ERROR" })
+    expect(
+      executeOperationsTool(controller, "save_case_draft", {
+        caseId: "CASE-2001",
+        category: "fulfillment_follow_up",
+        priority: "high",
+        evidence: ["dispatch_sla_exceeded"],
+        recommendation: "Review this case.",
+        supportDraft: "Contact demo@example.com",
       })
     ).toMatchObject({ status: "ARGUMENT_ERROR" })
   })
@@ -179,8 +179,6 @@ describe("operations WebMCP tools", () => {
     const calls: Array<
       [Parameters<typeof executeOperationsTool>[1], Record<string, unknown>]
     > = [
-      ["list_catalog_candidates", {}],
-      ["get_catalog_candidate", { candidateId: "CAT-1001" }],
       ["list_ops_cases", {}],
       ["get_ops_case", { caseId: "CASE-2004" }],
       ["check_return_eligibility", { caseId: "CASE-2004" }],
@@ -195,10 +193,8 @@ describe("operations WebMCP tools", () => {
     }
   })
 
-  it("marks every external candidate and case reader as untrusted", () => {
+  it("marks every external case reader as untrusted", () => {
     for (const name of [
-      "list_catalog_candidates",
-      "get_catalog_candidate",
       "list_ops_cases",
       "get_ops_case",
       "check_return_eligibility",

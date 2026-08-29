@@ -1,38 +1,4 @@
-import type { CatalogCandidate, OpsCase } from "./types"
-
-export const catalogCandidates: CatalogCandidate[] = [
-  {
-    id: "CAT-1001",
-    sourceLabel: "Verified manufacturer feed",
-    sourceUpdatedAt: "2026-08-27T09:00:00.000Z",
-    sourceTrust: "verified",
-    sourceTitle: "AeroPress Clear Coffee Maker",
-    sourceSummary:
-      "Compact manual coffee maker with a transparent chamber and reusable stirrer.",
-    suggestedCategory: "Kitchen > Coffee",
-    specifications: {
-      material: "Tritan",
-      capacity: "300 ml",
-      origin: "United States",
-    },
-    missingFields: ["description"],
-  },
-  {
-    id: "CAT-1002",
-    sourceLabel: "Distributor catalog snapshot",
-    sourceUpdatedAt: "2026-08-26T14:30:00.000Z",
-    sourceTrust: "review_required",
-    sourceTitle: "Portable LED Task Light",
-    sourceSummary:
-      "Rechargeable desk light with three brightness levels and a folding stand.",
-    suggestedCategory: "Home > Lighting",
-    specifications: {
-      power: "5 W",
-      runtime: "8 hours",
-    },
-    missingFields: ["category", "description", "specifications"],
-  },
-]
+import type { OpsCase } from "./types"
 
 export const operationsCases: OpsCase[] = [
   {

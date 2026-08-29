@@ -47,14 +47,14 @@ const DataTable = ({ children }: { children: ReactNode }) => (
 export const Dashboard = () => {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { dashboard, workflow } = useVoltageAdmin()
+  const { dashboard, workflow, products } = useVoltageAdmin()
   const workflowMetrics = [
     [
-      "Catalog drafts",
-      workflow.productDrafts
-        .filter(({ status }) => status !== "published")
+      "Draft products",
+      products.products
+        .filter(({ status }) => status === "draft")
         .length.toString(),
-      "Prepared for review",
+      "Awaiting publication",
     ],
     [
       "Exception cases",

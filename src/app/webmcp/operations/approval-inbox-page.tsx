@@ -1,7 +1,6 @@
 import {
   Check,
   CheckCircle2,
-  PackageCheck,
   RotateCcw,
   ShieldCheck,
 } from "lucide-react"
@@ -28,41 +27,6 @@ const ReviewSummary = ({
   workflow: WorkflowSnapshot
 }) => {
   const { t } = useTranslation()
-  if (review.workflowType === "product") {
-    const draft = workflow.productDrafts.find(
-      ({ candidateId }) => candidateId === review.workflowId
-    )
-    const candidate = workflow.candidates.find(
-      ({ id }) => id === review.workflowId
-    )
-    return (
-      <div className="voltage-admin-review-copy">
-        <strong>{draft?.title ?? review.workflowId}</strong>
-        <p>{draft?.description ?? t("Product draft details unavailable.")}</p>
-        <dl>
-          <div>
-            <dt>{t("Recommendation")}</dt>
-            <dd>
-              {t("Publish in {{category}} after a human checks the draft.", {
-                category: draft?.category
-                  ? t(draft.category)
-                  : t("the reviewed category"),
-              })}
-            </dd>
-          </div>
-          <div>
-            <dt>{t("Evidence source")}</dt>
-            <dd>{candidate?.sourceLabel ?? t("Catalog candidate")}</dd>
-          </div>
-          <div>
-            <dt>{t("Required approval")}</dt>
-            <dd>{t("Publish product")}</dd>
-          </div>
-        </dl>
-      </div>
-    )
-  }
-
   const draft = workflow.caseDrafts.find(
     ({ caseId }) => caseId === review.workflowId
   )
@@ -120,7 +84,7 @@ const ReviewCard = ({
     <article className="voltage-admin-review-card">
       <div className="voltage-admin-panel-heading">
         <div>
-          <p>{t("{{type}} review", { type: t(review.workflowType) })}</p>
+          <p>{t("Case review")}</p>
           <h2>{review.workflowId}</h2>
         </div>
         <Badge className={reviewTone(review.state)}>{t(review.state)}</Badge>
@@ -176,14 +140,8 @@ const ReviewCard = ({
                   )
                 }
               >
-                {review.workflowType === "product" ? (
-                  <PackageCheck className="size-4" />
-                ) : (
-                  <CheckCircle2 className="size-4" />
-                )}
-                {review.requiredAction === "publish_product"
-                  ? t("Publish product")
-                  : t("Complete case")}
+                <CheckCircle2 className="size-4" />
+                {t("Complete case")}
               </Button>
             )}
           </div>
@@ -222,8 +180,8 @@ export const ApprovalInboxPage = () => {
         >
           <div className="voltage-admin-panel-heading">
             <div>
-              <p>{t("Cross-module queue")}</p>
-              <h2>{t("Product and case reviews")}</h2>
+              <p>{t("Case workflow queue")}</p>
+              <h2>{t("Operations case reviews")}</h2>
             </div>
             <Badge className="bg-[#e2e5df] text-[#4c574e]">{actionable}</Badge>
           </div>
@@ -241,7 +199,7 @@ export const ApprovalInboxPage = () => {
           {reviews.length === 0 ? (
             <div className="voltage-admin-empty-state">
               <ShieldCheck className="mx-auto size-5" />
-              {t("Product and case reviews will appear here.")}
+              {t("Operations case reviews will appear here.")}
             </div>
           ) : null}
         </section>

@@ -140,10 +140,7 @@ describe("Voltage Admin skills", () => {
     }
   )
 
-  it("provides route-aware catalog, cases, and approval boundaries", () => {
-    expect(getVoltageAdminAgentInstructions("catalog-intake")).toMatch(
-      /Catalog Intake[\s\S]*get_workflow_state[\s\S]*頁面按鈕/
-    )
+  it("provides route-aware case and approval boundaries", () => {
     expect(getVoltageAdminAgentInstructions("operations-cases")).toMatch(
       /Operations Cases[\s\S]*安全狀態碼[\s\S]*退款/
     )

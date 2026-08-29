@@ -398,6 +398,12 @@ describe("execute_readonly_sql WebMCP tool", () => {
 })
 
 describe("ReportingRuntimeController", () => {
+  it("returns no saved report before the reporting context is prepared", () => {
+    const controller = new ReportingRuntimeController()
+
+    expect(controller.createSavedReportSnapshot()).toBeNull()
+  })
+
   it("disposes and forgets a runtime when initialization fails", async () => {
     const failure = new Error("Database initialization failed.")
     const runtime = {

@@ -2,135 +2,104 @@
 
 ## 1. 產品定位
 
-Voltage Dashboard 是一套既有企業 Web 系統的示範工作台。重點不是替頁面加上 AI
-按鈕，而是透過 WebMCP 將商品候選、營運案件、退貨政策、審核佇列、庫存與報表等
-既有模組暴露給外部 Agent。Agent 可以跨模組完成資料搜尋、內容填寫、分類、政策判斷
-與草稿準備；使用者仍在原頁面檢查並執行高風險最終動作。
+Voltage Dashboard 是純前端的既有企業後台示範。Products、Inventory、Operations
+Cases、Approval Inbox 與 Reports 都是可由人員直接操作的業務模組；WebMCP 只是把
+頁面既有的查詢、導覽、填表、案件草稿與分析能力提供給外部 Agent。
 
-所有 operations state 都保存在目前頁面的 memory workspace。跨 Outlet route 會保留，
-reload 或建立新的 Provider context 後重設，不寫入後端或瀏覽器持久化儲存。
+外部 Agent 由內嵌瀏覽器開啟本系統。PChome 或其他第三方商品頁由 Agent 使用自身的
+瀏覽、搜尋與網路能力讀取；本頁 WebMCP executor 不搜尋網路、不抓取第三方頁面，也
+不代理跨來源 `fetch`。Agent 將整理後的最小商品欄位交給本頁填寫工具，來源內容仍視
+為 untrusted content，必須通過 schema 與 executor 驗證。
 
-## 2. 三條展示流程
+商品由 IndexedDB Product Repository 持久化；operations cases、reviews 與 audit 則
+只存在目前 Provider 的 memory workspace，reload 後重設。
 
-### 2.1 商品上架草稿
+## 2. 代表性流程
 
-1. Agent 用 `list_catalog_candidates` 找待處理候選。
-2. 用 `get_catalog_candidate` 讀取來源時間、可信度、缺漏欄位與原廠規格。來源文字一律
-   視為 untrusted content。
-3. 用 `save_product_draft` 保存標題、分類、描述與六個受限規格欄位。
-4. 立即用 `get_workflow_state` 驗證 candidate ID、draft version 與狀態。
-5. 用 `open_product_review` 將草稿送入 Approval Inbox。
-6. 使用者在 Inbox 核准建議，再按 `Publish product`。Agent 沒有發布 tool。
+### 2.1 外部商品頁建檔
+
+1. Agent 用自己的瀏覽器開啟使用者提供的商品 URL，讀取可公開取得的標題、圖片、
+   描述、規格及價格。
+2. Agent 呼叫 `open_product_create`，頁面導覽至 `/products/add`。路由更新後 host 重新
+   discovery，取得商品 editor tools。
+3. Agent 用 `apply_product_editor_draft` 填入基本資料、原生 USD／TWD 價格、圖片、
+   描述、短文案、長文案及自由規格列表。
+4. Agent 立即用 `get_product_editor_state` 驗證 mode、dirty、valid、missingFields 與
+   version；WebMCP 不會儲存或發布商品。
+5. 使用者在頁面檢查內容，再按「儲存草稿」或「發布商品」。提交後 Products、
+   Inventory、Dashboard、WebMCP 查詢與 Reports 使用同一 Product Repository 版本。
 
 ### 2.2 訂單異常分類
 
 1. Agent 用 `list_ops_cases` 依 type、status、priority 篩選未出貨、付款檢核失敗或
    地址驗證異常。
 2. 用 `get_ops_case` 讀取非個人的 case ID、reason code 與 immutable fact codes。
-3. 用 `save_case_draft` 保存相符分類、優先級、facts 子集合、處理建議與客服草稿。
-4. 用 `get_workflow_state` 驗證 draft version，再以 `open_case_review` 送審。
-5. 使用者在 Inbox 核准並完成模擬案件。此流程不修改訂單、付款、退款或取消狀態。
+3. 用 `save_case_draft` 保存相符分類、優先級、facts 子集合、建議與客服草稿，再以
+   `get_workflow_state` 驗證 draft version。
+4. Agent 可用 `open_case_review` 導覽 Approval Inbox；只有使用者頁面按鈕可核准、
+   退回或完成案件。流程不修改訂單、付款、退款或取消狀態。
 
 ### 2.3 退貨與售後建議
 
-1. Agent 找到 `return_request` 案件並讀取安全 return facts。
-2. 用 `check_return_eligibility` 套用固定示範政策。結果只有 `eligible`、
-   `ineligible` 或 `needs_human_review`，並附 matched rules 與 missing evidence。
-3. 資料不足時必須保留人工審查；不得猜測或承諾退款。
-4. Agent 將完全相符的 eligibility、證據、建議與客服草稿保存並送入 Inbox。
-5. 使用者執行最終模擬處理；沒有 refund、cancel 或 order mutation tool。
+1. Agent 找到 `return_request` 案件並用 `check_return_eligibility` 套用固定示範政策。
+2. 結果只有 `eligible`、`ineligible`、`needs_human_review`，並包含 matched rules 與
+   missing evidence；資料不足時不得猜測或承諾退款。
+3. Agent 保存完全相符的 eligibility、證據、建議與客服草稿並送審。
+4. 使用者執行最終案件處理；registry 沒有 refund、cancel 或 order mutation tool。
 
 ## 3. WebMCP 工具契約
 
-| 分組 | Tools | 副作用與驗證 |
+| 分組 | Tools | 邊界 |
 | --- | --- | --- |
-| 商品讀取 | `list_catalog_candidates`, `get_catalog_candidate` | 唯讀；來源標記 untrusted |
-| 商品草稿 | `save_product_draft`, `open_product_review` | 可逆草稿／送審；不得發布 |
-| 案件讀取 | `list_ops_cases`, `get_ops_case` | 唯讀安全狀態碼；無個資、地址或付款內容 |
-| 售後準備 | `check_return_eligibility`, `save_case_draft`, `open_case_review` | 固定政策、可逆草稿／送審 |
-| 工作流狀態 | `list_pending_reviews`, `get_workflow_state` | 唯讀；後者是兩個 save tools 的 completion verifier |
+| 商品查詢 | `search_admin_products`, `get_admin_product`, `list_product_categories` | 唯讀、有限輸出、商品文字視為 untrusted |
+| 商品導覽 | `open_product_create`, `open_product_detail`, `open_product_edit` | 只導覽，不建立或修改商品 |
+| 商品填表 | `apply_product_editor_draft`, `get_product_editor_state` | 只改目前 editor 暫存狀態；後者是 completion verifier |
+| 案件讀取 | `list_ops_cases`, `get_ops_case`, `check_return_eligibility` | 唯讀安全狀態碼；無個資、地址或付款內容 |
+| 案件草稿 | `save_case_draft`, `open_case_review` | 可逆草稿／送審；不得完成案件 |
+| 工作流狀態 | `list_pending_reviews`, `get_workflow_state` | 唯讀；後者是 `save_case_draft` verifier |
 
-所有 input object 都以 `additionalProperties: false` 關閉額外欄位，executor 仍會獨立
-驗證 ID、enum、長度、陣列大小、內容安全、規格 allowlist、case category、evidence
-provenance、eligibility 與目前 snapshot。成功輸出以約 1.5K 字元為上限；列表只回摘要，
-再以單筆 tool 取得詳情。
+所有 input object 都以 `additionalProperties: false` 關閉額外欄位，executor 仍獨立驗證
+ID、enum、長度、陣列大小、內容安全、case category、evidence provenance 與目前
+snapshot。商品與 operations 成功輸出各自有 1,500 字元硬上限。
 
-`save_product_draft` 與 `save_case_draft` 同時在 annotation 宣告
-`completionVerifier: get_workflow_state`，並在 schema 保存
-`x-webmcp-completion-verifier` fallback。原生 WebMCP round-trip 若移除未知 annotation，
-仍可從 schema 建立 verifier mapping。只有同步 verifier 看見預期版本後，Agent 才能
-宣稱草稿已保存。
+## 4. 安全與人工邊界
 
-## 4. 資料與內容安全
-
-- Workflow ID 只代表示範商品候選或營運案件，不可連回自然人。
-- Operations tools 不接受或回傳姓名、Email、電話、實際地址、帳戶識別、卡號、付款
-  token、憑證、連結、HTML 或 JavaScript。
-- 付款檢核與地址驗證只保留 type、reason code 及 fact codes；沒有付款或地址內容。
-- 商品 specifications 只允許 `material`、`capacity`、`origin`、`power`、`runtime`、
-  `warranty`；key-value 合併後仍須通過內容安全檢查。
+- WebMCP 不接受或回傳姓名、Email、電話、實際地址、帳戶識別、卡號或付款 token。
+- 商品圖片只接受 HTTPS URL；文字不渲染為 HTML；圖片與規格採整組替換並重新驗證。
 - Case evidence 必須是該案件 immutable facts 的不重複子集合。
-- 退貨 eligibility 必須完全等於固定 policy 對該案件的結果。
-- Audit 只保存 `id`、`actor`、`action`、`workflowId`、`occurredAt`、`result`，不複製
-  prompt、標題、描述、客服草稿或建議文字。
+- 退貨 eligibility 必須完全等於固定政策對該案件的結果。
+- Audit 只保存 actor、action、workflow ID、時間與結果，不複製 prompt 或草稿文字。
+- Agent 沒有商品儲存、發布、封存、還原、刪除，亦沒有案件核准、完成、退款、付款、
+  建立／確認／取消訂單等 tools。
+- Review 綁定 `draftVersion`；草稿修改後既有 pending／approved review 立即失效。
 
-## 5. 人機分工與 stale approval 防護
+## 5. 三分鐘 Demo 腳本
 
-Agent 可以讀取候選／案件、建立與修改草稿、檢查退貨資格、送審、讀取待審清單與
-同步 verifier。WebMCP registry 不提供 approve、complete、publish、resolve、refund、
-payment、create/confirm/cancel order 等能力。
+### 0:00–1:10：外部來源到商品表單
 
-使用者只能從頁面按鈕核准、退回或完成最終操作。URL、chat confirmation 或 tool
-input 不能替代頁面操作。ReviewItem 會保存送審的 `draftVersion`；pending 或 approved
-草稿一旦被修改，review 立即轉為 returned。重新送審會綁定新版本，完成前也會再次比對
-目前 draft version，避免核准後內容被替換。
+1. 開啟 Products，展示可搜尋、可進入詳細頁及新增／編輯的真實後台流程。
+2. 請 Agent 讀取使用者提供的 PChome 商品頁；強調讀取由外部 Agent 完成。
+3. Agent 開啟 `/products/add`、填入完整內容並用 editor verifier 確認，但不能提交。
+4. 使用者在頁面發布，回到清單並核對商品、庫存與 Dashboard 已同步。
 
-## 6. 三分鐘 Demo 腳本
-
-### 0:00–0:35：說明既有系統與 discovery
-
-1. 開啟 Dashboard，展示原有 Products、Orders、Customers、Inventory、Reports，以及
-   新增的 Catalog Intake、Operations Cases、Approval Inbox。
-2. 用 WebMCP client discovery 顯示跨路由 tools 與四個 workflow skills。
-3. 強調這是同一 Provider 暴露既有模組，不是內建 chatbot。
-
-### 0:35–1:25：商品上架
-
-1. 請 Agent 找候選並補商品草稿。
-2. 展示 save 後立即呼叫 `get_workflow_state`；Catalog Intake 同步顯示 Agent draft。
-3. Agent 送入 Approval Inbox，但無法發布。
-4. 使用者核准並按 `Publish product`，Audit trail 顯示 user final action。
-
-### 1:25–2:30：異常與售後
+### 1:10–2:15：異常與售後
 
 1. 請 Agent 找未處理的 return case、檢查資格並產生分類與客服建議。
-2. 展示安全 reason/fact codes，刻意指出沒有姓名、地址與付款資料。
-3. Agent 保存、verifier 確認並送審；使用者在 Inbox 核准與完成案件。
-4. 強調完成只改 demo workflow，不退款、不取消也不改訂單。
+2. 展示 reason／fact codes，不含姓名、地址或付款資料。
+3. Agent 保存、驗證並送審；使用者在 Approval Inbox 核准與完成案件。
 
-### 2:30–3:00：隔離與安全收尾
+### 2:15–3:00：報表一致性與安全
 
-1. 列出 registry，確認沒有高風險 final-action tools。
-2. Reload 頁面，確認舊 drafts/reviews 不會進入新 context。
-3. 若瀏覽器沒有 `document.modelContext`，明確說明本次使用同頁 fallback provider；
-   不把 fallback 驗證宣稱為原生 WebMCP 實機結果。
+1. 在 Reports 查詢新商品及目前庫存；新商品沒有虛構銷售，TWD 不換算 USD。
+2. 列出 registry，確認不存在舊 Catalog Intake 或高風險 final-action tools。
+3. Reload 後確認舊 operations state、query IDs 與 active report 不進入新 context。
 
-## 7. 驗證模式
-
-### Fallback provider
+## 6. 驗證模式
 
 一般 Chromium 尚未提供原生 `document.modelContext` 時，頁面建立同源
-`window.__webmcpTestProvider`，使用與原生註冊相同的 tool definitions 與 executor。
-可用它驗證 discovery、schema、skills、完整工作流、UI 同步與 reload 隔離。
+`window.__webmcpTestProvider`，使用與原生註冊相同的 definitions 與 executor，供測試
+discovery、schema、UI 同步及 reload 隔離。這是測試介面，不是產品內建 Agent。
 
-### 原生 WebMCP（待支援環境）
-
-1. 在已啟用 WebMCP 的 Chrome 或 ChatGPT in-app browser 開啟 Dashboard。
-2. 確認 `document.modelContext` 存在，且不依賴 fallback provider。
-3. Discovery 應包含 11 個 operations tools、`skill_list`／`load_skill` 與四個 workflow
-   skills。
-4. 執行兩條 demo，確認 schema round-trip 後兩個 save mutation 仍映射
-   `get_workflow_state`。
-5. 確認人工 final action、reload 隔離與 console，記錄瀏覽器版本與 WebMCP 啟用方式。
-
-若環境沒有原生 API，驗證紀錄必須標示「fallback 已通過、原生待實機」，不可混用。
+原生實機需在支援 WebMCP 的 in-app browser 驗證：商品全站工具、add／edit route-only
+tools、七個 operations tools、SQL／report tools、`skill_list`／`load_skill` 與
+`toolchange`。若環境沒有原生 API，紀錄必須明確標示 fallback 已通過、原生待實機。

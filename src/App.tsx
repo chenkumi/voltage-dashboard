@@ -3,7 +3,6 @@ import "./i18n"
 import { EnterpriseAdminShell } from "@/app/webmcp/voltage-admin-shell"
 import { VoltageAdminProvider } from "@/app/webmcp/voltage-admin"
 import { ApprovalInboxPage } from "@/app/webmcp/operations/approval-inbox-page"
-import { CatalogIntakePage } from "@/app/webmcp/operations/catalog-intake-page"
 import { OperationsCasesPage } from "@/app/webmcp/operations/operations-cases-page"
 import {
   ProductAddRoute,
@@ -37,7 +36,6 @@ export function App() {
           <Route path="customers" element={<Customers />} />
           <Route path="inventory" element={<Inventory />} />
           <Route path="reports" element={<Reports />} />
-          <Route path="catalog-intake" element={<CatalogIntakePage />} />
           <Route path="operations-cases" element={<OperationsCasesPage />} />
           <Route path="approvals" element={<ApprovalInboxPage />} />
         </Route>

@@ -67,7 +67,6 @@ export type VoltageAdminView =
   | "customers"
   | "inventory"
   | "reports"
-  | "catalog-intake"
   | "operations-cases"
   | "approvals"
 
@@ -83,16 +82,6 @@ const schema = (
 
 const noInput = schema({})
 
-const LEGACY_CATALOG_TOOL_NAMES = new Set([
-  "list_catalog_candidates",
-  "get_catalog_candidate",
-  "save_product_draft",
-  "open_product_review",
-])
-const DISCOVERED_OPERATIONS_TOOLS = OPERATIONS_TOOLS.filter(
-  ({ name }) => !LEGACY_CATALOG_TOOL_NAMES.has(name)
-)
-
 const isAbortError = (error: unknown) =>
   error instanceof Error && error.name === "AbortError"
 
@@ -105,7 +94,6 @@ export const isVoltageAdminView = (value: unknown): value is VoltageAdminView =>
   value === "customers" ||
   value === "inventory" ||
   value === "reports" ||
-  value === "catalog-intake" ||
   value === "operations-cases" ||
   value === "approvals"
 
@@ -130,7 +118,7 @@ const VOLTAGE_ADMIN_COMMON_TOOLS: WebMcpRegisteredTool[] = [
   },
   EXECUTE_READONLY_SQL_TOOL,
   ...REPORT_AUTHORING_TOOLS,
-  ...DISCOVERED_OPERATIONS_TOOLS,
+  ...OPERATIONS_TOOLS,
   {
     name: "search_voltage_admin_products",
     description:
@@ -210,7 +198,7 @@ const VOLTAGE_ADMIN_COMMON_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "open_voltage_admin_section",
     description:
-      "Purpose: open a Dashboard section, including catalog intake, operations cases, approvals, inventory, or reports. Examples: ‘Open catalog intake’, ‘Take me to operations cases’, ‘View approvals’, ‘Go to reports’. Do not call to perform a final action.",
+      "Purpose: open a Dashboard section, including products, operations cases, approvals, inventory, or reports. Examples: ‘Open products’, ‘Take me to operations cases’, ‘View approvals’, ‘Go to reports’. Do not call to perform a final action.",
     inputSchema: schema(
       {
         section: {
@@ -222,7 +210,6 @@ const VOLTAGE_ADMIN_COMMON_TOOLS: WebMcpRegisteredTool[] = [
             "customers",
             "inventory",
             "reports",
-            "catalog-intake",
             "operations-cases",
             "approvals",
           ],

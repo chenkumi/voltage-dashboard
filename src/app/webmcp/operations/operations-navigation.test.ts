@@ -15,7 +15,6 @@ const views: VoltageAdminView[] = [
   "customers",
   "inventory",
   "reports",
-  "catalog-intake",
   "operations-cases",
   "approvals",
 ]
@@ -32,9 +31,7 @@ describe("operations navigation", () => {
   it("falls back to dashboard for unknown and nested paths", () => {
     expect(voltageAdminViewFromPath("/unknown")).toBe("dashboard")
     expect(voltageAdminViewFromPath("/")).toBe("dashboard")
-    expect(voltageAdminViewFromPath("/catalog-intake/item")).toBe(
-      "catalog-intake"
-    )
+    expect(voltageAdminViewFromPath("/catalog-intake/item")).toBe("dashboard")
   })
 
   it("keeps the shared outlet layout grid and block spacing contract", () => {

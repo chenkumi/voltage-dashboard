@@ -1,14 +1,15 @@
 import { describe, expect, it, vi } from "vitest"
 import { OperationsController } from "./operations-controller"
-import type { ProductDraftInput } from "./types"
+import type { CaseDraftInput } from "./types"
 
-const productDraft = {
-  candidateId: "CAT-1001",
-  title: "AeroPress Clear Coffee Maker",
-  category: "Kitchen > Coffee",
-  description: "A compact manual brewer for a clear and consistent cup.",
-  specifications: { material: "Tritan" },
-} satisfies ProductDraftInput
+const caseDraft = {
+  caseId: "CASE-2001",
+  category: "fulfillment_follow_up",
+  priority: "high",
+  evidence: ["dispatch_sla_exceeded"],
+  recommendation: "Route to the fulfillment review queue.",
+  supportDraft: "The dispatch status is under review.",
+} satisfies CaseDraftInput
 
 describe("OperationsController", () => {
   it("updates the stable snapshot and notifies subscribers synchronously", async () => {
@@ -19,7 +20,7 @@ describe("OperationsController", () => {
     const unsubscribe = controller.subscribe(listener)
     const initial = controller.getSnapshot()
 
-    const returned = controller.saveProductDraft(productDraft)
+    const returned = controller.saveCaseDraft(caseDraft)
     const snapshotBeforePromiseResolution = controller.getSnapshot()
     await Promise.resolve(returned)
 
@@ -30,104 +31,74 @@ describe("OperationsController", () => {
     expect(listener).toHaveBeenCalledTimes(1)
 
     unsubscribe()
-    controller.saveProductDraft({
-      ...productDraft,
-      description: "A second safe description.",
+    controller.saveCaseDraft({
+      ...caseDraft,
+      recommendation: "A second safe recommendation.",
     })
     expect(listener).toHaveBeenCalledTimes(1)
   })
 
   it("allows only the user-facing controller API to complete reviews", () => {
     const controller = new OperationsController()
-    controller.saveProductDraft(productDraft)
-    controller.openProductReview("CAT-1001")
-    controller.approveReview("REV-CAT-1001", "user")
+    controller.saveCaseDraft(caseDraft)
+    controller.openCaseReview(caseDraft.caseId)
+    controller.approveReview(`REV-${caseDraft.caseId}`, "user")
 
-    controller.completeReview("REV-CAT-1001", "user")
+    controller.completeReview(`REV-${caseDraft.caseId}`, "user")
 
-    expect(controller.getSnapshot().productDrafts[0]?.status).toBe("published")
+    expect(controller.getSnapshot().caseDrafts[0]?.status).toBe("completed")
     expect(controller.getSnapshot().audit.at(-1)?.actor).toBe("user")
   })
 
   it("rejects non-user completion and freezes exposed snapshots", () => {
     const controller = new OperationsController()
-    controller.saveProductDraft(productDraft)
-    controller.openProductReview("CAT-1001")
+    controller.saveCaseDraft(caseDraft)
+    controller.openCaseReview(caseDraft.caseId)
 
-    expect(() => controller.completeReview("REV-CAT-1001", "agent")).toThrow(
-      /explicit user actor/
-    )
+    expect(() =>
+      controller.completeReview(`REV-${caseDraft.caseId}`, "agent")
+    ).toThrow(/explicit user actor/)
     expect(() => controller.getSnapshot().reviews.push()).toThrow()
     expect(controller.getSnapshot().reviews[0]?.state).toBe("pending")
   })
 
-  it("publishes atomically and never exposes intermediate review state", () => {
+  it("resolves a case atomically and never exposes intermediate review state", () => {
     const controller = new OperationsController()
     const observedStatuses: string[] = []
     controller.subscribe(() => {
       observedStatuses.push(
-        controller.getSnapshot().productDrafts[0]?.status ?? "missing"
+        controller.getSnapshot().caseDrafts[0]?.status ?? "missing"
       )
     })
 
-    controller.publishProduct(productDraft, "user")
+    controller.resolveCase(caseDraft, "user")
 
-    expect(observedStatuses).toEqual(["published"])
+    expect(observedStatuses).toEqual(["completed"])
     expect(controller.getSnapshot()).toMatchObject({
-      productDrafts: [{ status: "published" }],
+      caseDrafts: [{ status: "completed" }],
       reviews: [{ state: "completed" }],
     })
     expect(controller.getSnapshot().audit.map(({ action }) => action)).toEqual([
-      "product_draft_saved",
+      "case_draft_saved",
       "review_opened",
       "review_approved",
-      "product_published",
+      "case_resolved",
     ])
   })
 
-  it("leaves the snapshot unchanged when atomic publication is rejected", () => {
+  it("leaves the snapshot unchanged when atomic resolution is rejected", () => {
     const controller = new OperationsController()
     const initial = controller.getSnapshot()
     const listener = vi.fn()
     controller.subscribe(listener)
 
     expect(() =>
-      controller.publishProduct(
-        { ...productDraft, specifications: { recipient: "John Smith" } },
+      controller.resolveCase(
+        { ...caseDraft, supportDraft: "Contact demo@example.com" },
         "user"
       )
     ).toThrow()
     expect(controller.getSnapshot()).toBe(initial)
     expect(listener).not.toHaveBeenCalled()
-  })
-
-  it("resolves a case atomically for an explicit user actor", () => {
-    const controller = new OperationsController()
-    const listener = vi.fn()
-    controller.subscribe(listener)
-    const input = {
-      caseId: "CASE-2001",
-      category: "fulfillment_follow_up" as const,
-      priority: "high" as const,
-      evidence: ["dispatch_sla_exceeded"],
-      recommendation: "Route to the fulfillment review queue.",
-      supportDraft: "The dispatch status is under review.",
-    }
-
-    controller.resolveCase(input, "user")
-
-    expect(listener).toHaveBeenCalledTimes(1)
-    const snapshot = controller.getSnapshot()
-    expect(snapshot.cases.find(({ id }) => id === "CASE-2001")).toMatchObject({
-      status: "resolved",
-    })
-    expect(snapshot.caseDrafts[0]).toMatchObject({
-      caseId: "CASE-2001",
-      status: "completed",
-    })
-    expect(snapshot.reviews[0]).toMatchObject({
-      workflowId: "CASE-2001",
-      state: "completed",
-    })
   })
 })

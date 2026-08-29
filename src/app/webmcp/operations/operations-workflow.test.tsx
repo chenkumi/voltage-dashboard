@@ -82,61 +82,6 @@ beforeEach(async () => {
 afterEach(() => cleanup())
 
 describe("fallback operations workflows", () => {
-  it("runs catalog candidate to Agent draft to human publication", () => {
-    const controller = new OperationsController()
-    const navigated: string[] = []
-
-    expect(
-      executeOperationsTool(controller, "list_catalog_candidates", {})
-    ).toMatchObject({
-      status: "OK",
-      items: expect.arrayContaining([
-        expect.objectContaining({ id: "CAT-1001" }),
-      ]),
-    })
-    expect(
-      executeOperationsTool(controller, "get_catalog_candidate", {
-        candidateId: "CAT-1001",
-      })
-    ).toMatchObject({ status: "OK", candidate: { sourceTrust: "verified" } })
-    expect(
-      executeOperationsTool(controller, "save_product_draft", {
-        candidateId: "CAT-1001",
-        title: "AeroPress Clear Coffee Maker",
-        category: "Kitchen > Coffee",
-        description: "A compact manual brewer ready for human review.",
-        specifications: { material: "Tritan", capacity: "300 ml" },
-      })
-    ).toMatchObject({ status: "OK", verifier: "get_workflow_state" })
-    expect(
-      executeOperationsTool(controller, "get_workflow_state", {})
-    ).toMatchObject({
-      productDrafts: [
-        { candidateId: "CAT-1001", status: "draft", lastEditedBy: "agent" },
-      ],
-    })
-    executeOperationsTool(
-      controller,
-      "open_product_review",
-      { candidateId: "CAT-1001" },
-      (view) => navigated.push(view)
-    )
-    expect(navigated).toEqual(["approvals"])
-
-    controller.approveReview("REV-CAT-1001", "user")
-    controller.completeReview("REV-CAT-1001", "user")
-
-    expect(controller.getSnapshot()).toMatchObject({
-      productDrafts: [{ candidateId: "CAT-1001", status: "published" }],
-      reviews: [{ workflowId: "CAT-1001", state: "completed" }],
-    })
-    expect(controller.getSnapshot().audit.at(-1)).toMatchObject({
-      actor: "user",
-      action: "product_published",
-      result: "completed",
-    })
-  })
-
   it("runs exception triage through return advice and human completion", () => {
     const controller = new OperationsController()
     const eligibility = executeOperationsTool(
@@ -192,35 +137,6 @@ describe("fallback operations workflows", () => {
     })
   })
 
-  it("reflects UI edits to tools and isolates a reloaded workspace", () => {
-    const current = new OperationsController()
-    current.saveProductDraft(
-      {
-        candidateId: "CAT-1002",
-        title: "Portable LED Task Light",
-        category: "Home > Lighting",
-        description: "A user-edited product draft.",
-        specifications: { power: "5 W", runtime: "8 hours" },
-      },
-      "user"
-    )
-
-    expect(
-      executeOperationsTool(current, "get_workflow_state", {})
-    ).toMatchObject({
-      version: 1,
-      productDrafts: [{ candidateId: "CAT-1002", lastEditedBy: "user" }],
-    })
-
-    const reloaded = new OperationsController()
-    expect(executeOperationsTool(reloaded, "get_workflow_state", {})).toEqual({
-      status: "OK",
-      version: 0,
-      productDrafts: [],
-      caseDrafts: [],
-      reviews: [],
-    })
-  })
 })
 
 describe("fallback Provider and UI workflow integration", () => {
@@ -250,6 +166,7 @@ describe("fallback Provider and UI workflow integration", () => {
   it("does not expose the superseded catalog draft workflow", async () => {
     renderRoute("/catalog-intake")
     const provider = await getFallbackProvider()
+    expect(screen.getByRole("heading", { name: "Dashboard" })).toBeTruthy()
     const names = provider.getTools().map(({ name }) => name)
     expect(names).not.toEqual(
       expect.arrayContaining([
@@ -306,38 +223,4 @@ describe("fallback Provider and UI workflow integration", () => {
     })
   })
 
-  it("exposes user edits to tools and resets state after Provider remount", async () => {
-    const user = userEvent.setup()
-    const first = renderRoute("/catalog-intake")
-    const initialProvider = await getFallbackProvider()
-
-    await user.clear(screen.getByRole("textbox", { name: /^Description/ }))
-    await user.type(
-      screen.getByRole("textbox", { name: /^Description/ }),
-      "A page-authored draft visible to the verifier."
-    )
-    await user.click(screen.getByRole("button", { name: "Save draft" }))
-
-    await expect(
-      executeFallbackTool(initialProvider, "get_workflow_state")
-    ).resolves.toMatchObject({
-      version: 1,
-      productDrafts: [{ candidateId: "CAT-1001", lastEditedBy: "user" }],
-    })
-
-    first.unmount()
-    expect(fallbackWindow().__webmcpTestProvider).toBeUndefined()
-    renderRoute("/catalog-intake")
-    const reloadedProvider = await getFallbackProvider()
-
-    await expect(
-      executeFallbackTool(reloadedProvider, "get_workflow_state")
-    ).resolves.toEqual({
-      status: "OK",
-      version: 0,
-      productDrafts: [],
-      caseDrafts: [],
-      reviews: [],
-    })
-  })
 })
