@@ -42,6 +42,35 @@ const SectionTitle = ({
   </div>
 )
 
+const PageLayout = ({
+  ariaLabel,
+  eyebrow,
+  title,
+  detail,
+  children,
+}: {
+  ariaLabel: string
+  eyebrow: string
+  title: string
+  detail: string
+  children: ReactNode
+}) => (
+  <section className="grid gap-2 px-1.5" aria-label={ariaLabel}>
+    <div className="p-1">
+      <SectionTitle eyebrow={eyebrow} title={title} detail={detail} />
+    </div>
+    <div className="grid grid-cols-12 gap-2">{children}</div>
+  </section>
+)
+
+const GridBlock = ({
+  children,
+  className = "col-span-12",
+}: {
+  children: ReactNode
+  className?: string
+}) => <div className={`p-1 ${className}`}>{children}</div>
+
 const DataTable = ({ children }: { children: ReactNode }) => (
   <div className="voltage-admin-data-table overflow-x-auto border border-[#cfd3cb] bg-[#f5f6f1]">
     {children}
@@ -53,35 +82,34 @@ export const Dashboard = () => {
   const { dashboard } = useVoltageAdmin()
 
   return (
-    <section className="px-1.5" aria-label="Voltage Dashboard Overview">
-      <SectionTitle
-        eyebrow="Overview · last 7 days"
-        title="A calm read on the store."
-        detail="Built from the embedded operational dataset."
-      />
-      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          ["Revenue", formatMoney(dashboard.revenue), "+12.4% this week"],
-          ["Orders", dashboard.orderCount.toString(), "2 need attention"],
-          [
-            "Customers",
-            dashboard.customerCount.toString(),
-            "Anonymous segments",
-          ],
-          [
-            "Available SKUs",
-            dashboard.availableProductCount.toString(),
-            `${dashboard.lowStockCount} low stock`,
-          ],
-        ].map(([label, value, detail]) => (
-          <article key={label} className="voltage-admin-metric">
+    <PageLayout
+      ariaLabel="Voltage Dashboard Overview"
+      eyebrow="Overview · last 7 days"
+      title="A calm read on the store."
+      detail="Built from the embedded operational dataset."
+    >
+      {[
+        ["Revenue", formatMoney(dashboard.revenue), "+12.4% this week"],
+        ["Orders", dashboard.orderCount.toString(), "2 need attention"],
+        ["Customers", dashboard.customerCount.toString(), "Anonymous segments"],
+        [
+          "Available SKUs",
+          dashboard.availableProductCount.toString(),
+          `${dashboard.lowStockCount} low stock`,
+        ],
+      ].map(([label, value, detail]) => (
+        <GridBlock
+          key={label}
+          className="col-span-12 sm:col-span-6 xl:col-span-3"
+        >
+          <article className="voltage-admin-metric">
             <span>{label}</span>
             <strong>{value}</strong>
             <small>{detail}</small>
           </article>
-        ))}
-      </div>
-      <div className="mt-6 grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
+        </GridBlock>
+      ))}
+      <GridBlock className="col-span-12 xl:col-span-8">
         <article className="voltage-admin-panel">
           <div className="voltage-admin-panel-heading">
             <div>
@@ -116,6 +144,8 @@ export const Dashboard = () => {
             ))}
           </div>
         </article>
+      </GridBlock>
+      <GridBlock className="col-span-12 xl:col-span-4">
         <article className="voltage-admin-panel voltage-admin-alert">
           <div className="voltage-admin-panel-heading">
             <div>
@@ -142,8 +172,8 @@ export const Dashboard = () => {
             Review inventory
           </Button>
         </article>
-      </div>
-    </section>
+      </GridBlock>
+    </PageLayout>
   )
 }
 
@@ -156,115 +186,124 @@ export const Products = () => {
   )
 
   return (
-    <section className="px-1.5" aria-label="Voltage Dashboard Products">
-      <SectionTitle
-        eyebrow="Catalog management"
-        title="Products, kept focused."
-        detail={`${products.length} matching products in the current preview.`}
-      />
-      <div className="voltage-admin-toolbar">
-        <label className="voltage-admin-search">
-          <Search className="size-4" />
-          <span className="sr-only">Search products</span>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search product, category, brand…"
-          />
-        </label>
-      </div>
+    <PageLayout
+      ariaLabel="Voltage Dashboard Products"
+      eyebrow="Catalog management"
+      title="Products, kept focused."
+      detail={`${products.length} matching products in the current preview.`}
+    >
+      <GridBlock>
+        <div className="voltage-admin-toolbar">
+          <label className="voltage-admin-search">
+            <Search className="size-4" />
+            <span className="sr-only">Search products</span>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search product, category, brand…"
+            />
+          </label>
+        </div>
+      </GridBlock>
+      <GridBlock>
+        <DataTable>
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Rating</th>
+                <th>Inventory</th>
+              </tr>
+            </thead>
+            <tbody>
+              {products.map((product) => (
+                <tr key={product.id}>
+                  <td>
+                    <strong>{product.title}</strong>
+                    <small>#{product.id}</small>
+                  </td>
+                  <td>{product.category}</td>
+                  <td>{formatMoney(product.price)}</td>
+                  <td>{product.rating.toFixed(1)} / 5</td>
+                  <td>
+                    <Badge
+                      className={
+                        product.stock <= 12
+                          ? "bg-[#f4e5d7] text-[#8b5d3c]"
+                          : "bg-[#e5eee7] text-[#48614c]"
+                      }
+                    >
+                      {product.stock} units
+                    </Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </DataTable>
+      </GridBlock>
+    </PageLayout>
+  )
+}
+
+export const Orders = () => (
+  <PageLayout
+    ariaLabel="Voltage Dashboard Orders"
+    eyebrow="Order operations"
+    title="A private, clear queue."
+    detail="Records are anonymized; final order actions remain outside WebMCP."
+  >
+    <GridBlock>
       <DataTable>
         <table>
           <thead>
             <tr>
-              <th>Product</th>
-              <th>Category</th>
-              <th>Price</th>
-              <th>Rating</th>
-              <th>Inventory</th>
+              <th>Order</th>
+              <th>Customer ref</th>
+              <th>Created</th>
+              <th>Status</th>
+              <th>Total</th>
             </tr>
           </thead>
           <tbody>
-            {products.map((product) => (
-              <tr key={product.id}>
+            {voltageAdminOrders.map((order) => (
+              <tr key={order.id}>
                 <td>
-                  <strong>{product.title}</strong>
-                  <small>#{product.id}</small>
+                  <strong>{order.id}</strong>
+                  <small>{order.itemCount} items</small>
                 </td>
-                <td>{product.category}</td>
-                <td>{formatMoney(product.price)}</td>
-                <td>{product.rating.toFixed(1)} / 5</td>
+                <td>{order.customerId}</td>
+                <td>{order.createdAt}</td>
                 <td>
-                  <Badge
-                    className={
-                      product.stock <= 12
-                        ? "bg-[#f4e5d7] text-[#8b5d3c]"
-                        : "bg-[#e5eee7] text-[#48614c]"
-                    }
-                  >
-                    {product.stock} units
+                  <Badge className={statusClass(order.status)}>
+                    {order.status}
                   </Badge>
                 </td>
+                <td>{formatMoney(order.total)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </DataTable>
-    </section>
-  )
-}
-
-export const Orders = () => (
-  <section className="px-1.5" aria-label="Voltage Dashboard Orders">
-    <SectionTitle
-      eyebrow="Order operations"
-      title="A private, clear queue."
-      detail="Records are anonymized; final order actions remain outside WebMCP."
-    />
-    <DataTable>
-      <table>
-        <thead>
-          <tr>
-            <th>Order</th>
-            <th>Customer ref</th>
-            <th>Created</th>
-            <th>Status</th>
-            <th>Total</th>
-          </tr>
-        </thead>
-        <tbody>
-          {voltageAdminOrders.map((order) => (
-            <tr key={order.id}>
-              <td>
-                <strong>{order.id}</strong>
-                <small>{order.itemCount} items</small>
-              </td>
-              <td>{order.customerId}</td>
-              <td>{order.createdAt}</td>
-              <td>
-                <Badge className={statusClass(order.status)}>
-                  {order.status}
-                </Badge>
-              </td>
-              <td>{formatMoney(order.total)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </DataTable>
-  </section>
+    </GridBlock>
+  </PageLayout>
 )
 
 export const Customers = () => (
-  <section className="px-1.5" aria-label="Voltage Dashboard Customers">
-    <SectionTitle
-      eyebrow="Customer intelligence"
-      title="Segments without identities."
-      detail="Only non-identifying demo references are available to the agent."
-    />
-    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-      {voltageAdminCustomers.map((customer) => (
-        <article key={customer.id} className="voltage-admin-customer">
+  <PageLayout
+    ariaLabel="Voltage Dashboard Customers"
+    eyebrow="Customer intelligence"
+    title="Segments without identities."
+    detail="Only non-identifying demo references are available to the agent."
+  >
+    {voltageAdminCustomers.map((customer) => (
+      <GridBlock
+        key={customer.id}
+        className="col-span-12 sm:col-span-6 xl:col-span-4"
+      >
+        <article className="voltage-admin-customer">
           <div>
             <span>{customer.id}</span>
             <Badge
@@ -282,9 +321,9 @@ export const Customers = () => (
             {customer.orders} orders · active {customer.lastActive}
           </p>
         </article>
-      ))}
-    </div>
-  </section>
+      </GridBlock>
+    ))}
+  </PageLayout>
 )
 
 export const Inventory = () => {
@@ -300,83 +339,87 @@ export const Inventory = () => {
   )
 
   return (
-    <section className="px-1.5" aria-label="Voltage Dashboard Inventory">
-      <SectionTitle
-        eyebrow="Stock control"
-        title="Keep the shelf in view."
-        detail="Changes update this local Demo3 workspace only."
-      />
-      <div className="voltage-admin-toolbar">
-        <label className="voltage-admin-search">
-          <Search className="size-4" />
-          <span className="sr-only">Search inventory</span>
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search inventory…"
-          />
-        </label>
-        <Button
-          type="button"
-          variant={lowStockOnly ? "default" : "outline"}
-          className="voltage-admin-toolbar-action cursor-pointer"
-          onClick={() => setLowStockOnly((current) => !current)}
-        >
-          Low stock only
-        </Button>
-      </div>
-      <DataTable>
-        <table>
-          <thead>
-            <tr>
-              <th>Product</th>
-              <th>Category</th>
-              <th>Current stock</th>
-              <th>Update stock</th>
-            </tr>
-          </thead>
-          <tbody>
-            {products.slice(0, 24).map((product) => (
-              <tr key={product.id}>
-                <td>
-                  <strong>{product.title}</strong>
-                  <small>#{product.id}</small>
-                </td>
-                <td>{product.category}</td>
-                <td>
-                  <Badge
-                    className={
-                      product.stock <= 12
-                        ? "bg-[#f4e5d7] text-[#8b5d3c]"
-                        : "bg-[#e5eee7] text-[#48614c]"
-                    }
-                  >
-                    {product.stock} units
-                  </Badge>
-                </td>
-                <td>
-                  <input
-                    aria-label={`${product.title} inventory`}
-                    type="number"
-                    min="0"
-                    step="1"
-                    value={product.stock}
-                    onChange={(event) => {
-                      const next = setVoltageAdminInventory(
-                        inventory,
-                        product.id,
-                        Number(event.target.value)
-                      )
-                      if (next) setInventory(next)
-                    }}
-                  />
-                </td>
+    <PageLayout
+      ariaLabel="Voltage Dashboard Inventory"
+      eyebrow="Stock control"
+      title="Keep the shelf in view."
+      detail="Changes update this local Demo3 workspace only."
+    >
+      <GridBlock>
+        <div className="voltage-admin-toolbar">
+          <label className="voltage-admin-search">
+            <Search className="size-4" />
+            <span className="sr-only">Search inventory</span>
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search inventory…"
+            />
+          </label>
+          <Button
+            type="button"
+            variant={lowStockOnly ? "default" : "outline"}
+            className="voltage-admin-toolbar-action cursor-pointer"
+            onClick={() => setLowStockOnly((current) => !current)}
+          >
+            Low stock only
+          </Button>
+        </div>
+      </GridBlock>
+      <GridBlock>
+        <DataTable>
+          <table>
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Category</th>
+                <th>Current stock</th>
+                <th>Update stock</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </DataTable>
-    </section>
+            </thead>
+            <tbody>
+              {products.slice(0, 24).map((product) => (
+                <tr key={product.id}>
+                  <td>
+                    <strong>{product.title}</strong>
+                    <small>#{product.id}</small>
+                  </td>
+                  <td>{product.category}</td>
+                  <td>
+                    <Badge
+                      className={
+                        product.stock <= 12
+                          ? "bg-[#f4e5d7] text-[#8b5d3c]"
+                          : "bg-[#e5eee7] text-[#48614c]"
+                      }
+                    >
+                      {product.stock} units
+                    </Badge>
+                  </td>
+                  <td>
+                    <input
+                      aria-label={`${product.title} inventory`}
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={product.stock}
+                      onChange={(event) => {
+                        const next = setVoltageAdminInventory(
+                          inventory,
+                          product.id,
+                          Number(event.target.value)
+                        )
+                        if (next) setInventory(next)
+                      }}
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </DataTable>
+      </GridBlock>
+    </PageLayout>
   )
 }
 
@@ -384,13 +427,15 @@ export const Reports = () => {
   const { reportingController } = useVoltageAdmin()
 
   return (
-    <section className="px-1.5" aria-label="Voltage Dashboard Reports">
-      <SectionTitle
-        eyebrow="Smart Dashboard · shared workspace"
-        title="Shape the report together."
-        detail="Connected Agent tools and your direct edits update the same in-memory report. Query evidence stays inside this Dashboard page."
-      />
-      <ReportCanvas controller={reportingController} />
-    </section>
+    <PageLayout
+      ariaLabel="Voltage Dashboard Reports"
+      eyebrow="Smart Dashboard · shared workspace"
+      title="Shape the report together."
+      detail="Connected Agent tools and your direct edits update the same in-memory report. Query evidence stays inside this Dashboard page."
+    >
+      <GridBlock>
+        <ReportCanvas controller={reportingController} />
+      </GridBlock>
+    </PageLayout>
   )
 }

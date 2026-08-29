@@ -151,7 +151,7 @@
 }
 
 .voltage-admin-title {
-  margin-bottom: 1.5rem;
+  margin-bottom: 0;
 }
 
 .voltage-admin-title h1 {
@@ -285,7 +285,6 @@ table input {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  margin-bottom: var(--admin-section-gap);
 }
 
 .voltage-admin-toolbar .voltage-admin-search {

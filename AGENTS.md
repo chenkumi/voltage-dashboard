@@ -18,6 +18,10 @@ Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報�
   `http://localhost:6171`。
 - 完成修改至少執行 `npm run test`、`npm run typecheck`、`npm run lint` 與
   `npm run build`；UI 修改需在根路徑驗證 Dashboard、WebMCP discovery 與相關工具。
+- <!-- user-specified -->Outlet 路由頁面統一使用 `PageLayout`：Header 外層為
+  `p-1`，下方 view 為 `grid grid-cols-12 gap-2`；每個 grid block 必須有 `p-1`，
+  以 responsive `col-span-*` 分配版面。不得以額外 margin 重複區塊間距，保留
+  block padding 供內容的 shadow 或 ring 使用。
 
 ## 專案結構與入口
 
