@@ -3,6 +3,7 @@ import {
   completeReview,
   createInitialOperationsState,
   openProductReview,
+  resolveCase,
   returnReview,
   saveCaseDraft,
   saveProductDraft,
@@ -150,5 +151,73 @@ describe("operations state", () => {
 
     expect(returned.reviews[0]?.state).toBe("returned")
     expect(returned.productDrafts[0]?.status).toBe("draft")
+  })
+
+  it("keeps case preparation separate from user-only final handling", () => {
+    const input = {
+      caseId: "CASE-2004",
+      category: "return_review",
+      priority: "low",
+      evidence: ["delivered", "return_reason_changed_mind"],
+      recommendation: "Apply the deterministic return policy.",
+      supportDraft: "The return request is ready for a human decision.",
+      eligibility: {
+        decision: "eligible",
+        matchedRules: ["within_30_days", "unused_unopened", "not_final_sale"],
+        missingEvidence: [],
+      },
+    }
+    const saved = saveCaseDraft(
+      createInitialOperationsState(),
+      input,
+      "agent",
+      now
+    )
+
+    expect(saved.cases.find(({ id }) => id === "CASE-2004")?.status).toBe(
+      "drafted"
+    )
+    expect(() => resolveCase(saved, input, "agent", now)).toThrow(
+      /explicit user actor/
+    )
+    expect(
+      resolveCase(saved, input, "user", now).cases.find(
+        ({ id }) => id === "CASE-2004"
+      )?.status
+    ).toBe("resolved")
+  })
+
+  it("rejects mismatched categories and invented eligibility results", () => {
+    const base = {
+      caseId: "CASE-2004",
+      category: "return_review",
+      priority: "low",
+      evidence: ["delivered"],
+      recommendation: "Review the return policy.",
+      supportDraft: "The return request remains under review.",
+    }
+    expect(() =>
+      saveCaseDraft(
+        createInitialOperationsState(),
+        { ...base, category: "payment_review" },
+        "agent",
+        now
+      )
+    ).toThrow(/does not match/)
+    expect(() =>
+      saveCaseDraft(
+        createInitialOperationsState(),
+        {
+          ...base,
+          eligibility: {
+            decision: "ineligible",
+            matchedRules: ["invented_rule"],
+            missingEvidence: [],
+          },
+        },
+        "agent",
+        now
+      )
+    ).toThrow(/deterministic return policy/)
   })
 })

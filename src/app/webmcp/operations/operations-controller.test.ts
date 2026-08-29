@@ -98,4 +98,27 @@ describe("OperationsController", () => {
     expect(controller.getSnapshot()).toBe(initial)
     expect(listener).not.toHaveBeenCalled()
   })
+
+  it("resolves a case atomically for an explicit user actor", () => {
+    const controller = new OperationsController()
+    const listener = vi.fn()
+    controller.subscribe(listener)
+    const input = {
+      caseId: "CASE-2001",
+      category: "fulfillment_follow_up" as const,
+      priority: "high" as const,
+      evidence: ["dispatch_sla_exceeded"],
+      recommendation: "Route to the fulfillment review queue.",
+      supportDraft: "The dispatch status is under review.",
+    }
+
+    controller.resolveCase(input, "user")
+
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(controller.getSnapshot()).toMatchObject({
+      cases: [{ id: "CASE-2001", status: "resolved" }],
+      caseDrafts: [{ caseId: "CASE-2001", status: "completed" }],
+      reviews: [{ workflowId: "CASE-2001", state: "completed" }],
+    })
+  })
 })

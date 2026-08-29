@@ -5,6 +5,7 @@ import {
   assertSafeTextList,
 } from "./operations-content-safety"
 import { catalogCandidates, operationsCases } from "./operations-data"
+import { checkReturnEligibility } from "./return-policy"
 import { PRODUCT_CATEGORIES } from "./types"
 import type {
   AuditEntry,
@@ -221,6 +222,29 @@ export const saveCaseDraft = (
   if (opsCase.status === "resolved") {
     throw new OperationsStateError("Resolved cases cannot be changed.")
   }
+  const expectedCategory = {
+    fulfillment: "fulfillment_follow_up",
+    payment_check: "payment_review",
+    address_validation: "address_review",
+    return_request: "return_review",
+  }[opsCase.type]
+  if (input.category !== expectedCategory) {
+    throw new OperationsStateError("Category does not match the case type.")
+  }
+  if (opsCase.type !== "return_request" && eligibility) {
+    throw new OperationsStateError(
+      "Eligibility applies only to return request cases."
+    )
+  }
+  if (
+    eligibility &&
+    JSON.stringify(eligibility) !==
+      JSON.stringify(checkReturnEligibility(opsCase))
+  ) {
+    throw new OperationsStateError(
+      "Eligibility must match the deterministic return policy."
+    )
+  }
 
   const current = state.caseDrafts.find(({ caseId }) => caseId === input.caseId)
   const draft: CaseDraft = {
@@ -327,6 +351,12 @@ export const openCaseReview = (
   if (!draft || draft.status === "completed") {
     throw new OperationsStateError("An editable case draft is required.")
   }
+  const opsCase = state.cases.find((item) => item.id === caseId)
+  if (opsCase?.type === "return_request" && !draft.eligibility) {
+    throw new OperationsStateError(
+      "Return eligibility is required before human review."
+    )
+  }
   const next = openReview(state, "case", caseId, actor, now)
   return {
     ...next,
@@ -355,6 +385,28 @@ export const publishProduct = (
   const saved = saveProductDraft(state, input, actor, now)
   const pending = openProductReview(saved, candidateId, actor, now)
   return completeReview(pending, `REV-${candidateId}`, actor, now)
+}
+
+export const resolveCase = (
+  state: WorkflowSnapshot,
+  input: unknown,
+  actor: unknown,
+  now: string
+): WorkflowSnapshot => {
+  assertUserActor(actor)
+  assertRecord(input, "case draft")
+  const caseId = input.caseId
+  assertSafeShortText(caseId, "caseId")
+  const opsCase = state.cases.find((item) => item.id === caseId)
+  if (opsCase?.type === "return_request" && !input.eligibility) {
+    throw new OperationsStateError(
+      "Return eligibility is required before final handling."
+    )
+  }
+
+  const saved = saveCaseDraft(state, input, actor, now)
+  const pending = openCaseReview(saved, caseId, actor, now)
+  return completeReview(pending, `REV-${caseId}`, actor, now)
 }
 
 export const returnReview = (

@@ -298,6 +298,7 @@
 }
 
 .voltage-admin-field > span,
+.voltage-admin-field > legend,
 .voltage-admin-preview dt,
 .voltage-admin-source-specs dt {
   color: var(--admin-subtle);
@@ -305,6 +306,15 @@
   font-weight: 700;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.voltage-admin-empty-state {
+  padding: 1rem;
+  border: 1px dashed var(--admin-border);
+  border-radius: 0.8rem;
+  color: var(--admin-subtle);
+  font-size: 0.78rem;
+  text-align: center;
 }
 
 .voltage-admin-field input,
@@ -394,6 +404,99 @@
 .voltage-admin-source-specs dd {
   margin-top: 0.2rem;
   font-size: 0.78rem;
+}
+
+.voltage-admin-filter-bar {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(8rem, 1fr)) auto;
+  align-items: end;
+  gap: 0.7rem;
+  padding: 0.9rem;
+  border-radius: 0.9rem;
+  background: var(--admin-surface);
+}
+
+.voltage-admin-filter-bar > span {
+  padding-bottom: 0.7rem;
+  color: var(--admin-subtle);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.voltage-admin-check-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.voltage-admin-check-grid label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 0.65rem;
+  background: #fff;
+  font-size: 0.72rem;
+}
+
+.voltage-admin-check-grid input {
+  width: 1rem;
+  min-height: 1rem;
+  accent-color: #526155;
+}
+
+.voltage-admin-policy-action {
+  display: grid;
+  gap: 0.75rem;
+  justify-items: start;
+  margin-top: 1rem;
+}
+
+.voltage-admin-eligibility {
+  display: grid;
+  grid-template-columns: minmax(9rem, 0.65fr) minmax(0, 1.35fr);
+  gap: 0.8rem;
+  width: 100%;
+  padding: 0.9rem;
+  border: 1px solid #aeb8ae;
+  border-radius: 0.8rem;
+  background: #eef2eb;
+}
+
+.voltage-admin-eligibility > div p,
+.voltage-admin-eligibility dt {
+  color: var(--admin-subtle);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.voltage-admin-eligibility > div strong {
+  display: block;
+  margin-top: 0.25rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+
+.voltage-admin-eligibility dl {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.voltage-admin-eligibility dd {
+  margin-top: 0.15rem;
+  font-size: 0.75rem;
+}
+
+.voltage-admin-safety-note {
+  padding-top: 0.75rem;
+  margin-top: 0.75rem;
+  border-top: 1px solid var(--admin-border);
+  color: var(--admin-subtle);
+  font-size: 0.7rem;
 }
 
 .voltage-admin-panel-heading,
@@ -583,6 +686,22 @@ table input {
   .voltage-admin-action-row > div,
   .voltage-admin-action-row button {
     width: 100%;
+  }
+
+  .voltage-admin-filter-bar,
+  .voltage-admin-eligibility {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (min-width: 640px) and (max-width: 1023px) {
+  .voltage-admin-filter-bar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .voltage-admin-filter-bar > span {
+    grid-column: 1 / -1;
+    padding-bottom: 0;
   }
 }
 

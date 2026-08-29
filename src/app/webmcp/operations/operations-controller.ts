@@ -4,6 +4,7 @@ import {
   openCaseReview,
   openProductReview,
   publishProduct,
+  resolveCase,
   returnReview,
   saveCaseDraft,
   saveProductDraft,
@@ -81,6 +82,10 @@ export class OperationsController {
 
   publishProduct(input: ProductDraftInput, actor: unknown) {
     return this.update(publishProduct(this.snapshot, input, actor, this.now()))
+  }
+
+  resolveCase(input: CaseDraftInput, actor: unknown) {
+    return this.update(resolveCase(this.snapshot, input, actor, this.now()))
   }
 
   returnReview(reviewId: string, actor: unknown) {
