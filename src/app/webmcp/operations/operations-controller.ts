@@ -1,4 +1,5 @@
 import {
+  approveReview,
   completeReview,
   createInitialOperationsState,
   openCaseReview,
@@ -78,6 +79,12 @@ export class OperationsController {
 
   openCaseReview(caseId: string, actor: "agent" | "user" = "agent") {
     return this.update(openCaseReview(this.snapshot, caseId, actor, this.now()))
+  }
+
+  approveReview(reviewId: string, actor: unknown) {
+    return this.update(
+      approveReview(this.snapshot, reviewId, actor, this.now())
+    )
   }
 
   publishProduct(input: ProductDraftInput, actor: unknown) {

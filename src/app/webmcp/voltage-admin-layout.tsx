@@ -50,8 +50,9 @@ export const MainLayout = () => {
     }).length,
     "operations-cases": workflow.cases.filter(({ status }) => status === "open")
       .length,
-    approvals: workflow.reviews.filter(({ state }) => state === "pending")
-      .length,
+    approvals: workflow.reviews.filter(
+      ({ state }) => state === "pending" || state === "approved"
+    ).length,
   }
 
   return (

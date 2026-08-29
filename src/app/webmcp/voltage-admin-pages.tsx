@@ -35,7 +35,30 @@ const DataTable = ({ children }: { children: ReactNode }) => (
 
 export const Dashboard = () => {
   const navigate = useNavigate()
-  const { dashboard } = useVoltageAdmin()
+  const { dashboard, workflow } = useVoltageAdmin()
+  const workflowMetrics = [
+    [
+      "Catalog drafts",
+      workflow.productDrafts
+        .filter(({ status }) => status !== "published")
+        .length.toString(),
+      "Prepared for review",
+    ],
+    [
+      "Exception cases",
+      workflow.cases
+        .filter(({ status }) => status !== "resolved")
+        .length.toString(),
+      "Safe operational cases",
+    ],
+    [
+      "Human approvals",
+      workflow.reviews
+        .filter(({ state }) => state === "pending" || state === "approved")
+        .length.toString(),
+      "Final actions stay in UI",
+    ],
+  ]
 
   return (
     <PageLayout
@@ -59,6 +82,18 @@ export const Dashboard = () => {
           className="col-span-12 sm:col-span-6 xl:col-span-3"
         >
           <article className="voltage-admin-metric">
+            <span>{label}</span>
+            <strong>{value}</strong>
+            <small>{detail}</small>
+          </article>
+        </GridBlock>
+      ))}
+      {workflowMetrics.map(([label, value, detail]) => (
+        <GridBlock
+          key={label}
+          className="col-span-12 sm:col-span-6 xl:col-span-4"
+        >
+          <article className="voltage-admin-metric voltage-admin-workflow-metric">
             <span>{label}</span>
             <strong>{value}</strong>
             <small>{detail}</small>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest"
 import {
+  approveReview,
   completeReview,
   createInitialOperationsState,
   openProductReview,
@@ -30,7 +31,8 @@ describe("operations state", () => {
       now
     )
     const pending = openProductReview(revised, "CAT-1001", "agent", now)
-    const completed = completeReview(pending, "REV-CAT-1001", "user", now)
+    const approved = approveReview(pending, "REV-CAT-1001", "user", now)
+    const completed = completeReview(approved, "REV-CAT-1001", "user", now)
 
     expect(revised.productDrafts[0]).toMatchObject({
       version: 2,
@@ -38,6 +40,7 @@ describe("operations state", () => {
       status: "draft",
     })
     expect(pending.productDrafts[0]?.status).toBe("pending_review")
+    expect(approved.reviews[0]?.state).toBe("approved")
     expect(completed.productDrafts[0]?.status).toBe("published")
     expect(completed.reviews[0]?.state).toBe("completed")
     expect(completed.audit.at(-1)).toEqual(
@@ -219,5 +222,35 @@ describe("operations state", () => {
         now
       )
     ).toThrow(/deterministic return policy/)
+  })
+
+  it("requires evidence to be a unique subset of immutable case facts", () => {
+    const base = {
+      caseId: "CASE-2001",
+      category: "fulfillment_follow_up",
+      priority: "high",
+      evidence: ["dispatch_sla_exceeded"],
+      recommendation: "Review the fulfillment status.",
+      supportDraft: "The dispatch status is under review.",
+    }
+    expect(() =>
+      saveCaseDraft(
+        createInitialOperationsState(),
+        { ...base, evidence: ["invented_status"] },
+        "agent",
+        now
+      )
+    ).toThrow(/unique subset/)
+    expect(() =>
+      saveCaseDraft(
+        createInitialOperationsState(),
+        {
+          ...base,
+          evidence: ["dispatch_sla_exceeded", "dispatch_sla_exceeded"],
+        },
+        "agent",
+        now
+      )
+    ).toThrow(/unique subset/)
   })
 })

@@ -82,7 +82,8 @@ export type ReviewItem = {
   id: string
   workflowType: "product" | "case"
   workflowId: string
-  state: "pending" | "returned" | "completed"
+  draftVersion: number
+  state: "pending" | "approved" | "returned" | "completed"
   requiredAction: "publish_product" | "resolve_case"
   createdAt: string
 }
@@ -94,12 +95,13 @@ export type AuditEntry = {
     | "product_draft_saved"
     | "case_draft_saved"
     | "review_opened"
+    | "review_approved"
     | "review_returned"
     | "product_published"
     | "case_resolved"
   workflowId: string
   occurredAt: string
-  result: "saved" | "queued" | "returned" | "completed"
+  result: "saved" | "queued" | "approved" | "returned" | "completed"
 }
 
 export type WorkflowSnapshot = {

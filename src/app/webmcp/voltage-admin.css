@@ -499,6 +499,113 @@
   font-size: 0.7rem;
 }
 
+.voltage-admin-workflow-metric {
+  border: 1px solid #d7dcd4;
+  background: #eef1eb;
+}
+
+.voltage-admin-review-list {
+  display: grid;
+  gap: 0.75rem;
+  padding: 1.25rem;
+  border-radius: 1rem;
+  background: var(--admin-surface);
+}
+
+.voltage-admin-inbox-message {
+  min-height: 1rem;
+  color: var(--admin-subtle);
+  font-size: 0.72rem;
+}
+
+.voltage-admin-review-card {
+  padding: 1rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 0.9rem;
+  background: #eef0eb;
+}
+
+.voltage-admin-review-copy > strong {
+  display: block;
+  margin-top: 0.9rem;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.2rem;
+  font-weight: 400;
+}
+
+.voltage-admin-review-copy > p {
+  margin-top: 0.5rem;
+  color: var(--admin-subtle);
+  font-size: 0.78rem;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+.voltage-admin-review-copy dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.55rem;
+  margin-top: 0.75rem;
+}
+
+.voltage-admin-review-copy dl > div {
+  padding: 0.65rem;
+  border-radius: 0.7rem;
+  background: rgb(255 255 255 / 65%);
+}
+
+.voltage-admin-review-copy dt {
+  color: var(--admin-subtle);
+  font-size: 0.64rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.voltage-admin-review-copy dd {
+  margin-top: 0.25rem;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.voltage-admin-audit-list {
+  display: grid;
+  gap: 0.1rem;
+  margin-top: 0.9rem;
+}
+
+.voltage-admin-audit-list > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.65rem 0;
+  border-top: 1px solid var(--admin-border);
+}
+
+.voltage-admin-audit-list > div > span:last-child {
+  display: flex;
+  align-items: flex-end;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.voltage-admin-audit-list strong,
+.voltage-admin-audit-list small {
+  display: block;
+}
+
+.voltage-admin-audit-list strong {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.voltage-admin-audit-list small {
+  margin-top: 0.15rem;
+  color: var(--admin-subtle);
+  font-size: 0.66rem;
+}
+
 .voltage-admin-panel-heading,
 .voltage-admin-list-row,
 .voltage-admin-list-row > span:last-child,
@@ -689,7 +796,8 @@ table input {
   }
 
   .voltage-admin-filter-bar,
-  .voltage-admin-eligibility {
+  .voltage-admin-eligibility,
+  .voltage-admin-review-copy dl {
     grid-template-columns: minmax(0, 1fr);
   }
 }

@@ -188,9 +188,16 @@ export const saveProductDraft = (
         item.candidateId === draft.candidateId ? draft : item
       )
     : [...state.productDrafts, draft]
+  const reviews = state.reviews.map((review) =>
+    review.workflowType === "product" &&
+    review.workflowId === draft.candidateId &&
+    (review.state === "pending" || review.state === "approved")
+      ? { ...review, state: "returned" as const }
+      : review
+  )
 
   return addAudit(
-    { ...state, productDrafts },
+    { ...state, productDrafts, reviews },
     {
       actor,
       action: "product_draft_saved",
@@ -231,6 +238,14 @@ export const saveCaseDraft = (
   if (input.category !== expectedCategory) {
     throw new OperationsStateError("Category does not match the case type.")
   }
+  if (
+    input.evidence.some((item) => !opsCase.facts.includes(item)) ||
+    new Set(input.evidence).size !== input.evidence.length
+  ) {
+    throw new OperationsStateError(
+      "Evidence must be a unique subset of the case facts."
+    )
+  }
   if (opsCase.type !== "return_request" && eligibility) {
     throw new OperationsStateError(
       "Eligibility applies only to return request cases."
@@ -263,9 +278,16 @@ export const saveCaseDraft = (
   const cases = state.cases.map((item) =>
     item.id === draft.caseId ? { ...item, status: "drafted" as const } : item
   )
+  const reviews = state.reviews.map((review) =>
+    review.workflowType === "case" &&
+    review.workflowId === draft.caseId &&
+    (review.state === "pending" || review.state === "approved")
+      ? { ...review, state: "returned" as const }
+      : review
+  )
 
   return addAudit(
-    { ...state, caseDrafts, cases },
+    { ...state, caseDrafts, cases, reviews },
     {
       actor,
       action: "case_draft_saved",
@@ -280,6 +302,7 @@ const openReview = (
   state: WorkflowSnapshot,
   workflowType: ReviewItem["workflowType"],
   workflowId: string,
+  draftVersion: number,
   actor: "agent" | "user",
   now: string
 ): WorkflowSnapshot => {
@@ -289,14 +312,17 @@ const openReview = (
       review.workflowId === workflowId &&
       review.state !== "completed"
   )
-  if (existing?.state === "pending") return state
+  if (existing?.state === "pending" || existing?.state === "approved") {
+    return state
+  }
 
   const review: ReviewItem = existing
-    ? { ...existing, state: "pending" }
+    ? { ...existing, draftVersion, state: "pending" }
     : {
         id: `REV-${workflowId}`,
         workflowType,
         workflowId,
+        draftVersion,
         state: "pending",
         requiredAction:
           workflowType === "product" ? "publish_product" : "resolve_case",
@@ -330,7 +356,14 @@ export const openProductReview = (
   if (!draft || draft.status === "published") {
     throw new OperationsStateError("An editable product draft is required.")
   }
-  const next = openReview(state, "product", candidateId, actor, now)
+  const next = openReview(
+    state,
+    "product",
+    candidateId,
+    draft.version,
+    actor,
+    now
+  )
   return {
     ...next,
     productDrafts: next.productDrafts.map((item) =>
@@ -357,7 +390,7 @@ export const openCaseReview = (
       "Return eligibility is required before human review."
     )
   }
-  const next = openReview(state, "case", caseId, actor, now)
+  const next = openReview(state, "case", caseId, draft.version, actor, now)
   return {
     ...next,
     caseDrafts: next.caseDrafts.map((item) =>
@@ -384,7 +417,8 @@ export const publishProduct = (
 
   const saved = saveProductDraft(state, input, actor, now)
   const pending = openProductReview(saved, candidateId, actor, now)
-  return completeReview(pending, `REV-${candidateId}`, actor, now)
+  const approved = approveReview(pending, `REV-${candidateId}`, actor, now)
+  return completeReview(approved, `REV-${candidateId}`, actor, now)
 }
 
 export const resolveCase = (
@@ -406,7 +440,36 @@ export const resolveCase = (
 
   const saved = saveCaseDraft(state, input, actor, now)
   const pending = openCaseReview(saved, caseId, actor, now)
-  return completeReview(pending, `REV-${caseId}`, actor, now)
+  const approved = approveReview(pending, `REV-${caseId}`, actor, now)
+  return completeReview(approved, `REV-${caseId}`, actor, now)
+}
+
+export const approveReview = (
+  state: WorkflowSnapshot,
+  reviewId: string,
+  actor: unknown,
+  now: string
+): WorkflowSnapshot => {
+  assertUserActor(actor)
+  const review = state.reviews.find(({ id }) => id === reviewId)
+  if (!review || review.state !== "pending") {
+    throw new OperationsStateError("Pending review not found.")
+  }
+  return addAudit(
+    {
+      ...state,
+      reviews: state.reviews.map((item) =>
+        item.id === reviewId ? { ...item, state: "approved" as const } : item
+      ),
+    },
+    {
+      actor,
+      action: "review_approved",
+      workflowId: review.workflowId,
+      occurredAt: now,
+      result: "approved",
+    }
+  )
 }
 
 export const returnReview = (
@@ -417,8 +480,8 @@ export const returnReview = (
 ): WorkflowSnapshot => {
   assertUserActor(actor)
   const review = state.reviews.find(({ id }) => id === reviewId)
-  if (!review || review.state !== "pending") {
-    throw new OperationsStateError("Pending review not found.")
+  if (!review || (review.state !== "pending" && review.state !== "approved")) {
+    throw new OperationsStateError("Actionable review not found.")
   }
   return addAudit(
     {
@@ -461,8 +524,20 @@ export const completeReview = (
 ): WorkflowSnapshot => {
   assertUserActor(actor)
   const review = state.reviews.find(({ id }) => id === reviewId)
-  if (!review || review.state !== "pending") {
-    throw new OperationsStateError("Pending review not found.")
+  if (!review || review.state !== "approved") {
+    throw new OperationsStateError("Approved review not found.")
+  }
+  const currentDraftVersion =
+    review.workflowType === "product"
+      ? state.productDrafts.find(
+          ({ candidateId }) => candidateId === review.workflowId
+        )?.version
+      : state.caseDrafts.find(({ caseId }) => caseId === review.workflowId)
+          ?.version
+  if (currentDraftVersion !== review.draftVersion) {
+    throw new OperationsStateError(
+      "The approved draft version no longer matches the current draft."
+    )
   }
 
   const next: WorkflowSnapshot = {

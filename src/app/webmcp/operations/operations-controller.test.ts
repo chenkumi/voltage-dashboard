@@ -41,6 +41,7 @@ describe("OperationsController", () => {
     const controller = new OperationsController()
     controller.saveProductDraft(productDraft)
     controller.openProductReview("CAT-1001")
+    controller.approveReview("REV-CAT-1001", "user")
 
     controller.completeReview("REV-CAT-1001", "user")
 
@@ -79,6 +80,7 @@ describe("OperationsController", () => {
     expect(controller.getSnapshot().audit.map(({ action }) => action)).toEqual([
       "product_draft_saved",
       "review_opened",
+      "review_approved",
       "product_published",
     ])
   })
@@ -115,10 +117,17 @@ describe("OperationsController", () => {
     controller.resolveCase(input, "user")
 
     expect(listener).toHaveBeenCalledTimes(1)
-    expect(controller.getSnapshot()).toMatchObject({
-      cases: [{ id: "CASE-2001", status: "resolved" }],
-      caseDrafts: [{ caseId: "CASE-2001", status: "completed" }],
-      reviews: [{ workflowId: "CASE-2001", state: "completed" }],
+    const snapshot = controller.getSnapshot()
+    expect(snapshot.cases.find(({ id }) => id === "CASE-2001")).toMatchObject({
+      status: "resolved",
+    })
+    expect(snapshot.caseDrafts[0]).toMatchObject({
+      caseId: "CASE-2001",
+      status: "completed",
+    })
+    expect(snapshot.reviews[0]).toMatchObject({
+      workflowId: "CASE-2001",
+      state: "completed",
     })
   })
 })
