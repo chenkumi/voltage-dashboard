@@ -1,4 +1,14 @@
 import { Dexie, type EntityTable } from "dexie"
+import { createInventoryMovementSeed } from "../inventory/inventory-seed"
+import {
+  assertValidInventoryMovement,
+  InventoryValidationError,
+  normalizeInventoryAdjustment,
+} from "../inventory/inventory-validation"
+import type {
+  InventoryAdjustmentInput,
+  InventoryMovement,
+} from "../inventory/types"
 import { createDummyJsonProductSeed } from "./product-seed"
 import {
   assertValidProductInput,
@@ -14,7 +24,7 @@ import type {
 } from "./types"
 
 type ProductMetadata = {
-  key: "seed"
+  key: "seed" | "inventory-seed"
   version: number
   initializedAt: string
 }
@@ -22,13 +32,29 @@ type ProductMetadata = {
 type ProductDatabase = Dexie & {
   products: EntityTable<Product, "id">
   metadata: EntityTable<ProductMetadata, "key">
+  inventoryMovements: EntityTable<InventoryMovement, "id">
 }
 
 type ProductRepositoryOptions = {
   databaseName?: string
   seed?: readonly Product[]
   now?: () => string
+  createId?: () => string
 }
+
+type InventoryCommitAdjustment =
+  | {
+      type: "receipt" | "issue"
+      quantity: number
+      reasonCode: InventoryMovement["reasonCode"]
+      note?: string | null
+    }
+  | {
+      type: "reconciliation"
+      targetStock: number
+      reasonCode: InventoryMovement["reasonCode"]
+      note?: string | null
+    }
 
 export class ProductRepositoryError extends Error {
   readonly code:
@@ -47,10 +73,19 @@ const createDatabase = (name: string) => {
     products: "id, &sku, status, category, updatedAt",
     metadata: "key",
   })
+  database.version(2).stores({
+    products: "id, &sku, status, category, updatedAt",
+    metadata: "key",
+    inventoryMovements:
+      "id, productId, type, reasonCode, occurredAt, [productId+occurredAt]",
+  })
   return database
 }
 
 const cloneProduct = (product: Product): Product => structuredClone(product)
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value)
 
 const normalizeInput = (input: ProductWriteInput): ProductWriteInput => ({
   ...structuredClone(input),
@@ -61,6 +96,7 @@ export class ProductRepository {
   private readonly database: ProductDatabase
   private readonly seed: readonly Product[]
   private readonly now: () => string
+  private readonly createId: () => string
   private readonly listeners = new Set<
     (mutation: ProductMutation) => void | Promise<void>
   >()
@@ -72,6 +108,7 @@ export class ProductRepository {
     )
     this.seed = options.seed ?? createDummyJsonProductSeed()
     this.now = options.now ?? (() => new Date().toISOString())
+    this.createId = options.createId ?? (() => crypto.randomUUID())
   }
 
   async initialize() {
@@ -98,11 +135,12 @@ export class ProductRepository {
         await this.database.metadata.put({
           key: "seed",
           version: 1,
-          initializedAt: this.now(),
+          initializedAt: this.getCurrentTimestamp(),
         })
       }
     )
     if (inserted) await this.emit({ type: "initialize" })
+    await this.initializeInventoryHistory()
   }
 
   async list(options: { includeArchived?: boolean } = {}) {
@@ -139,6 +177,7 @@ export class ProductRepository {
     const product = await this.database.transaction(
       "rw",
       this.database.products,
+      this.database.inventoryMovements,
       async () => {
         await this.assertSkuAvailable(normalizedInput.sku)
         const lastProduct = await this.database.products.orderBy("id").last()
@@ -153,6 +192,17 @@ export class ProductRepository {
           updatedAt: timestamp,
         }
         await this.database.products.add(createdProduct)
+        await this.database.inventoryMovements.add(
+          this.createMovement(
+            createdProduct.id,
+            0,
+            createdProduct.stock,
+            "reconciliation",
+            "initial_stock",
+            null,
+            timestamp
+          )
+        )
         return createdProduct
       }
     )
@@ -165,8 +215,16 @@ export class ProductRepository {
     const product = await this.database.transaction(
       "rw",
       this.database.products,
+      this.database.inventoryMovements,
       async () => {
         const existing = await this.requireProduct(productId)
+        this.assertInventoryHistory(
+          [existing],
+          await this.database.inventoryMovements
+            .where("productId")
+            .equals(productId)
+            .toArray()
+        )
         if (existing.status === "archived") {
           throw new ProductRepositoryError(
             "INVALID_STATUS",
@@ -178,12 +236,29 @@ export class ProductRepository {
           existing.status === "published" ? "publish" : "draft"
         )
         await this.assertSkuAvailable(normalizedInput.sku, productId)
+        const timestamp = await this.getInventoryTimestamp(
+          productId,
+          existing.updatedAt
+        )
         const updatedProduct: Product = {
           ...existing,
           ...normalizedInput,
-          updatedAt: this.now(),
+          updatedAt: timestamp,
         }
         await this.database.products.put(updatedProduct)
+        if (updatedProduct.stock !== existing.stock) {
+          await this.database.inventoryMovements.add(
+            this.createMovement(
+              productId,
+              existing.stock,
+              updatedProduct.stock,
+              "reconciliation",
+              "legacy_stock_set",
+              null,
+              updatedProduct.updatedAt
+            )
+          )
+        }
         return updatedProduct
       }
     )
@@ -201,22 +276,99 @@ export class ProductRepository {
         },
       ])
     }
-    const product = await this.database.transaction(
+    const result = await this.commitInventoryAdjustment(productId, {
+      type: "reconciliation",
+      targetStock: stock,
+      reasonCode: "legacy_stock_set",
+    })
+    return result.product
+  }
+
+  async adjustInventory(productId: number, input: InventoryAdjustmentInput) {
+    const adjustment = normalizeInventoryAdjustment(input)
+    return this.commitInventoryAdjustment(productId, adjustment)
+  }
+
+  private async commitInventoryAdjustment(
+    productId: number,
+    adjustment: InventoryCommitAdjustment
+  ) {
+    const result = await this.database.transaction(
       "rw",
       this.database.products,
+      this.database.inventoryMovements,
       async () => {
         const existing = await this.requireProduct(productId)
-        const updatedProduct: Product = {
-          ...existing,
-          stock,
-          updatedAt: this.now(),
+        this.assertInventoryHistory(
+          [existing],
+          await this.database.inventoryMovements
+            .where("productId")
+            .equals(productId)
+            .toArray()
+        )
+        const nextStock =
+          adjustment.type === "reconciliation"
+            ? adjustment.targetStock
+            : existing.stock +
+              (adjustment.type === "receipt"
+                ? adjustment.quantity
+                : -adjustment.quantity)
+        if (nextStock < 0) {
+          throw new InventoryValidationError(
+            "INSUFFICIENT_STOCK",
+            "Inventory issue exceeds current stock."
+          )
         }
-        await this.database.products.put(updatedProduct)
-        return updatedProduct
+        const timestamp = await this.getInventoryTimestamp(
+          productId,
+          existing.updatedAt
+        )
+        const movement = this.createMovement(
+          productId,
+          existing.stock,
+          nextStock,
+          adjustment.type,
+          adjustment.reasonCode,
+          adjustment.note ?? null,
+          timestamp
+        )
+        const product = { ...existing, stock: nextStock, updatedAt: timestamp }
+        await this.database.products.put(product)
+        await this.database.inventoryMovements.add(movement)
+        return { product, movement }
       }
     )
     await this.emit({ type: "update", productId })
-    return cloneProduct(product)
+    return {
+      product: cloneProduct(result.product),
+      movement: structuredClone(result.movement),
+    }
+  }
+
+  async listInventoryMovements(productId?: number) {
+    if (
+      productId !== undefined &&
+      (!Number.isInteger(productId) || productId <= 0)
+    ) {
+      throw new ProductRepositoryError(
+        "PRODUCT_NOT_FOUND",
+        "Product was not found."
+      )
+    }
+    const movements =
+      productId !== undefined
+        ? await this.database.inventoryMovements
+            .where("productId")
+            .equals(productId)
+            .toArray()
+        : await this.database.inventoryMovements.toArray()
+    const products = productId
+      ? [await this.requireProduct(productId)]
+      : await this.database.products.toArray()
+    this.assertInventoryHistory(products, movements)
+    return movements
+      .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
+      .map((movement) => structuredClone(movement))
   }
 
   async publish(productId: number) {
@@ -364,6 +516,154 @@ export class ProductRepository {
     }
   }
 
+  private async initializeInventoryHistory() {
+    await this.database.transaction(
+      "rw",
+      this.database.products,
+      this.database.metadata,
+      this.database.inventoryMovements,
+      async () => {
+        const metadata = await this.database.metadata.get("inventory-seed")
+        const products = await this.database.products.toArray()
+        if (metadata) {
+          this.assertInventoryMetadata(metadata)
+          this.assertInventoryHistory(
+            products,
+            await this.database.inventoryMovements.toArray()
+          )
+          return
+        }
+        if ((await this.database.inventoryMovements.count()) !== 0) {
+          throw new ProductRepositoryError(
+            "INVALID_SEED",
+            "Inventory history exists without migration metadata."
+          )
+        }
+        const movements = createInventoryMovementSeed(products)
+        this.assertInventoryHistory(products, movements)
+        await this.database.inventoryMovements.bulkAdd(movements)
+        await this.database.metadata.put({
+          key: "inventory-seed",
+          version: 1,
+          initializedAt: this.getCurrentTimestamp(),
+        })
+      }
+    )
+  }
+
+  private assertInventoryMetadata(value: unknown) {
+    const parsed =
+      isRecord(value) && typeof value.initializedAt === "string"
+        ? Date.parse(value.initializedAt)
+        : NaN
+    if (
+      !isRecord(value) ||
+      Object.keys(value).length !== 3 ||
+      value.key !== "inventory-seed" ||
+      value.version !== 1 ||
+      !Number.isFinite(parsed) ||
+      new Date(parsed).toISOString() !== value.initializedAt
+    ) {
+      throw new ProductRepositoryError(
+        "INVALID_SEED",
+        "Inventory migration metadata is invalid."
+      )
+    }
+  }
+
+  private assertInventoryHistory(
+    products: readonly Product[],
+    movements: readonly InventoryMovement[]
+  ) {
+    const productIds = new Set(products.map((product) => product.id))
+    const movementIds = new Set<string>()
+    for (const movement of movements) {
+      assertValidInventoryMovement(movement)
+      if (!productIds.has(movement.productId) || movementIds.has(movement.id)) {
+        throw new ProductRepositoryError(
+          "INVALID_SEED",
+          "Inventory history has an invalid relationship or duplicate ID."
+        )
+      }
+      movementIds.add(movement.id)
+    }
+    for (const product of products) {
+      const history = movements
+        .filter((movement) => movement.productId === product.id)
+        .sort((left, right) => left.occurredAt.localeCompare(right.occurredAt))
+      if (
+        history.length === 0 ||
+        history.some(
+          (movement, index) =>
+            (index > 0 &&
+              movement.occurredAt <= history[index - 1].occurredAt) ||
+            (index > 0 &&
+              movement.previousStock !== history[index - 1].nextStock)
+        ) ||
+        history.at(-1)?.nextStock !== product.stock
+      ) {
+        throw new ProductRepositoryError(
+          "INVALID_SEED",
+          `Inventory history for product ${product.id} is inconsistent.`
+        )
+      }
+    }
+  }
+
+  private async getInventoryTimestamp(productId: number, minimum: string) {
+    const history = await this.database.inventoryMovements
+      .where("productId")
+      .equals(productId)
+      .sortBy("occurredAt")
+    const latestMovement = history.at(-1)?.occurredAt
+    const lowerBound =
+      latestMovement && latestMovement > minimum ? latestMovement : minimum
+    const timestamp = this.getCurrentTimestamp()
+    return timestamp <= lowerBound
+      ? new Date(Date.parse(lowerBound) + 1).toISOString()
+      : timestamp
+  }
+
+  private getCurrentTimestamp() {
+    const timestamp = this.now()
+    const parsed = Date.parse(timestamp)
+    if (
+      !Number.isFinite(parsed) ||
+      new Date(parsed).toISOString() !== timestamp
+    ) {
+      throw new ProductRepositoryError(
+        "INVALID_SEED",
+        "Repository clock returned an invalid timestamp."
+      )
+    }
+    return timestamp
+  }
+
+  private createMovement(
+    productId: number,
+    previousStock: number,
+    nextStock: number,
+    type: InventoryMovement["type"],
+    reasonCode: InventoryMovement["reasonCode"],
+    note: string | null,
+    occurredAt: string
+  ) {
+    const movement: InventoryMovement = {
+      id: `INV-${this.createId()}`,
+      productId,
+      type,
+      reasonCode,
+      previousStock,
+      nextStock,
+      delta: nextStock - previousStock,
+      occurredAt,
+      source: "manual",
+      note,
+    }
+    assertValidInventoryMovement(movement)
+    return movement
+  }
+
   private async emit(mutation: Omit<ProductMutation, "version">) {
     this.mutationVersion += 1
     const event = { ...mutation, version: this.mutationVersion }
@@ -379,4 +679,4 @@ export class ProductRepository {
   }
 }
 
-export { ProductValidationError }
+export { InventoryValidationError, ProductValidationError }
