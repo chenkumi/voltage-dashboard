@@ -36,14 +36,16 @@ Agent 探索資料、套用分析規則，並與人共同創造原本不存在�
 - 不由 Agent 發布、寄送或對外分享報表。
 - 不為所有可能的業務問題預先設計固定 Dashboard 或專用查詢 API。
 
-## 3.1 實作狀態（2026-08-28）
+## 3.1 實作狀態（2026-08-30）
 
 已完成的 Smart Dashboard 垂直切片：
 
 - Voltage Dashboard 內的 SQLite3 WASM module Worker 與 `:memory:`
   database；不使用 OPFS，也不跨 iframe/session 共用。
-- 四個 deterministic curated datasets：`agent_products`、
-  `agent_sales_daily`、`agent_inventory`、`agent_dataset_status`。
+- 八個 deterministic curated datasets：`agent_products`、
+  `agent_sales_daily`、`agent_inventory`、`agent_inventory_daily`、
+  `agent_order_daily`、`agent_order_product_daily`、
+  `agent_customer_monthly`、`agent_dataset_status`。
 - 單一 `execute_readonly_sql` WebMCP tool，支援 SELECT、CTE、join、aggregation
   與 positional parameters。
 - SQLite `query_only`、authorizer allowlist、單 statement policy、100-row、32-column、
@@ -114,10 +116,10 @@ agent_instructions   skill_list/load_skill
 
 ### 5.1 資料來源
 
-頁面初始化時，先從統一 Product Repository 取得包含 draft、published、archived 的
-商品 snapshot，再將已篩選且允許 Agent 使用的商品、庫存與歷史 fixture 載入 SQLite3
-WASM memory database。SQLite 只存在目前頁面 context，不跨頁面 runtime 共享，也不
-屬於商品 IndexedDB 持久化資料。
+頁面初始化時，從 Product Repository、InventoryMovement 與 Commerce Repository 取得
+同版營運 snapshot，再先經 `createSafeOperationalProjection()` 移除識別資料與自由備註，
+最後才載入 SQLite3 WASM memory database。SQLite 只存在目前頁面 context，不跨頁面
+runtime 共享，也不屬於 IndexedDB 持久化資料。
 
 第一階段實際提供以下專為 Agent 設計的 curated tables：
 
@@ -125,6 +127,10 @@ WASM memory database。SQLite 只存在目前頁面 context，不跨頁面 runti
 agent_products
 agent_sales_daily
 agent_inventory
+agent_inventory_daily
+agent_order_daily
+agent_order_product_daily
+agent_customer_monthly
 agent_dataset_status
 ```
 
@@ -132,12 +138,18 @@ agent_dataset_status
 `currency_code` 與 `product_status`。相容欄位 `price_usd` 只在原生幣別為 USD 時有值；
 TWD 為 NULL，不在沒有匯率資料時換算。`agent_inventory` 使用同一商品的目前 stock。
 
-`agent_sales_daily.net_revenue_usd` 是既有示範 fixture 的歷史 USD 數值，只能在穩定
-seed ID 與 SKU 同時相符時掛接。新建商品與 TWD 商品沒有對應 fixture 時不產生銷售列，
-不得因商品清單排序、缺列或 SKU 被重用而改掛歷史銷售。
+`agent_sales_daily` 與 `agent_order_product_daily` 都由相同 order-line facts 聚合，不得
+把兩者相加成兩份銷售。營收同時保留 `net_revenue_amount` 與 `currency_code`；只有 USD
+列可填相容 `net_revenue_usd`，TWD 為 NULL。
 
-不要將原始客戶、付款或完整訂單資料複製進 Agent database。若來源資料包含敏感欄位，
-必須在載入 memory database 前移除或匿名化。
+`agent_inventory_daily` 以日期與商品聚合 receipt、issue、reconciliation 與淨異動；
+`agent_order_daily` 以日期、區域、客群、訂單／固定付款結果／履約狀態與幣別聚合；
+`agent_customer_monthly` 以月份、區域、客群、客戶狀態與幣別聚合，任何輸出列都必須
+包含至少 5 位不同客戶。過小群組只能安全合併為 `other`／`suppressed` 或完全抑制。
+
+不要將 customer/order ID、姓名、Email、電話、地址、任意備註、付款方式、卡號、token、
+授權碼或帳戶資料複製進 Agent database。唯一付款例外是固定且不可識別個人的
+`payment_status_code`：`paid`、`pending`、`failed`、`refunded`。
 
 ### 5.2 動態資料狀態
 
@@ -195,10 +207,10 @@ voltage-report-authoring
 `skill_list({})` 每次 user input 前重新取得當下可用 skills；只有需要詳細內容時，
 Agent 才呼叫 `load_skill({ name })`。
 
-Admin 另保留既有的 `voltage-admin-inventory` 與 `voltage-admin-order-safety`，分別處理
-明確庫存更新及匿名訂單安全界線。`voltage-order-data`、executive analysis、inventory
-risk analysis 與獨立 data-safety skill 都只是後續可拆分的構想，目前不會由
-`skill_list` 回傳。
+Admin 另提供 `voltage-admin-inventory`、`voltage-admin-order-safety` 與
+`voltage-admin-customer-analytics`，分別說明唯讀庫存查詢與人工調整邊界、匿名訂單
+安全界線，以及至少 5 人的匿名客群分析。WebMCP 不提供庫存、訂單或客戶 mutation；
+需要改動資料時，由使用者在相應頁面完成。
 
 ### 6.3 Data skill 範例
 
@@ -212,7 +224,8 @@ risk analysis 與獨立 data-safety skill 都只是後續可拆分的構想，�
 - `sale_date`：銷售日期，Asia/Taipei。
 - `product_id`：可連接 `agent_products.product_id`。
 - `quantity`：銷售數量，單位為件。
-- `net_revenue_usd`：折扣後、不含運費的營收，單位 USD。
+- `net_revenue_amount`：折扣後、不含運費的原生幣別營收，必須連同
+  `currency_code` 分組；`net_revenue_usd` 只在 USD 列保留相容值。
 
 規則：
 
@@ -222,9 +235,9 @@ risk analysis 與獨立 data-safety skill 都只是後續可拆分的構想，�
 - 資料期間不完整時必須在報表中標示。
 ```
 
-### 6.4 Deferred analysis skill 範例
+### 6.4 庫存風險分析流程
 
-未來若新增 `voltage-inventory-risk-analysis`，可要求 Agent：
+目前的 `voltage-admin-inventory` 與 `voltage-inventory-data` 會要求 Agent：
 
 1. 先確認報告期間與受眾。
 2. 同時考慮目前庫存和最近 30 天銷量。
@@ -418,6 +431,8 @@ JavaScript 或 SQL extension。
 
 - Agent database 不存放個資或付款資料。
 - 訂單及客戶資料只提供匿名化、聚合後的 Agent views。
+- 固定 `payment_status_code` 可作為安全維度；付款方式、識別資料與任意付款值仍拒絕。
+- safe projection 是 SQLite 前的強制邊界，raw repository 不得直接交給 reporting。
 - 資料列中的文字一律視為 untrusted content，不得當成 Agent instructions。
 - 報表文字不得推導、重述或保存個人識別資訊。
 - 每個 iframe session 擁有獨立 database、query cache 與 report state。
@@ -429,6 +444,8 @@ JavaScript 或 SQL extension。
 - 建議必須能引用對應的 `queryId` 或 evidence query。
 - 資料不足、結果截斷或查詢失敗時不得宣稱分析完整。
 - 修改查詢後，所有引用舊 query result 的 widget 必須重新整理或標示過期。
+- Product、InventoryMovement、Order 或 Customer 安全維度變化會序列化重建 Operational
+  Reporting context；舊 query ID、active report 與 saved evidence 不得跨 context 使用。
 
 ### 9.4 輸入安全分組
 
@@ -527,7 +544,7 @@ Demo 應讓 Dashboard 的 WebMCP capabilities 與共同編輯流程清楚可見�
 
 第一版已完成：
 
-- SQLite3 WASM memory database 與 4 個 curated datasets。
+- SQLite3 WASM memory database 與 8 個 curated datasets。
 - `agent_dataset_status`。
 - 一個安全的 `execute_readonly_sql`。
 - SQL 安全、資料隔離、runtime lifecycle、skill pairing 基線與 iframe executor 綁定測試。

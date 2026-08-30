@@ -57,6 +57,17 @@ describe("commerce privacy boundaries", () => {
     )
   })
 
+  it("marks dashboard product content as untrusted", () => {
+    const dashboardTool = VOLTAGE_ADMIN_TOOLS.find(
+      ({ name }) => name === "get_voltage_admin_dashboard"
+    )
+
+    expect(dashboardTool?.annotations).toMatchObject({
+      readOnlyHint: true,
+      untrustedContentHint: true,
+    })
+  })
+
   it("keeps the reporting tool generic, read-only, and free of personal fields", () => {
     const reportingTool = VOLTAGE_ADMIN_TOOLS.find(
       (tool) => tool.name === "execute_readonly_sql"

@@ -53,6 +53,10 @@ Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報�
 - `src/app/webmcp/products/`：Product Repository、商品清單／詳細／編輯頁、editor
   state 與路由感知 WebMCP tools。
 - `src/app/webmcp/data/dummyjson-products.json`：本機商品種子快照；評價已移除身分欄位。
+- `src/app/webmcp/commerce-data/`：Commerce Repository、訂單／客戶 snapshot、唯讀訂單
+  facts 與客戶人工 mutation；metadata v2 只遷移唯讀基線 facts，不覆寫使用者客戶修改。
+- `src/app/webmcp/inventory/`：InventoryMovement 歷史、週／月／年統計、風險分析與 UI
+  人工調整流程。
 - `src/app/webmcp/voltage-admin-data.ts`：以 Product Repository snapshot 計算 Dashboard、
   商品搜尋與庫存投影。
 - `src/app/webmcp/reporting/`：SQLite runtime、查詢限制、query cache、報表狀態與
@@ -76,6 +80,11 @@ Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報�
 - query result 與 active report 綁定目前頁面 runtime；不得跨 context 重用。
 - Products、Inventory、Dashboard、商品 WebMCP 查詢與 reporting 商品／庫存投影必須使用
   同一 Product Repository snapshot；商品 mutation 後舊 query ID 與 active report 失效。
+- Dashboard、Orders、Customers 與 reporting 必須使用同一 Commerce Repository
+  snapshot；Reporting 只能接收 `createSafeOperationalProjection()` 產生的匿名投影，
+  不得把 raw Customer、Order、note、聯絡資訊、付款方式或付款識別送入 SQLite。
+- Operational Reporting version 必須同時反映 Product、InventoryMovement 與 Commerce
+  安全資料變化；重建後舊 query ID、active report 與 saved evidence 一律失效。
 - 個資與付款屬高風險資料：tools 不得接受或回傳姓名、Email、地址、電話、帳戶識別
   或付款資料。 <!-- user-specified -->
 - WebMCP 營運查詢可使用固定且不可識別個人的付款結果狀態碼

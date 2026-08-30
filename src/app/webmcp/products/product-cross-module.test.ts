@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest"
+import { createCommerceSeed } from "../commerce-data/commerce-seed"
 import {
   getVoltageAdminDashboard,
   searchVoltageAdminProducts,
@@ -78,6 +79,7 @@ describe("shared product data across admin modules", () => {
       () => new InProcessReportingRuntime()
     )
     const initialProducts = await repository.list({ includeArchived: true })
+    const commerce = createCommerceSeed(initialProducts)
     const initialSnapshot = createReportingDataSnapshot(initialProducts)
     await reporting.prepare(initialSnapshot, 1)
     const oldQuery = await reporting.execute({
@@ -93,8 +95,11 @@ describe("shared product data across admin modules", () => {
     expect(searchVoltageAdminProducts("PCHOME-TWD-001", afterCreate)).toEqual([
       expect.objectContaining({ id: created.id, stock: 9, status: "draft" }),
     ])
-    expect(getVoltageAdminDashboard(afterCreate).availableProductCount).toBe(
-      getVoltageAdminDashboard(initialProducts).availableProductCount + 1
+    expect(
+      getVoltageAdminDashboard(afterCreate, commerce).availableProductCount
+    ).toBe(
+      getVoltageAdminDashboard(initialProducts, commerce)
+        .availableProductCount + 1
     )
     const webMcpSearch = await executeProductTool({
       name: "search_admin_products",
@@ -141,7 +146,7 @@ describe("shared product data across admin modules", () => {
     await repository.archive(created.id)
     const afterArchive = await repository.list({ includeArchived: true })
     expect(
-      getVoltageAdminDashboard(afterArchive).lowStockProducts.some(
+      getVoltageAdminDashboard(afterArchive, commerce).lowStockProducts.some(
         ({ id }) => id === created.id
       )
     ).toBe(false)

@@ -1,164 +1,19 @@
+import type { CommerceDataSnapshot, OrderStatus } from "./commerce-data/types"
 import type { Product } from "./products/types"
 import { formatVoltageCategory } from "./voltage-product-data"
 
-export type VoltageAdminCustomer = {
+export type VoltageAdminOrderSummary = {
   id: string
-  segment: "New" | "Returning" | "VIP"
-  orders: number
-  lifetimeValue: number
-  lastActive: string
-}
-
-export type VoltageAdminOrder = {
-  id: string
-  status: "Processing" | "Shipped" | "Delivered" | "Action needed"
+  status: OrderStatus
   itemCount: number
-  total: number
+  total: { amount: number; currency: "USD" | "TWD" }
   createdAt: string
-  customerId: string
 }
 
-export type VoltageAdminOrderSummary = Omit<VoltageAdminOrder, "customerId">
-
-export type VoltageAdminCustomerSegmentSummary = {
-  segment: VoltageAdminCustomer["segment"]
-  customerCount: number
-  orderCount: number
-  lifetimeValue: number
-}
-
-export const voltageAdminCustomers: VoltageAdminCustomer[] = [
-  {
-    id: "CUST-1042",
-    segment: "VIP",
-    orders: 12,
-    lifetimeValue: 1840,
-    lastActive: "Today",
-  },
-  {
-    id: "CUST-1187",
-    segment: "Returning",
-    orders: 6,
-    lifetimeValue: 612,
-    lastActive: "Today",
-  },
-  {
-    id: "CUST-1219",
-    segment: "New",
-    orders: 1,
-    lifetimeValue: 74,
-    lastActive: "Yesterday",
-  },
-  {
-    id: "CUST-1236",
-    segment: "Returning",
-    orders: 4,
-    lifetimeValue: 428,
-    lastActive: "Yesterday",
-  },
-  {
-    id: "CUST-1284",
-    segment: "VIP",
-    orders: 9,
-    lifetimeValue: 1320,
-    lastActive: "2 days ago",
-  },
-  {
-    id: "CUST-1311",
-    segment: "New",
-    orders: 1,
-    lifetimeValue: 49,
-    lastActive: "2 days ago",
-  },
-]
-
-export const voltageAdminOrders: VoltageAdminOrder[] = [
-  {
-    id: "VM-24081",
-    status: "Processing",
-    itemCount: 3,
-    total: 184,
-    createdAt: "Today, 10:32",
-    customerId: "CUST-1042",
-  },
-  {
-    id: "VM-24080",
-    status: "Shipped",
-    itemCount: 1,
-    total: 74,
-    createdAt: "Today, 09:14",
-    customerId: "CUST-1219",
-  },
-  {
-    id: "VM-24079",
-    status: "Action needed",
-    itemCount: 2,
-    total: 129,
-    createdAt: "Yesterday, 16:45",
-    customerId: "CUST-1187",
-  },
-  {
-    id: "VM-24078",
-    status: "Delivered",
-    itemCount: 4,
-    total: 246,
-    createdAt: "Yesterday, 11:20",
-    customerId: "CUST-1236",
-  },
-  {
-    id: "VM-24077",
-    status: "Delivered",
-    itemCount: 2,
-    total: 98,
-    createdAt: "Mon, 14:10",
-    customerId: "CUST-1284",
-  },
-]
-
-export const listSafeVoltageAdminOrders = (
-  status?: VoltageAdminOrder["status"]
-): VoltageAdminOrderSummary[] =>
-  voltageAdminOrders
-    .filter((order) => !status || order.status === status)
-    .map(({ id, status: orderStatus, itemCount, total, createdAt }) => ({
-      id,
-      status: orderStatus,
-      itemCount,
-      total,
-      createdAt,
-    }))
-
-export const listVoltageAdminCustomerSegments = (
-  segment?: VoltageAdminCustomer["segment"]
-): VoltageAdminCustomerSegmentSummary[] => {
-  const segments: VoltageAdminCustomer["segment"][] = [
-    "New",
-    "Returning",
-    "VIP",
-  ]
-
-  return segments
-    .filter((value) => !segment || value === segment)
-    .map((value) => {
-      const customers = voltageAdminCustomers.filter(
-        (customer) => customer.segment === value
-      )
-      return {
-        segment: value,
-        customerCount: customers.length,
-        orderCount: customers.reduce(
-          (total, customer) => total + customer.orders,
-          0
-        ),
-        lifetimeValue: customers.reduce(
-          (total, customer) => total + customer.lifetimeValue,
-          0
-        ),
-      }
-    })
-}
-
-export const getVoltageAdminDashboard = (products: readonly Product[]) => {
+export const getVoltageAdminDashboard = (
+  products: readonly Product[],
+  commerce: CommerceDataSnapshot
+) => {
   const activeProducts = products.filter(
     (product) => product.status !== "archived"
   )
@@ -168,17 +23,51 @@ export const getVoltageAdminDashboard = (products: readonly Product[]) => {
   const lowStockProducts = activeProducts.filter(
     (product) => product.stock > 0 && product.stock <= 12
   )
-  const revenue = voltageAdminOrders.reduce(
-    (total, order) => total + order.total,
-    0
-  )
+  const revenueByCurrency = (["USD", "TWD"] as const)
+    .map((currency) => ({
+      currency,
+      amount: Number(
+        commerce.orders
+          .filter((order) => order.amounts.total.currency === currency)
+          .reduce((total, order) => total + order.amounts.total.amount, 0)
+          .toFixed(2)
+      ),
+    }))
+    .filter(({ amount }) => amount > 0)
+  const lineCountByOrder = new Map<string, number>()
+  for (const line of commerce.orderLines) {
+    lineCountByOrder.set(
+      line.orderId,
+      (lineCountByOrder.get(line.orderId) ?? 0) + line.quantity
+    )
+  }
+  const latestOrders: VoltageAdminOrderSummary[] = [...commerce.orders]
+    .sort((left, right) => right.createdAt.localeCompare(left.createdAt))
+    .slice(0, 4)
+    .map((order) => ({
+      id: order.id,
+      status: order.status,
+      itemCount: lineCountByOrder.get(order.id) ?? 0,
+      total: order.amounts.total,
+      createdAt: order.createdAt,
+    }))
 
   return {
-    revenue,
-    orderCount: voltageAdminOrders.length,
-    customerCount: voltageAdminCustomers.length,
+    revenueByCurrency,
+    orderCount: commerce.orders.length,
+    attentionOrderCount: commerce.orders.filter(
+      (order) =>
+        order.status === "action_needed" ||
+        order.paymentStatus === "failed" ||
+        order.fulfillmentStatus === "exception"
+    ).length,
+    customerCount: commerce.customers.length,
+    activeCustomerCount: commerce.customers.filter(
+      (customer) => customer.status === "active"
+    ).length,
     availableProductCount: availableProducts.length,
     lowStockCount: lowStockProducts.length,
+    latestOrders,
     lowStockProducts: lowStockProducts.slice(0, 5).map((product) => ({
       id: product.id,
       title: product.title,

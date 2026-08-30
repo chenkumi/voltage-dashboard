@@ -131,7 +131,7 @@ const VOLTAGE_ADMIN_COMMON_TOOLS: WebMcpRegisteredTool[] = [
     description:
       "Purpose: read the Voltage Dashboard operations summary. Call when asked about revenue, orders, customers, or low stock. Examples: ‘How is today’s operation?’, ‘How many orders?’, ‘Low-stock products’, ‘Admin summary’. Do not call when a single product’s details are needed.",
     inputSchema: noInput,
-    annotations: { readOnlyHint: true },
+    annotations: { readOnlyHint: true, untrustedContentHint: true },
   },
   EXECUTE_READONLY_SQL_TOOL,
   ...REPORT_AUTHORING_TOOLS,
@@ -357,8 +357,8 @@ export const VoltageAdminProvider = () => {
   const products = useProductStore(productStore)
   const commerce = useCommerceStore(commerceStore)
   const dashboard = useMemo(
-    () => getVoltageAdminDashboard(products.products),
-    [products.products]
+    () => getVoltageAdminDashboard(products.products, commerce),
+    [commerce, products.products]
   )
   const workflow = useSyncExternalStore(
     operationsController.subscribe,
@@ -490,9 +490,11 @@ export const VoltageAdminProvider = () => {
     if (name === "skill_list") return listVoltageAdminSkills()
     if (name === "load_skill") return loadVoltageAdminSkill(args.name)
     if (name === "get_voltage_admin_dashboard") {
-      return getVoltageAdminDashboard(
-        await productRepository.list({ includeArchived: true })
-      )
+      const [currentProducts, currentCommerce] = await Promise.all([
+        productRepository.list({ includeArchived: true }),
+        commerceRepository.getSnapshot(),
+      ])
+      return getVoltageAdminDashboard(currentProducts, currentCommerce)
     }
     if (name === "search_voltage_admin_products") {
       const query = typeof args.query === "string" ? args.query : ""

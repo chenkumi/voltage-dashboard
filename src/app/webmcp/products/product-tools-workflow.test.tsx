@@ -47,8 +47,11 @@ const fallback = () =>
     __webmcpTestProvider?: Provider
   }
 const provider = async () => {
-  await waitFor(() => expect(fallback().__webmcpTestProvider).toBeDefined())
+  await waitFor(() => expect(fallback().__webmcpReady).toBeDefined(), {
+    timeout: 4_000,
+  })
   await fallback().__webmcpReady
+  expect(fallback().__webmcpTestProvider).toBeDefined()
   return fallback().__webmcpTestProvider!
 }
 const execute = async (

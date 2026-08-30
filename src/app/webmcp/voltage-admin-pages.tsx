@@ -1,29 +1,13 @@
-import { ChevronRight, CircleAlert, Search } from "lucide-react"
-import { useMemo, useState, type ReactNode } from "react"
+import { ChevronRight, CircleAlert } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import {
-  searchVoltageAdminProducts,
-  voltageAdminOrders,
-} from "./voltage-admin-data"
 import { useVoltageAdmin, voltageAdminPath } from "./voltage-admin"
 import { GridBlock, PageLayout } from "./voltage-admin-page-layout"
 import { ReportCanvas } from "./reporting/report-canvas"
 
-const formatMoney = (value: number, language = "en") =>
-  new Intl.NumberFormat(language === "zh-TW" ? "zh-TW" : "en-US", {
-    style: "currency",
-    currency: "USD",
-    maximumFractionDigits: 0,
-  }).format(value)
-
-const formatProductMoney = (
-  value: number,
-  currency: "USD" | "TWD",
-  language = "en"
-) =>
+const formatMoney = (value: number, currency: "USD" | "TWD", language = "en") =>
   new Intl.NumberFormat(language === "zh-TW" ? "zh-TW" : "en-US", {
     style: "currency",
     currency,
@@ -31,17 +15,11 @@ const formatProductMoney = (
   }).format(value)
 
 const statusClass = (status: string) => {
-  if (status === "Delivered") return "bg-[#e5eee7] text-[#48614c]"
-  if (status === "Action needed") return "bg-[#f4e5d7] text-[#8b5d3c]"
-  if (status === "Shipped") return "bg-[#e4eaed] text-[#4f6975]"
+  if (status === "delivered") return "bg-[#e5eee7] text-[#48614c]"
+  if (status === "action_needed") return "bg-[#f4e5d7] text-[#8b5d3c]"
+  if (status === "shipped") return "bg-[#e4eaed] text-[#4f6975]"
   return "bg-[#ece8d9] text-[#6e6746]"
 }
-
-const DataTable = ({ children }: { children: ReactNode }) => (
-  <div className="voltage-admin-data-table overflow-x-auto border border-[#cfd3cb] bg-[#f5f6f1]">
-    {children}
-  </div>
-)
 
 export const Dashboard = () => {
   const { t, i18n } = useTranslation()
@@ -75,18 +53,32 @@ export const Dashboard = () => {
     <PageLayout
       ariaLabel={t("Voltage Dashboard Overview")}
       pageName="Dashboard"
-      eyebrow={t("Overview · last 7 days")}
+      eyebrow={t("Operational snapshot")}
       title={t("A calm read on the store.")}
       detail={t("Built from the embedded operational dataset.")}
     >
       {[
         [
           "Revenue",
-          formatMoney(dashboard.revenue, i18n.resolvedLanguage),
-          "+12.4% this week",
+          dashboard.revenueByCurrency
+            .map(({ amount, currency }) =>
+              formatMoney(amount, currency, i18n.resolvedLanguage)
+            )
+            .join(" · "),
+          "Order totals by currency",
         ],
-        ["Orders", dashboard.orderCount.toString(), "2 need attention"],
-        ["Customers", dashboard.customerCount.toString(), "Anonymous segments"],
+        [
+          "Orders",
+          dashboard.orderCount.toString(),
+          t("{{count}} need attention", {
+            count: dashboard.attentionOrderCount,
+          }),
+        ],
+        [
+          "Customers",
+          dashboard.customerCount.toString(),
+          t("{{count}} active", { count: dashboard.activeCustomerCount }),
+        ],
         [
           "Available SKUs",
           dashboard.availableProductCount.toString(),
@@ -133,13 +125,16 @@ export const Dashboard = () => {
             </Button>
           </div>
           <div className="space-y-1">
-            {voltageAdminOrders.slice(0, 4).map((order) => (
+            {dashboard.latestOrders.map((order) => (
               <div key={order.id} className="voltage-admin-list-row">
                 <span>
                   <strong>{order.id}</strong>
                   <small>
                     {t("{{count}} items", { count: order.itemCount })} ·{" "}
-                    {order.createdAt}
+                    {new Intl.DateTimeFormat(
+                      i18n.resolvedLanguage === "zh-TW" ? "zh-TW" : "en-US",
+                      { dateStyle: "medium" }
+                    ).format(new Date(order.createdAt))}
                   </small>
                 </span>
                 <span>
@@ -147,7 +142,11 @@ export const Dashboard = () => {
                     {t(order.status)}
                   </Badge>
                   <strong>
-                    {formatMoney(order.total, i18n.resolvedLanguage)}
+                    {formatMoney(
+                      order.total.amount,
+                      order.total.currency,
+                      i18n.resolvedLanguage
+                    )}
                   </strong>
                 </span>
               </div>
@@ -182,91 +181,6 @@ export const Dashboard = () => {
             {t("Review inventory")}
           </Button>
         </article>
-      </GridBlock>
-    </PageLayout>
-  )
-}
-
-export const Products = () => {
-  const { t, i18n } = useTranslation()
-  const { products: productStore } = useVoltageAdmin()
-  const [query, setQuery] = useState("")
-  const products = useMemo(
-    () => searchVoltageAdminProducts(query, productStore.products),
-    [productStore.products, query]
-  )
-
-  return (
-    <PageLayout
-      ariaLabel={t("Voltage Dashboard Products")}
-      pageName="Products"
-      eyebrow={t("Catalog management")}
-      title={t("Products, kept focused.")}
-      detail={t("{{count}} matching products in the current preview.", {
-        count: products.length,
-      })}
-    >
-      <GridBlock>
-        <div className="voltage-admin-toolbar">
-          <label className="voltage-admin-search">
-            <Search className="size-4" />
-            <span className="sr-only">{t("Search products")}</span>
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder={t("Search product, category, brand…")}
-            />
-          </label>
-        </div>
-      </GridBlock>
-      <GridBlock>
-        <DataTable>
-          <table>
-            <thead>
-              <tr>
-                <th>{t("Product")}</th>
-                <th>{t("Category")}</th>
-                <th>{t("Price")}</th>
-                <th>{t("Rating")}</th>
-                <th>{t("Inventory")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((product) => (
-                <tr key={product.id}>
-                  <td>
-                    <strong>{product.title}</strong>
-                    <small>#{product.id}</small>
-                  </td>
-                  <td>{product.category}</td>
-                  <td>
-                    {formatProductMoney(
-                      product.price.amount,
-                      product.price.currency,
-                      i18n.resolvedLanguage
-                    )}
-                  </td>
-                  <td>
-                    {product.rating === null
-                      ? t("No reviews")
-                      : `${product.rating.toFixed(1)} / 5`}
-                  </td>
-                  <td>
-                    <Badge
-                      className={
-                        product.stock <= 12
-                          ? "bg-[#f4e5d7] text-[#8b5d3c]"
-                          : "bg-[#e5eee7] text-[#48614c]"
-                      }
-                    >
-                      {t("{{count}} units", { count: product.stock })}
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </DataTable>
       </GridBlock>
     </PageLayout>
   )
