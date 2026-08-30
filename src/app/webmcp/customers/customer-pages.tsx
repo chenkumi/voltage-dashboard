@@ -1,17 +1,33 @@
+import { ChevronDown, ChevronLeft, ChevronUp, Plus } from "lucide-react"
 import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Plus,
-  Search,
-} from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  ActiveFilterSummary,
+  OperationalFilterButton,
+  OperationalFilterPopover,
+  OperationalFilterToolbar,
+  OperationalListPanel,
+  OperationalListState,
+  OperationalMetricCard,
+  OperationalPagination,
+  OperationalToolbarSearch,
+  OperationalToolbarSelect,
+  useOperationalPagination,
+  type ActiveOperationalFilter,
+  type OperationalFilterErrors,
+  type OperationalSelectOption,
+} from "../operational-ui"
 import {
   CUSTOMER_REGIONS,
   CUSTOMER_SAFE_TAGS,
@@ -79,24 +95,52 @@ const CustomerState = ({ message }: { message: string }) => (
   </GridBlock>
 )
 
-const CustomerKpi = ({
+const customerStatusOptions: OperationalSelectOption[] = [
+  { value: "all", label: "All customer statuses" },
+  ...CUSTOMER_STATUSES.map((value) => ({ value, label: value })),
+]
+
+const customerSegmentOptions: OperationalSelectOption[] = [
+  { value: "all", label: "All customer segments" },
+  ...CUSTOMER_SEGMENTS.map((value) => ({ value, label: value })),
+]
+
+const customerRegionOptions: OperationalSelectOption[] = [
+  { value: "all", label: "All regions" },
+  ...CUSTOMER_REGIONS.map((value) => ({ value, label: value })),
+]
+
+const customerPeriodOptions: OperationalSelectOption[] = [
+  { value: "all", label: "All activity periods" },
+  { value: "30d", label: "Last 30 days" },
+  { value: "90d", label: "Last 90 days" },
+  { value: "365d", label: "Last 365 days" },
+]
+
+const customerCurrencyOptions: OperationalSelectOption[] = [
+  { value: "USD", label: "USD" },
+  { value: "TWD", label: "TWD" },
+]
+
+const customerSortOptions: OperationalSelectOption[] = [
+  { value: "activity-desc", label: "Recent activity first" },
+  { value: "created-desc", label: "Newest customers" },
+  { value: "spend-desc", label: "Highest spend" },
+  { value: "orders-desc", label: "Most orders" },
+  { value: "id-asc", label: "Customer ID" },
+]
+
+const CustomerFilterField = ({
   label,
-  value,
-  detail,
+  children,
 }: {
   label: string
-  value: number
-  detail: string
+  children: ReactNode
 }) => (
-  <Card size="sm" className="h-full">
-    <CardHeader>
-      <CardTitle className="text-muted-foreground">{label}</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <strong className="text-2xl tabular-nums">{value}</strong>
-      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-    </CardContent>
-  </Card>
+  <label className="grid gap-1.5 text-xs font-medium">
+    <span>{label}</span>
+    {children}
+  </label>
 )
 
 const CustomerQuickRow = ({
@@ -238,22 +282,7 @@ export const CustomersPage = () => {
     () => ({ ...localFilters, ...safeUrlFilters }),
     [localFilters, safeUrlFilters]
   )
-  const safeFilterKey =
-    serializeSafeCustomerUrlFilters(safeUrlFilters).toString()
-  const [pagination, setPagination] = useState({
-    page: 1,
-    safeFilterKey,
-  })
-  const page = pagination.safeFilterKey === safeFilterKey ? pagination.page : 1
-  const setPage = (next: number | ((current: number) => number)) =>
-    setPagination((current) => {
-      const currentPage =
-        current.safeFilterKey === safeFilterKey ? current.page : 1
-      return {
-        page: typeof next === "function" ? next(currentPage) : next,
-        safeFilterKey,
-      }
-    })
+  const { page, setPage, applyAndReset } = useOperationalPagination()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const language = i18n.resolvedLanguage ?? "en"
   const rows = useMemo(
@@ -265,18 +294,9 @@ export const CustomersPage = () => {
       ),
     [commerce.activities, commerce.customers, commerce.orders]
   )
-  const invalidFilters =
-    (filters.minimumSpend !== null && filters.minimumSpend < 0) ||
-    (filters.maximumSpend !== null && filters.maximumSpend < 0) ||
-    (filters.minimumSpend !== null &&
-      filters.maximumSpend !== null &&
-      filters.minimumSpend > filters.maximumSpend)
   const model = useMemo(
-    () =>
-      invalidFilters
-        ? { items: [], total: 0, page: 1, pageCount: 1 }
-        : createCustomerListModel(rows, filters, page, PAGE_SIZE),
-    [filters, invalidFilters, page, rows]
+    () => createCustomerListModel(rows, filters, page, PAGE_SIZE),
+    [filters, page, rows]
   )
   const tagOptions = useMemo(
     () =>
@@ -297,35 +317,321 @@ export const CustomersPage = () => {
     }
   }, [safeUrlFilters, searchParams, setSearchParams])
 
+  const commitFilters = (next: CustomerListFilters) => {
+    applyAndReset(() => {
+      setLocalFilters(next)
+      setSearchParams(
+        serializeSafeCustomerUrlFilters({
+          status: next.status,
+          segment: next.segment,
+          region: next.region,
+          period: next.period,
+        }),
+        { replace: true }
+      )
+    })
+  }
   const updateFilter = <K extends keyof CustomerListFilters>(
     key: K,
     value: CustomerListFilters[K]
   ) => {
-    setPage(1)
-    if (["status", "segment", "region", "period"].includes(key)) {
-      setSearchParams(
-        serializeSafeCustomerUrlFilters({
-          ...safeUrlFilters,
-          [key]: value,
-        }),
-        { replace: true }
-      )
-      return
-    }
-    setLocalFilters((current) => ({ ...current, [key]: value }))
+    commitFilters({ ...filters, [key]: value })
   }
-  const activeFilterCount = [
-    filters.query,
-    filters.status !== "all",
-    filters.segment !== "all",
-    filters.region !== "all",
-    filters.tag !== "all",
-    filters.period !== "all",
-    filters.minimumSpend !== null,
-    filters.maximumSpend !== null,
-  ].filter(Boolean).length
   const hasError = commerce.state === "error"
   const isLoading = !hasError && commerce.state !== "ready"
+
+  const localizeOptions = (options: readonly OperationalSelectOption[]) =>
+    options.map((option) => ({ ...option, label: t(option.label) }))
+  const statusOptions = localizeOptions(customerStatusOptions)
+  const segmentOptions = localizeOptions(customerSegmentOptions)
+  const regionOptions = localizeOptions(customerRegionOptions)
+  const periodOptions = localizeOptions(customerPeriodOptions)
+  const currencyOptions = localizeOptions(customerCurrencyOptions)
+  const sortOptions = localizeOptions(customerSortOptions)
+  const localizedTagOptions = [
+    { value: "all", label: t("All tags") },
+    ...tagOptions.map((value) => ({
+      value,
+      label: (CUSTOMER_SAFE_TAGS as readonly string[]).includes(value)
+        ? t(value)
+        : value,
+    })),
+  ]
+  const optionLabel = (
+    options: readonly OperationalSelectOption[],
+    value: string
+  ) => options.find((option) => option.value === value)?.label ?? value
+
+  const validateFilters = (
+    draft: CustomerListFilters
+  ): OperationalFilterErrors => {
+    if (
+      (draft.minimumSpend !== null && draft.minimumSpend < 0) ||
+      (draft.maximumSpend !== null && draft.maximumSpend < 0)
+    ) {
+      return { spendRange: t("Spend amounts must be zero or greater.") }
+    }
+    if (
+      draft.minimumSpend !== null &&
+      draft.maximumSpend !== null &&
+      draft.minimumSpend > draft.maximumSpend
+    ) {
+      return {
+        spendRange: t("Minimum spend must not exceed maximum spend."),
+      }
+    }
+    return {}
+  }
+
+  const resultStart = model.total === 0 ? 0 : (model.page - 1) * PAGE_SIZE + 1
+  const resultEnd = model.total === 0 ? 0 : resultStart + model.items.length - 1
+  const activeFilters: ActiveOperationalFilter[] = []
+  const addFilter = <K extends keyof CustomerListFilters>(
+    id: string,
+    label: string,
+    key: K,
+    resetValue: CustomerListFilters[K]
+  ) =>
+    activeFilters.push({
+      id,
+      label,
+      onRemove: () => updateFilter(key, resetValue),
+    })
+  if (filters.query) addFilter("query", `${t("Search")}: •••`, "query", "")
+  if (filters.status !== "all")
+    addFilter(
+      "status",
+      `${t("Customer status")}: ${optionLabel(statusOptions, filters.status)}`,
+      "status",
+      "all"
+    )
+  if (filters.segment !== "all")
+    addFilter(
+      "segment",
+      `${t("Customer segment")}: ${optionLabel(segmentOptions, filters.segment)}`,
+      "segment",
+      "all"
+    )
+  if (filters.region !== "all")
+    addFilter(
+      "region",
+      `${t("Region")}: ${optionLabel(regionOptions, filters.region)}`,
+      "region",
+      "all"
+    )
+  if (filters.tag !== "all")
+    addFilter(
+      "tag",
+      `${t("Tag")}: ${optionLabel(localizedTagOptions, filters.tag)}`,
+      "tag",
+      "all"
+    )
+  if (filters.period !== "all")
+    addFilter(
+      "period",
+      `${t("Recent activity")}: ${optionLabel(periodOptions, filters.period)}`,
+      "period",
+      "all"
+    )
+  if (filters.currency !== "USD")
+    activeFilters.push({
+      id: "currency",
+      label: `${t("Spend currency")}: ${filters.currency}`,
+      onRemove: () =>
+        commitFilters({
+          ...filters,
+          currency: "USD",
+          minimumSpend: null,
+          maximumSpend: null,
+        }),
+    })
+  if (filters.minimumSpend !== null || filters.maximumSpend !== null)
+    activeFilters.push({
+      id: "spend",
+      label: `${t("Spend range")}: ${filters.minimumSpend ?? "…"} – ${filters.maximumSpend ?? "…"}`,
+      onRemove: () =>
+        commitFilters({
+          ...filters,
+          minimumSpend: null,
+          maximumSpend: null,
+        }),
+    })
+  if (filters.sort !== "activity-desc")
+    addFilter(
+      "sort",
+      `${t("Sort")}: ${optionLabel(sortOptions, filters.sort)}`,
+      "sort",
+      "activity-desc"
+    )
+
+  const clearAllFilters = () => commitFilters(initialFilters)
+  const desktopEmpty = {
+    ...filters,
+    tag: "all" as const,
+    period: "all" as const,
+    currency: "USD" as const,
+    minimumSpend: null,
+    maximumSpend: null,
+    sort: "activity-desc" as const,
+  }
+  const mobileEmpty = { ...initialFilters, query: filters.query }
+
+  const renderFilterFields = (
+    draft: CustomerListFilters,
+    setDraft: Dispatch<SetStateAction<CustomerListFilters>>,
+    includePrimary: boolean,
+    errors: OperationalFilterErrors,
+    getErrorProps: (field: string) => {
+      "aria-invalid": true | undefined
+      "aria-describedby": string | undefined
+    }
+  ) => (
+    <div
+      className={`grid grid-cols-1 gap-3 ${includePrimary ? "" : "sm:grid-cols-2"}`}
+    >
+      {includePrimary ? (
+        <>
+          <CustomerFilterField label={t("Customer status")}>
+            <OperationalToolbarSelect
+              label={t("Customer status")}
+              value={draft.status}
+              options={statusOptions}
+              className="w-full"
+              onValueChange={(status) =>
+                setDraft((current) => ({
+                  ...current,
+                  status: status as CustomerListFilters["status"],
+                }))
+              }
+            />
+          </CustomerFilterField>
+          <CustomerFilterField label={t("Customer segment")}>
+            <OperationalToolbarSelect
+              label={t("Customer segment")}
+              value={draft.segment}
+              options={segmentOptions}
+              className="w-full"
+              onValueChange={(segment) =>
+                setDraft((current) => ({
+                  ...current,
+                  segment: segment as CustomerListFilters["segment"],
+                }))
+              }
+            />
+          </CustomerFilterField>
+          <CustomerFilterField label={t("Region")}>
+            <OperationalToolbarSelect
+              label={t("Region")}
+              value={draft.region}
+              options={regionOptions}
+              className="w-full"
+              onValueChange={(region) =>
+                setDraft((current) => ({
+                  ...current,
+                  region: region as CustomerListFilters["region"],
+                }))
+              }
+            />
+          </CustomerFilterField>
+        </>
+      ) : null}
+      <CustomerFilterField label={t("Tag")}>
+        <OperationalToolbarSelect
+          label={t("Tag")}
+          value={draft.tag}
+          options={localizedTagOptions}
+          className="w-full"
+          onValueChange={(tag) => setDraft((current) => ({ ...current, tag }))}
+        />
+      </CustomerFilterField>
+      <CustomerFilterField label={t("Recent activity")}>
+        <OperationalToolbarSelect
+          label={t("Recent activity")}
+          value={draft.period}
+          options={periodOptions}
+          className="w-full"
+          onValueChange={(period) =>
+            setDraft((current) => ({
+              ...current,
+              period: period as CustomerListFilters["period"],
+            }))
+          }
+        />
+      </CustomerFilterField>
+      <CustomerFilterField label={t("Spend currency")}>
+        <OperationalToolbarSelect
+          label={t("Spend currency")}
+          value={draft.currency}
+          options={currencyOptions}
+          className="w-full"
+          onValueChange={(currency) =>
+            setDraft((current) => ({
+              ...current,
+              currency: currency as CustomerListFilters["currency"],
+            }))
+          }
+        />
+      </CustomerFilterField>
+      <CustomerFilterField label={t("Minimum spend")}>
+        <input
+          aria-label={t("Minimum spend")}
+          type="number"
+          min="0"
+          className="h-9 rounded-md border bg-background px-2"
+          value={draft.minimumSpend ?? ""}
+          onChange={(event) =>
+            setDraft((current) => ({
+              ...current,
+              minimumSpend: event.target.value
+                ? Number(event.target.value)
+                : null,
+            }))
+          }
+          {...getErrorProps("spendRange")}
+        />
+      </CustomerFilterField>
+      <CustomerFilterField label={t("Maximum spend")}>
+        <input
+          aria-label={t("Maximum spend")}
+          type="number"
+          min="0"
+          className="h-9 rounded-md border bg-background px-2"
+          value={draft.maximumSpend ?? ""}
+          onChange={(event) =>
+            setDraft((current) => ({
+              ...current,
+              maximumSpend: event.target.value
+                ? Number(event.target.value)
+                : null,
+            }))
+          }
+          {...getErrorProps("spendRange")}
+        />
+      </CustomerFilterField>
+      {errors.spendRange ? (
+        <p
+          id={getErrorProps("spendRange")["aria-describedby"]}
+          className={`text-xs text-destructive ${includePrimary ? "" : "sm:col-span-2"}`}
+        >
+          {errors.spendRange}
+        </p>
+      ) : null}
+      <CustomerFilterField label={t("Sort")}>
+        <OperationalToolbarSelect
+          label={t("Sort")}
+          value={draft.sort}
+          options={sortOptions}
+          className="w-full"
+          onValueChange={(sort) =>
+            setDraft((current) => ({
+              ...current,
+              sort: sort as CustomerListFilters["sort"],
+            }))
+          }
+        />
+      </CustomerFilterField>
+    </div>
+  )
 
   return (
     <PageLayout
@@ -342,15 +648,16 @@ export const CustomersPage = () => {
         </Button>
       }
     >
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <CustomerKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Total customers")}
           value={rows.length}
           detail={t("All customer records")}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <CustomerKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
+          tone="positive"
           label={t("Active customers")}
           value={
             rows.filter(({ customer }) => customer.status === "active").length
@@ -358,8 +665,8 @@ export const CustomersPage = () => {
           detail={t("Available for service")}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <CustomerKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("VIP customers")}
           value={
             rows.filter(({ customer }) => customer.segment === "vip").length
@@ -367,8 +674,9 @@ export const CustomersPage = () => {
           detail={t("High-value segment")}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <CustomerKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
+          tone="warning"
           label={t("Suspended customers")}
           value={
             rows.filter(({ customer }) => customer.status === "suspended")
@@ -378,274 +686,211 @@ export const CustomersPage = () => {
         />
       </GridBlock>
       <GridBlock>
-        <Card size="sm">
-          <CardContent className="grid gap-2 pt-1 md:grid-cols-2 xl:grid-cols-5">
-            <label className="relative xl:col-span-2">
-              <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
-              <span className="sr-only">{t("Search customers")}</span>
-              <input
-                type="search"
-                className="h-9 w-full rounded-md border bg-background pr-2 pl-8"
-                placeholder={t("Name, Email, or customer ID")}
-                value={filters.query}
-                onChange={(event) => updateFilter("query", event.target.value)}
-              />
-            </label>
-            <select
-              aria-label={t("Customer status")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.status}
-              onChange={(event) =>
-                updateFilter(
-                  "status",
-                  event.target.value as CustomerListFilters["status"]
-                )
-              }
-            >
-              <option value="all">{t("All customer statuses")}</option>
-              {CUSTOMER_STATUSES.map((status) => (
-                <option key={status} value={status}>
-                  {t(status)}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label={t("Customer segment")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.segment}
-              onChange={(event) =>
-                updateFilter(
-                  "segment",
-                  event.target.value as CustomerListFilters["segment"]
-                )
-              }
-            >
-              <option value="all">{t("All customer segments")}</option>
-              {CUSTOMER_SEGMENTS.map((segment) => (
-                <option key={segment} value={segment}>
-                  {t(segment)}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label={t("Region")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.region}
-              onChange={(event) =>
-                updateFilter(
-                  "region",
-                  event.target.value as CustomerListFilters["region"]
-                )
-              }
-            >
-              <option value="all">{t("All regions")}</option>
-              {CUSTOMER_REGIONS.map((region) => (
-                <option key={region} value={region}>
-                  {t(region)}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label={t("Tag")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.tag}
-              onChange={(event) =>
-                updateFilter(
-                  "tag",
-                  event.target.value as CustomerListFilters["tag"]
-                )
-              }
-            >
-              <option value="all">{t("All tags")}</option>
-              {tagOptions.map((tag) => (
-                <option key={tag} value={tag}>
-                  {(CUSTOMER_SAFE_TAGS as readonly string[]).includes(tag)
-                    ? t(tag)
-                    : tag}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label={t("Recent activity")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.period}
-              onChange={(event) =>
-                updateFilter(
-                  "period",
-                  event.target.value as CustomerListFilters["period"]
-                )
-              }
-            >
-              <option value="all">{t("All activity periods")}</option>
-              <option value="30d">{t("Last 30 days")}</option>
-              <option value="90d">{t("Last 90 days")}</option>
-              <option value="365d">{t("Last 365 days")}</option>
-            </select>
-            <select
-              aria-label={t("Spend currency")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.currency}
-              onChange={(event) =>
-                updateFilter(
-                  "currency",
-                  event.target.value as CustomerListFilters["currency"]
-                )
-              }
-            >
-              <option value="USD">USD</option>
-              <option value="TWD">TWD</option>
-            </select>
-            <label className="grid gap-1 text-xs">
-              <span>{t("Minimum spend")}</span>
-              <input
-                type="number"
-                min="0"
-                className="h-9 rounded-md border bg-background px-2"
-                value={filters.minimumSpend ?? ""}
-                onChange={(event) =>
-                  updateFilter(
-                    "minimumSpend",
-                    event.target.value ? Number(event.target.value) : null
-                  )
+        <section aria-label={t("Customer list")}>
+          <OperationalListPanel
+            toolbar={
+              <OperationalFilterToolbar
+                search={
+                  <OperationalToolbarSearch
+                    label={t("Search customers")}
+                    value={filters.query}
+                    placeholder={t("Name, Email, or customer ID")}
+                    onChange={(query) => updateFilter("query", query)}
+                  />
                 }
-              />
-            </label>
-            <label className="grid gap-1 text-xs">
-              <span>{t("Maximum spend")}</span>
-              <input
-                type="number"
-                min="0"
-                className="h-9 rounded-md border bg-background px-2"
-                value={filters.maximumSpend ?? ""}
-                onChange={(event) =>
-                  updateFilter(
-                    "maximumSpend",
-                    event.target.value ? Number(event.target.value) : null
-                  )
-                }
-              />
-            </label>
-            <select
-              aria-label={t("Sort")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.sort}
-              onChange={(event) =>
-                updateFilter(
-                  "sort",
-                  event.target.value as CustomerListFilters["sort"]
-                )
-              }
-            >
-              <option value="activity-desc">
-                {t("Recent activity first")}
-              </option>
-              <option value="created-desc">{t("Newest customers")}</option>
-              <option value="spend-desc">{t("Highest spend")}</option>
-              <option value="orders-desc">{t("Most orders")}</option>
-              <option value="id-asc">{t("Customer ID")}</option>
-            </select>
-          </CardContent>
-          {activeFilterCount ? (
-            <div className="flex items-center gap-2 border-t px-3 py-2 text-xs">
-              <span className="text-muted-foreground">
-                {t("Active filters")}
-              </span>
-              <Badge variant="secondary">{activeFilterCount}</Badge>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7"
-                onClick={() => {
-                  setLocalFilters(initialFilters)
-                  setSearchParams(new URLSearchParams(), { replace: true })
-                  setPage(1)
-                }}
-              >
-                {t("Clear filters")}
-              </Button>
-            </div>
-          ) : null}
-        </Card>
-      </GridBlock>
-      {hasError ? (
-        <CustomerState message={t("Customer data is unavailable.")} />
-      ) : null}
-      {isLoading ? <CustomerState message={t("Loading customers…")} /> : null}
-      {commerce.state === "ready" && invalidFilters ? (
-        <CustomerState message={t("Customer filters are invalid.")} />
-      ) : null}
-      {commerce.state === "ready" && !invalidFilters ? (
-        <GridBlock>
-          <Card size="sm" className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1240px] text-left text-sm">
-                <thead className="border-b bg-muted/60 text-xs text-muted-foreground">
-                  <tr>
-                    <th className="p-3">{t("Customer")}</th>
-                    <th>{t("Status")}</th>
-                    <th>{t("Segment and region")}</th>
-                    <th>{t("Safe tags")}</th>
-                    <th>{t("Orders")}</th>
-                    <th>{t("Lifetime spend")}</th>
-                    <th>{t("Last purchase")}</th>
-                    <th className="pr-3 text-right">{t("Actions")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {model.items.map((row) => (
-                    <CustomerQuickRow
-                      key={row.customer.id}
-                      row={row}
-                      open={expandedId === row.customer.id}
-                      language={language}
-                      onToggle={() =>
-                        setExpandedId(
-                          expandedId === row.customer.id
-                            ? null
-                            : row.customer.id
+                primaryFilters={
+                  <>
+                    <OperationalToolbarSelect
+                      label={t("Customer status")}
+                      value={filters.status}
+                      options={statusOptions}
+                      onValueChange={(status) =>
+                        updateFilter(
+                          "status",
+                          status as CustomerListFilters["status"]
                         )
                       }
-                      onOpen={() => navigate(`/customers/${row.customer.id}`)}
-                      t={t}
                     />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {model.total === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
+                    <OperationalToolbarSelect
+                      label={t("Customer segment")}
+                      value={filters.segment}
+                      options={segmentOptions}
+                      onValueChange={(segment) =>
+                        updateFilter(
+                          "segment",
+                          segment as CustomerListFilters["segment"]
+                        )
+                      }
+                    />
+                    <OperationalToolbarSelect
+                      label={t("Region")}
+                      value={filters.region}
+                      options={regionOptions}
+                      onValueChange={(region) =>
+                        updateFilter(
+                          "region",
+                          region as CustomerListFilters["region"]
+                        )
+                      }
+                    />
+                  </>
+                }
+                moreFilter={
+                  <OperationalFilterPopover
+                    value={filters}
+                    emptyValue={desktopEmpty}
+                    validate={validateFilters}
+                    showErrorSummary={false}
+                    onApply={commitFilters}
+                    trigger={
+                      <OperationalFilterButton
+                        kind="more"
+                        label={t("More filters")}
+                        activeCount={
+                          activeFilters.filter(
+                            ({ id }) =>
+                              ![
+                                "query",
+                                "status",
+                                "segment",
+                                "region",
+                              ].includes(id)
+                          ).length
+                        }
+                      />
+                    }
+                    title={t("More filters")}
+                    labels={{
+                      clear: t("Clear"),
+                      cancel: t("Cancel"),
+                      apply: t("Apply"),
+                    }}
+                  >
+                    {({ draft, setDraft, errors, getErrorProps }) =>
+                      renderFilterFields(
+                        draft,
+                        setDraft,
+                        false,
+                        errors,
+                        getErrorProps
+                      )
+                    }
+                  </OperationalFilterPopover>
+                }
+                mobileFilter={
+                  <OperationalFilterPopover
+                    value={filters}
+                    emptyValue={mobileEmpty}
+                    validate={validateFilters}
+                    showErrorSummary={false}
+                    onApply={commitFilters}
+                    trigger={
+                      <OperationalFilterButton
+                        kind="filter"
+                        label={t("Filter customers")}
+                        activeCount={
+                          activeFilters.filter(({ id }) => id !== "query")
+                            .length
+                        }
+                      />
+                    }
+                    title={t("Filter customers")}
+                    labels={{
+                      clear: t("Clear"),
+                      cancel: t("Cancel"),
+                      apply: t("Apply"),
+                    }}
+                  >
+                    {({ draft, setDraft, errors, getErrorProps }) =>
+                      renderFilterFields(
+                        draft,
+                        setDraft,
+                        true,
+                        errors,
+                        getErrorProps
+                      )
+                    }
+                  </OperationalFilterPopover>
+                }
+              />
+            }
+            summary={
+              <ActiveFilterSummary
+                resultLabel={t("Showing {{start}}–{{end}} / {{total}}", {
+                  start: resultStart,
+                  end: resultEnd,
+                  total: model.total,
+                })}
+                filters={activeFilters}
+                clearAllLabel={t("Clear all")}
+                onClearAll={clearAllFilters}
+              />
+            }
+            pagination={
+              commerce.state === "ready" && model.total > 0 ? (
+                <OperationalPagination
+                  page={model.page}
+                  pageCount={model.pageCount}
+                  ariaLabel={t("Customer pagination")}
+                  previousLabel={t("Previous page")}
+                  nextLabel={t("Next page")}
+                  onPageChange={setPage}
+                />
+              ) : undefined
+            }
+          >
+            {hasError ? (
+              <OperationalListState kind="error">
+                {t("Customer data is unavailable.")}
+              </OperationalListState>
+            ) : isLoading ? (
+              <OperationalListState kind="loading">
+                {t("Loading customers…")}
+              </OperationalListState>
+            ) : model.total === 0 ? (
+              <OperationalListState kind="empty">
                 {t("No customers match the current filters.")}
+              </OperationalListState>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1240px] text-left text-sm">
+                  <thead className="border-b bg-muted/60 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="p-3">{t("Customer")}</th>
+                      <th>{t("Status")}</th>
+                      <th>{t("Segment and region")}</th>
+                      <th>{t("Safe tags")}</th>
+                      <th>{t("Orders")}</th>
+                      <th>{t("Lifetime spend")}</th>
+                      <th>{t("Last purchase")}</th>
+                      <th className="pr-3 text-right">{t("Actions")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {model.items.map((row) => (
+                      <CustomerQuickRow
+                        key={row.customer.id}
+                        row={row}
+                        open={expandedId === row.customer.id}
+                        language={language}
+                        onToggle={() =>
+                          setExpandedId(
+                            expandedId === row.customer.id
+                              ? null
+                              : row.customer.id
+                          )
+                        }
+                        onOpen={() => navigate(`/customers/${row.customer.id}`)}
+                        t={t}
+                      />
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ) : null}
-            <footer className="flex items-center justify-between border-t p-3 text-sm">
-              <span>{t("{{count}} results", { count: model.total })}</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="icon"
-                  variant="outline"
-                  aria-label={t("Previous page")}
-                  disabled={model.page <= 1}
-                  onClick={() => setPage((current) => current - 1)}
-                >
-                  <ChevronLeft />
-                </Button>
-                <span>
-                  {model.page} / {model.pageCount}
-                </span>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  aria-label={t("Next page")}
-                  disabled={model.page >= model.pageCount}
-                  onClick={() => setPage((current) => current + 1)}
-                >
-                  <ChevronRight />
-                </Button>
-              </div>
-            </footer>
-          </Card>
-        </GridBlock>
-      ) : null}
+            )}
+          </OperationalListPanel>
+        </section>
+      </GridBlock>
     </PageLayout>
   )
 }
@@ -888,29 +1133,29 @@ export const CustomerDetailPage = () => {
         </div>
       }
     >
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <CustomerKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Orders")}
           value={row.orderCount}
           detail={t("Historical orders retained")}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <CustomerKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Notes")}
           value={notes.length}
           detail={t("UI-only internal notes")}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <CustomerKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Activities")}
           value={activities.length}
           detail={t("Lifecycle history")}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <CustomerKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Safe tags")}
           value={customer.tags.filter(({ kind }) => kind === "safe").length}
           detail={t("Reporting-eligible tags")}

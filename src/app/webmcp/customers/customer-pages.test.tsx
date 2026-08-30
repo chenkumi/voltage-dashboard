@@ -69,10 +69,12 @@ describe("customer management pages", () => {
     await waitFor(() =>
       expect(router.state.location.search).toBe("?segment=vip")
     )
-    expect(screen.getByText("Active filters")).toBeTruthy()
+    expect(screen.getAllByText("Customer segment: vip").length).toBeGreaterThan(
+      0
+    )
     expect(document.body.textContent).not.toContain(target.contact.fullName)
     expect(document.body.textContent).not.toContain(target.contact.email)
-    await user.click(screen.getByRole("button", { name: "Clear filters" }))
+    await user.click(screen.getByRole("button", { name: "Clear all" }))
     await user.click(await screen.findByRole("button", { name: "Next page" }))
     expect(
       (
@@ -86,15 +88,11 @@ describe("customer management pages", () => {
     )
     await waitFor(() =>
       expect(
-        (screen.getByLabelText("Customer status") as HTMLSelectElement).value
-      ).toBe("active")
+        screen.getAllByText("Customer status: active").length
+      ).toBeGreaterThan(0)
     )
-    expect((screen.getByLabelText("Region") as HTMLSelectElement).value).toBe(
-      "north"
-    )
-    expect(
-      (screen.getByLabelText("Recent activity") as HTMLSelectElement).value
-    ).toBe("365d")
+    expect(screen.getAllByText("Region: north").length).toBeGreaterThan(0)
+    expect(screen.getByText("Recent activity: Last 365 days")).toBeTruthy()
     expect(
       (
         screen.getByRole("button", {
@@ -107,18 +105,99 @@ describe("customer management pages", () => {
         "?status=active&region=north&period=365d"
       )
     )
-    await user.click(screen.getByRole("button", { name: "Clear filters" }))
-    await user.selectOptions(screen.getByLabelText("Region"), ["north"])
+    await user.click(screen.getByRole("button", { name: "Clear all" }))
+    await user.click(screen.getByRole("combobox", { name: "Region" }))
+    await user.click(await screen.findByRole("option", { name: "north" }))
     await waitFor(() =>
       expect(router.state.location.search).toBe("?region=north")
     )
-    await user.click(screen.getByRole("button", { name: "Clear filters" }))
-    await user.type(screen.getByLabelText("Minimum spend"), "500")
-    await user.type(screen.getByLabelText("Maximum spend"), "100")
+    await user.click(screen.getByRole("button", { name: "Clear all" }))
+
+    await user.click(screen.getByRole("button", { name: "More filters" }))
+    let popover = document.querySelector<HTMLElement>(
+      '[data-slot="popover-content"]'
+    )
+    await user.click(
+      within(popover!).getByRole("combobox", { name: "Spend currency" })
+    )
+    await user.click(await screen.findByRole("option", { name: "TWD" }))
+    await user.click(within(popover!).getByRole("button", { name: "Cancel" }))
+    expect(screen.queryByText("Spend currency: TWD")).toBeNull()
+
+    await user.click(screen.getByRole("button", { name: "More filters" }))
+    popover = document.querySelector<HTMLElement>(
+      '[data-slot="popover-content"]'
+    )
+    await user.type(
+      within(popover!).getByRole("spinbutton", { name: "Minimum spend" }),
+      "500"
+    )
+    await user.type(
+      within(popover!).getByRole("spinbutton", { name: "Maximum spend" }),
+      "100"
+    )
+    await user.click(within(popover!).getByRole("button", { name: "Apply" }))
     expect(
-      await screen.findByText("Customer filters are invalid.")
+      await within(popover!).findByText(
+        "Minimum spend must not exceed maximum spend."
+      )
     ).toBeTruthy()
-    await user.click(screen.getByRole("button", { name: "Clear filters" }))
+    expect(
+      (
+        within(popover!).getByRole("spinbutton", {
+          name: "Minimum spend",
+        }) as HTMLInputElement
+      ).value
+    ).toBe("500")
+    expect(screen.queryByText(/^Spend range:/)).toBeNull()
+    await user.clear(
+      within(popover!).getByRole("spinbutton", { name: "Minimum spend" })
+    )
+    await user.clear(
+      within(popover!).getByRole("spinbutton", { name: "Maximum spend" })
+    )
+    await user.click(
+      within(popover!).getByRole("combobox", { name: "Spend currency" })
+    )
+    await user.click(await screen.findByRole("option", { name: "TWD" }))
+    await user.type(
+      within(popover!).getByRole("spinbutton", { name: "Minimum spend" }),
+      "100"
+    )
+    await user.type(
+      within(popover!).getByRole("spinbutton", { name: "Maximum spend" }),
+      "500"
+    )
+    await user.click(within(popover!).getByRole("button", { name: "Apply" }))
+    expect(screen.getByText("Spend currency: TWD")).toBeTruthy()
+    expect(screen.getByText(/^Spend range:/)).toBeTruthy()
+    await user.click(
+      screen.getByRole("button", { name: "Spend currency: TWD remove" })
+    )
+    expect(screen.queryByText("Spend currency: TWD")).toBeNull()
+    expect(screen.queryByText(/^Spend range:/)).toBeNull()
+
+    await user.click(screen.getByRole("button", { name: "Filter customers" }))
+    popover = document.querySelector<HTMLElement>(
+      '[data-slot="popover-content"]'
+    )
+    for (const name of [
+      "Customer status",
+      "Customer segment",
+      "Region",
+      "Tag",
+      "Recent activity",
+      "Spend currency",
+      "Sort",
+    ]) {
+      expect(within(popover!).getByRole("combobox", { name })).toBeTruthy()
+    }
+    const mobileFields = within(popover!)
+      .getByRole("combobox", { name: "Customer status" })
+      .closest(".grid-cols-1")
+    expect(mobileFields?.className).not.toContain("sm:grid-cols-2")
+    await user.click(within(popover!).getByRole("button", { name: "Cancel" }))
+
     await user.click(screen.getByRole("button", { name: "Next page" }))
     expect(
       (
@@ -145,6 +224,14 @@ describe("customer management pages", () => {
     expect(customerRow).not.toBeNull()
     expect(within(customerRow as HTMLElement).getByText(target.id)).toBeTruthy()
     expect(document.body.textContent).not.toContain(target.contact.email)
+    await user.click(
+      within(customerRow as HTMLElement).getByRole("button", {
+        name: "Quick view",
+      })
+    )
+    expect(
+      await screen.findByText(`••••••${target.contact.phone.slice(-4)}`)
+    ).toBeTruthy()
     await user.click(detailButton)
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(`/customers/${target.id}`)
