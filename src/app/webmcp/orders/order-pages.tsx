@@ -1,11 +1,11 @@
+import { ChevronDown, ChevronLeft, ChevronUp } from "lucide-react"
 import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
-  ChevronUp,
-  Search,
-} from "lucide-react"
-import { useMemo, useState, type ReactNode } from "react"
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useMemo,
+  useState,
+} from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useParams } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +18,22 @@ import type {
   OrderStatus,
   PaymentStatus,
 } from "../commerce-data/types"
+import {
+  ActiveFilterSummary,
+  OperationalFilterButton,
+  OperationalFilterPopover,
+  OperationalFilterToolbar,
+  OperationalListPanel,
+  OperationalListState,
+  OperationalMetricCard,
+  OperationalPagination,
+  OperationalToolbarSearch,
+  OperationalToolbarSelect,
+  useOperationalPagination,
+  type ActiveOperationalFilter,
+  type OperationalFilterErrors,
+  type OperationalSelectOption,
+} from "../operational-ui"
 import { GridBlock, PageLayout } from "../voltage-admin-page-layout"
 import { useVoltageAdmin } from "../voltage-admin"
 import {
@@ -84,26 +100,6 @@ const maskedEmail = (email: string) => {
 }
 
 const maskedPhone = (phone: string) => `••••••${phone.slice(-4)}`
-
-const OrderKpi = ({
-  label,
-  value,
-  detail,
-}: {
-  label: string
-  value: ReactNode
-  detail: string
-}) => (
-  <Card size="sm" className="h-full">
-    <CardHeader>
-      <CardTitle className="text-muted-foreground">{label}</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <strong className="text-2xl tabular-nums">{value}</strong>
-      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-    </CardContent>
-  </Card>
-)
 
 const OrderState = ({ message }: { message: string }) => (
   <GridBlock>
@@ -309,12 +305,58 @@ const initialFilters: OrderListFilters = {
   sort: "updated-desc",
 }
 
+const toOptions = (
+  labels: Record<string, string>,
+  allLabel: string
+): readonly OperationalSelectOption[] => [
+  { value: "all", label: allLabel },
+  ...Object.entries(labels).map(([value, label]) => ({ value, label })),
+]
+
+const segmentOptions: readonly OperationalSelectOption[] = [
+  { value: "all", label: "All customer segments" },
+  { value: "new", label: "new" },
+  { value: "returning", label: "returning" },
+  { value: "vip", label: "vip" },
+]
+const regionOptions: readonly OperationalSelectOption[] = [
+  { value: "all", label: "All regions" },
+  { value: "north", label: "north" },
+  { value: "central", label: "central" },
+  { value: "south", label: "south" },
+  { value: "east", label: "east" },
+]
+const currencyOptions: readonly OperationalSelectOption[] = [
+  { value: "all", label: "All currencies" },
+  { value: "TWD", label: "TWD" },
+  { value: "USD", label: "USD" },
+]
+const orderSortOptions: readonly OperationalSelectOption[] = [
+  { value: "updated-desc", label: "Recently updated" },
+  { value: "created-desc", label: "Newest orders" },
+  { value: "amount-asc", label: "Amount low to high" },
+  { value: "amount-desc", label: "Amount high to low" },
+]
+
+const OrderFilterField = ({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) => (
+  <div className="grid gap-1.5 text-xs font-medium">
+    <span>{label}</span>
+    {children}
+  </div>
+)
+
 export const OrdersPage = () => {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { commerce, workflow } = useVoltageAdmin()
   const [filters, setFilters] = useState(initialFilters)
-  const [page, setPage] = useState(1)
+  const { page, setPage, applyAndReset } = useOperationalPagination()
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const language = i18n.resolvedLanguage ?? "en"
   const rows = useMemo<OrderListRow[]>(() => {
@@ -334,42 +376,373 @@ export const OrdersPage = () => {
       ),
     }))
   }, [commerce, workflow.cases])
-  const invalidFilters =
-    (filters.dateFrom && filters.dateTo && filters.dateFrom > filters.dateTo) ||
-    (filters.minimumAmount !== null && filters.minimumAmount < 0) ||
-    (filters.maximumAmount !== null && filters.maximumAmount < 0) ||
-    (filters.minimumAmount !== null &&
-      filters.maximumAmount !== null &&
-      filters.minimumAmount > filters.maximumAmount)
   const model = useMemo(
-    () =>
-      invalidFilters
-        ? { items: [], total: 0, page: 1, pageCount: 1 }
-        : createOrderListModel(rows, filters, page, PAGE_SIZE),
-    [filters, invalidFilters, page, rows]
+    () => createOrderListModel(rows, filters, page, PAGE_SIZE),
+    [filters, page, rows]
   )
   const updateFilter = <K extends keyof OrderListFilters>(
     key: K,
     value: OrderListFilters[K]
   ) => {
-    setPage(1)
-    setFilters((current) => ({ ...current, [key]: value }))
+    applyAndReset(() => setFilters((current) => ({ ...current, [key]: value })))
   }
-  const activeFilterCount = [
-    filters.query,
-    filters.dateFrom,
-    filters.dateTo,
-    filters.status !== "all",
-    filters.paymentStatus !== "all",
-    filters.fulfillmentStatus !== "all",
-    filters.segment !== "all",
-    filters.region !== "all",
-    filters.currency !== "all",
-    filters.minimumAmount !== null,
-    filters.maximumAmount !== null,
-  ].filter(Boolean).length
   const hasError = commerce.state === "error"
   const isLoading = !hasError && commerce.state !== "ready"
+
+  const localizeOptions = (options: readonly OperationalSelectOption[]) =>
+    options.map((option) => ({ ...option, label: t(option.label) }))
+  const statusOptions = localizeOptions(
+    toOptions(orderStatusLabels, "All order statuses")
+  )
+  const paymentOptions = localizeOptions(
+    toOptions(paymentStatusLabels, "All payment statuses")
+  )
+  const fulfillmentOptions = localizeOptions(
+    toOptions(fulfillmentLabels, "All fulfillment statuses")
+  )
+  const localizedSegmentOptions = localizeOptions(segmentOptions)
+  const localizedRegionOptions = localizeOptions(regionOptions)
+  const localizedCurrencyOptions = localizeOptions(currencyOptions)
+  const localizedSortOptions = localizeOptions(orderSortOptions)
+
+  const validateFilters = (
+    draft: OrderListFilters
+  ): OperationalFilterErrors => {
+    const errors: Record<string, string> = {}
+    if (draft.dateFrom && draft.dateTo && draft.dateFrom > draft.dateTo) {
+      errors.dateRange = t("Start date must not be after end date.")
+    }
+    if (
+      draft.currency === "all" &&
+      (draft.minimumAmount !== null || draft.maximumAmount !== null)
+    ) {
+      errors.amountRange = t("Select a currency before setting amount range.")
+    } else if (
+      (draft.minimumAmount !== null && draft.minimumAmount < 0) ||
+      (draft.maximumAmount !== null && draft.maximumAmount < 0)
+    ) {
+      errors.amountRange = t("Amounts must be zero or greater.")
+    } else if (
+      draft.minimumAmount !== null &&
+      draft.maximumAmount !== null &&
+      draft.minimumAmount > draft.maximumAmount
+    ) {
+      errors.amountRange = t("Minimum amount must not exceed maximum amount.")
+    }
+    return errors
+  }
+
+  const resultStart = model.total === 0 ? 0 : (model.page - 1) * PAGE_SIZE + 1
+  const resultEnd = model.total === 0 ? 0 : resultStart + model.items.length - 1
+  const activeFilters: ActiveOperationalFilter[] = []
+  const addFilter = <K extends keyof OrderListFilters>(
+    id: string,
+    label: string,
+    key: K,
+    resetValue: OrderListFilters[K]
+  ) =>
+    activeFilters.push({
+      id,
+      label,
+      onRemove: () => updateFilter(key, resetValue),
+    })
+  const optionLabel = (
+    options: readonly OperationalSelectOption[],
+    value: string
+  ) => options.find((option) => option.value === value)?.label ?? value
+  if (filters.query)
+    addFilter("query", `${t("Search")}: ${filters.query}`, "query", "")
+  if (filters.status !== "all")
+    addFilter(
+      "status",
+      `${t("Order status")}: ${optionLabel(statusOptions, filters.status)}`,
+      "status",
+      "all"
+    )
+  if (filters.paymentStatus !== "all")
+    addFilter(
+      "payment",
+      `${t("Payment status")}: ${optionLabel(paymentOptions, filters.paymentStatus)}`,
+      "paymentStatus",
+      "all"
+    )
+  if (filters.fulfillmentStatus !== "all")
+    addFilter(
+      "fulfillment",
+      `${t("Fulfillment status")}: ${optionLabel(fulfillmentOptions, filters.fulfillmentStatus)}`,
+      "fulfillmentStatus",
+      "all"
+    )
+  if (filters.dateFrom || filters.dateTo)
+    activeFilters.push({
+      id: "dates",
+      label: `${t("Date range")}: ${filters.dateFrom || "…"} – ${filters.dateTo || "…"}`,
+      onRemove: () =>
+        applyAndReset(() =>
+          setFilters((current) => ({ ...current, dateFrom: "", dateTo: "" }))
+        ),
+    })
+  if (filters.segment !== "all")
+    addFilter(
+      "segment",
+      `${t("Customer segment")}: ${optionLabel(localizedSegmentOptions, filters.segment)}`,
+      "segment",
+      "all"
+    )
+  if (filters.region !== "all")
+    addFilter(
+      "region",
+      `${t("Region")}: ${optionLabel(localizedRegionOptions, filters.region)}`,
+      "region",
+      "all"
+    )
+  if (filters.currency !== "all")
+    activeFilters.push({
+      id: "currency",
+      label: `${t("Currency")}: ${filters.currency}`,
+      onRemove: () =>
+        applyAndReset(() =>
+          setFilters((current) => ({
+            ...current,
+            currency: "all",
+            minimumAmount: null,
+            maximumAmount: null,
+          }))
+        ),
+    })
+  if (filters.minimumAmount !== null || filters.maximumAmount !== null)
+    activeFilters.push({
+      id: "amount",
+      label: `${t("Amount range")}: ${filters.minimumAmount ?? "…"} – ${filters.maximumAmount ?? "…"}`,
+      onRemove: () =>
+        applyAndReset(() =>
+          setFilters((current) => ({
+            ...current,
+            minimumAmount: null,
+            maximumAmount: null,
+          }))
+        ),
+    })
+  if (filters.sort !== "updated-desc")
+    addFilter(
+      "sort",
+      `${t("Sort")}: ${optionLabel(localizedSortOptions, filters.sort)}`,
+      "sort",
+      "updated-desc"
+    )
+
+  const clearAllFilters = () => applyAndReset(() => setFilters(initialFilters))
+  const desktopEmpty = {
+    ...filters,
+    dateFrom: "",
+    dateTo: "",
+    segment: "all" as const,
+    region: "all" as const,
+    currency: "all" as const,
+    minimumAmount: null,
+    maximumAmount: null,
+    sort: "updated-desc" as const,
+  }
+  const mobileEmpty = { ...initialFilters, query: filters.query }
+
+  const renderFilterFields = (
+    draft: OrderListFilters,
+    setDraft: Dispatch<SetStateAction<OrderListFilters>>,
+    includePrimary: boolean,
+    errors: OperationalFilterErrors,
+    getErrorProps: (field: string) => {
+      "aria-invalid": true | undefined
+      "aria-describedby": string | undefined
+    }
+  ) => (
+    <div
+      className={`grid grid-cols-1 gap-3 ${includePrimary ? "" : "sm:grid-cols-2"}`}
+    >
+      {includePrimary ? (
+        <>
+          <OrderFilterField label={t("Order status")}>
+            <OperationalToolbarSelect
+              label={t("Order status")}
+              value={draft.status}
+              options={statusOptions}
+              className="w-full"
+              onValueChange={(status) =>
+                setDraft((current) => ({
+                  ...current,
+                  status: status as OrderListFilters["status"],
+                }))
+              }
+            />
+          </OrderFilterField>
+          <OrderFilterField label={t("Payment status")}>
+            <OperationalToolbarSelect
+              label={t("Payment status")}
+              value={draft.paymentStatus}
+              options={paymentOptions}
+              className="w-full"
+              onValueChange={(paymentStatus) =>
+                setDraft((current) => ({
+                  ...current,
+                  paymentStatus:
+                    paymentStatus as OrderListFilters["paymentStatus"],
+                }))
+              }
+            />
+          </OrderFilterField>
+          <OrderFilterField label={t("Fulfillment status")}>
+            <OperationalToolbarSelect
+              label={t("Fulfillment status")}
+              value={draft.fulfillmentStatus}
+              options={fulfillmentOptions}
+              className="w-full"
+              onValueChange={(fulfillmentStatus) =>
+                setDraft((current) => ({
+                  ...current,
+                  fulfillmentStatus:
+                    fulfillmentStatus as OrderListFilters["fulfillmentStatus"],
+                }))
+              }
+            />
+          </OrderFilterField>
+        </>
+      ) : null}
+      <OrderFilterField label={t("From date")}>
+        <input
+          aria-label={t("From date")}
+          type="date"
+          className="h-9 rounded-md border bg-background px-2"
+          value={draft.dateFrom}
+          onChange={(event) =>
+            setDraft((current) => ({
+              ...current,
+              dateFrom: event.target.value,
+            }))
+          }
+          {...getErrorProps("dateRange")}
+        />
+      </OrderFilterField>
+      <OrderFilterField label={t("To date")}>
+        <input
+          aria-label={t("To date")}
+          type="date"
+          className="h-9 rounded-md border bg-background px-2"
+          value={draft.dateTo}
+          onChange={(event) =>
+            setDraft((current) => ({ ...current, dateTo: event.target.value }))
+          }
+          {...getErrorProps("dateRange")}
+        />
+      </OrderFilterField>
+      {errors.dateRange ? (
+        <p
+          id={getErrorProps("dateRange")["aria-describedby"]}
+          className={`text-xs text-destructive ${includePrimary ? "" : "sm:col-span-2"}`}
+        >
+          {errors.dateRange}
+        </p>
+      ) : null}
+      <OrderFilterField label={t("Customer segment")}>
+        <OperationalToolbarSelect
+          label={t("Customer segment")}
+          value={draft.segment}
+          options={localizedSegmentOptions}
+          className="w-full"
+          onValueChange={(segment) =>
+            setDraft((current) => ({
+              ...current,
+              segment: segment as OrderListFilters["segment"],
+            }))
+          }
+        />
+      </OrderFilterField>
+      <OrderFilterField label={t("Region")}>
+        <OperationalToolbarSelect
+          label={t("Region")}
+          value={draft.region}
+          options={localizedRegionOptions}
+          className="w-full"
+          onValueChange={(region) =>
+            setDraft((current) => ({
+              ...current,
+              region: region as OrderListFilters["region"],
+            }))
+          }
+        />
+      </OrderFilterField>
+      <OrderFilterField label={t("Currency")}>
+        <OperationalToolbarSelect
+          label={t("Currency")}
+          value={draft.currency}
+          options={localizedCurrencyOptions}
+          className="w-full"
+          onValueChange={(currency) =>
+            setDraft((current) => ({
+              ...current,
+              currency: currency as OrderListFilters["currency"],
+            }))
+          }
+        />
+      </OrderFilterField>
+      <OrderFilterField label={t("Minimum amount")}>
+        <input
+          aria-label={t("Minimum amount")}
+          type="number"
+          min="0"
+          className="h-9 rounded-md border bg-background px-2"
+          value={draft.minimumAmount ?? ""}
+          onChange={(event) =>
+            setDraft((current) => ({
+              ...current,
+              minimumAmount: event.target.value
+                ? Number(event.target.value)
+                : null,
+            }))
+          }
+          {...getErrorProps("amountRange")}
+        />
+      </OrderFilterField>
+      <OrderFilterField label={t("Maximum amount")}>
+        <input
+          aria-label={t("Maximum amount")}
+          type="number"
+          min="0"
+          className="h-9 rounded-md border bg-background px-2"
+          value={draft.maximumAmount ?? ""}
+          onChange={(event) =>
+            setDraft((current) => ({
+              ...current,
+              maximumAmount: event.target.value
+                ? Number(event.target.value)
+                : null,
+            }))
+          }
+          {...getErrorProps("amountRange")}
+        />
+      </OrderFilterField>
+      {errors.amountRange ? (
+        <p
+          id={getErrorProps("amountRange")["aria-describedby"]}
+          className={`text-xs text-destructive ${includePrimary ? "" : "sm:col-span-2"}`}
+        >
+          {errors.amountRange}
+        </p>
+      ) : null}
+      <OrderFilterField label={t("Sort")}>
+        <OperationalToolbarSelect
+          label={t("Sort")}
+          value={draft.sort}
+          options={localizedSortOptions}
+          className="w-full"
+          onValueChange={(sort) =>
+            setDraft((current) => ({
+              ...current,
+              sort: sort as OrderListFilters["sort"],
+            }))
+          }
+        />
+      </OrderFilterField>
+    </div>
+  )
 
   return (
     <PageLayout
@@ -381,15 +754,15 @@ export const OrdersPage = () => {
         </Badge>
       }
     >
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <OrderKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Total orders")}
           value={rows.length}
           detail={t("Historical order snapshots")}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <OrderKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Processing orders")}
           value={
             rows.filter(({ order }) => order.status === "processing").length
@@ -397,8 +770,9 @@ export const OrdersPage = () => {
           detail={t("Currently being prepared")}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <OrderKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
+          tone="critical"
           label={t("Action needed")}
           value={
             rows.filter(({ order }) => order.status === "action_needed").length
@@ -406,8 +780,9 @@ export const OrdersPage = () => {
           detail={t("Requires operational review")}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <OrderKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
+          tone="critical"
           label={t("Failed payments")}
           value={
             rows.filter(({ order }) => order.paymentStatus === "failed").length
@@ -416,292 +791,212 @@ export const OrdersPage = () => {
         />
       </GridBlock>
       <GridBlock>
-        <Card size="sm">
-          <CardContent className="grid gap-2 pt-1 md:grid-cols-2 xl:grid-cols-5">
-            <label className="relative xl:col-span-2">
-              <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
-              <span className="sr-only">{t("Search orders")}</span>
-              <input
-                type="search"
-                className="h-9 w-full rounded-md border bg-background pr-2 pl-8"
-                placeholder={t("Search order number")}
-                value={filters.query}
-                onChange={(event) => updateFilter("query", event.target.value)}
-              />
-            </label>
-            <label className="grid gap-1 text-xs">
-              <span>{t("From date")}</span>
-              <input
-                type="date"
-                className="h-9 rounded-md border bg-background px-2"
-                value={filters.dateFrom}
-                onChange={(event) =>
-                  updateFilter("dateFrom", event.target.value)
+        <section aria-label={t("Order list")}>
+          <OperationalListPanel
+            toolbar={
+              <OperationalFilterToolbar
+                search={
+                  <OperationalToolbarSearch
+                    label={t("Search orders")}
+                    value={filters.query}
+                    placeholder={t("Search order number")}
+                    onChange={(query) => updateFilter("query", query)}
+                  />
                 }
-              />
-            </label>
-            <label className="grid gap-1 text-xs">
-              <span>{t("To date")}</span>
-              <input
-                type="date"
-                className="h-9 rounded-md border bg-background px-2"
-                value={filters.dateTo}
-                onChange={(event) => updateFilter("dateTo", event.target.value)}
-              />
-            </label>
-            <select
-              aria-label={t("Order status")}
-              className="h-9 self-end rounded-md border bg-background px-2"
-              value={filters.status}
-              onChange={(event) =>
-                updateFilter(
-                  "status",
-                  event.target.value as OrderListFilters["status"]
-                )
-              }
-            >
-              <option value="all">{t("All order statuses")}</option>
-              {Object.entries(orderStatusLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {t(label)}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label={t("Payment status")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.paymentStatus}
-              onChange={(event) =>
-                updateFilter(
-                  "paymentStatus",
-                  event.target.value as OrderListFilters["paymentStatus"]
-                )
-              }
-            >
-              <option value="all">{t("All payment statuses")}</option>
-              {Object.entries(paymentStatusLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {t(label)}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label={t("Fulfillment status")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.fulfillmentStatus}
-              onChange={(event) =>
-                updateFilter(
-                  "fulfillmentStatus",
-                  event.target.value as OrderListFilters["fulfillmentStatus"]
-                )
-              }
-            >
-              <option value="all">{t("All fulfillment statuses")}</option>
-              {Object.entries(fulfillmentLabels).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {t(label)}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label={t("Customer segment")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.segment}
-              onChange={(event) =>
-                updateFilter(
-                  "segment",
-                  event.target.value as OrderListFilters["segment"]
-                )
-              }
-            >
-              <option value="all">{t("All customer segments")}</option>
-              <option value="new">{t("new")}</option>
-              <option value="returning">{t("returning")}</option>
-              <option value="vip">{t("vip")}</option>
-            </select>
-            <select
-              aria-label={t("Region")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.region}
-              onChange={(event) =>
-                updateFilter(
-                  "region",
-                  event.target.value as OrderListFilters["region"]
-                )
-              }
-            >
-              <option value="all">{t("All regions")}</option>
-              {(["north", "central", "south", "east"] as const).map(
-                (region) => (
-                  <option key={region} value={region}>
-                    {t(region)}
-                  </option>
-                )
-              )}
-            </select>
-            <select
-              aria-label={t("Currency")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.currency}
-              onChange={(event) =>
-                updateFilter(
-                  "currency",
-                  event.target.value as OrderListFilters["currency"]
-                )
-              }
-            >
-              <option value="all">{t("All currencies")}</option>
-              <option value="TWD">TWD</option>
-              <option value="USD">USD</option>
-            </select>
-            <select
-              aria-label={t("Sort")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.sort}
-              onChange={(event) =>
-                updateFilter(
-                  "sort",
-                  event.target.value as OrderListFilters["sort"]
-                )
-              }
-            >
-              <option value="updated-desc">{t("Recently updated")}</option>
-              <option value="created-desc">{t("Newest orders")}</option>
-              <option value="amount-asc">{t("Amount low to high")}</option>
-              <option value="amount-desc">{t("Amount high to low")}</option>
-            </select>
-            <label className="grid gap-1 text-xs">
-              <span>{t("Minimum amount")}</span>
-              <input
-                type="number"
-                min="0"
-                className="h-9 rounded-md border bg-background px-2"
-                value={filters.minimumAmount ?? ""}
-                onChange={(event) =>
-                  updateFilter(
-                    "minimumAmount",
-                    event.target.value ? Number(event.target.value) : null
-                  )
-                }
-              />
-            </label>
-            <label className="grid gap-1 text-xs">
-              <span>{t("Maximum amount")}</span>
-              <input
-                type="number"
-                min="0"
-                className="h-9 rounded-md border bg-background px-2"
-                value={filters.maximumAmount ?? ""}
-                onChange={(event) =>
-                  updateFilter(
-                    "maximumAmount",
-                    event.target.value ? Number(event.target.value) : null
-                  )
-                }
-              />
-            </label>
-          </CardContent>
-          {activeFilterCount ? (
-            <div className="flex items-center gap-2 border-t px-3 py-2 text-xs">
-              <span className="text-muted-foreground">
-                {t("Active filters")}
-              </span>
-              <Badge variant="secondary">{activeFilterCount}</Badge>
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7"
-                onClick={() => {
-                  setFilters(initialFilters)
-                  setPage(1)
-                }}
-              >
-                {t("Clear filters")}
-              </Button>
-            </div>
-          ) : null}
-        </Card>
-      </GridBlock>
-      {hasError ? (
-        <OrderState message={t("Order data is unavailable.")} />
-      ) : null}
-      {isLoading ? <OrderState message={t("Loading orders…")} /> : null}
-      {commerce.state === "ready" && invalidFilters ? (
-        <OrderState message={t("Order filters are invalid.")} />
-      ) : null}
-      {commerce.state === "ready" && !invalidFilters ? (
-        <GridBlock>
-          <Card size="sm" className="overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[1180px] text-left text-sm">
-                <thead className="border-b bg-muted/60 text-xs text-muted-foreground">
-                  <tr>
-                    <th className="p-3">{t("Order")}</th>
-                    <th>{t("Created")}</th>
-                    <th>{t("Customer")}</th>
-                    <th>{t("Status")}</th>
-                    <th>{t("Payment")}</th>
-                    <th>{t("Fulfillment")}</th>
-                    <th>{t("Total")}</th>
-                    <th className="pr-3 text-right">{t("Actions")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {model.items.map((row) => (
-                    <OrderQuickRow
-                      key={row.order.id}
-                      row={row}
-                      open={expandedId === row.order.id}
-                      language={language}
-                      onToggle={() =>
-                        setExpandedId(
-                          expandedId === row.order.id ? null : row.order.id
+                primaryFilters={
+                  <>
+                    <OperationalToolbarSelect
+                      label={t("Order status")}
+                      value={filters.status}
+                      options={statusOptions}
+                      onValueChange={(value) =>
+                        updateFilter(
+                          "status",
+                          value as OrderListFilters["status"]
                         )
                       }
-                      onDetail={() => navigate(`/orders/${row.order.id}`)}
-                      onCase={(caseId) =>
-                        navigate(`/operations-cases?caseId=${caseId}`)
-                      }
-                      t={t}
                     />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {model.total === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
+                    <OperationalToolbarSelect
+                      label={t("Payment status")}
+                      value={filters.paymentStatus}
+                      options={paymentOptions}
+                      onValueChange={(value) =>
+                        updateFilter(
+                          "paymentStatus",
+                          value as OrderListFilters["paymentStatus"]
+                        )
+                      }
+                    />
+                    <OperationalToolbarSelect
+                      label={t("Fulfillment status")}
+                      value={filters.fulfillmentStatus}
+                      options={fulfillmentOptions}
+                      onValueChange={(value) =>
+                        updateFilter(
+                          "fulfillmentStatus",
+                          value as OrderListFilters["fulfillmentStatus"]
+                        )
+                      }
+                    />
+                  </>
+                }
+                moreFilter={
+                  <OperationalFilterPopover
+                    value={filters}
+                    emptyValue={desktopEmpty}
+                    validate={validateFilters}
+                    showErrorSummary={false}
+                    onApply={(next) => applyAndReset(() => setFilters(next))}
+                    trigger={
+                      <OperationalFilterButton
+                        kind="more"
+                        label={t("More filters")}
+                        activeCount={
+                          activeFilters.filter(
+                            ({ id }) =>
+                              ![
+                                "query",
+                                "status",
+                                "payment",
+                                "fulfillment",
+                              ].includes(id)
+                          ).length
+                        }
+                      />
+                    }
+                    title={t("More filters")}
+                    labels={{
+                      clear: t("Clear"),
+                      cancel: t("Cancel"),
+                      apply: t("Apply"),
+                    }}
+                  >
+                    {({ draft, setDraft, errors, getErrorProps }) =>
+                      renderFilterFields(
+                        draft,
+                        setDraft,
+                        false,
+                        errors,
+                        getErrorProps
+                      )
+                    }
+                  </OperationalFilterPopover>
+                }
+                mobileFilter={
+                  <OperationalFilterPopover
+                    value={filters}
+                    emptyValue={mobileEmpty}
+                    validate={validateFilters}
+                    showErrorSummary={false}
+                    onApply={(next) => applyAndReset(() => setFilters(next))}
+                    trigger={
+                      <OperationalFilterButton
+                        kind="filter"
+                        label={t("Filter orders")}
+                        activeCount={
+                          activeFilters.filter(({ id }) => id !== "query")
+                            .length
+                        }
+                      />
+                    }
+                    title={t("Filter orders")}
+                    labels={{
+                      clear: t("Clear"),
+                      cancel: t("Cancel"),
+                      apply: t("Apply"),
+                    }}
+                  >
+                    {({ draft, setDraft, errors, getErrorProps }) =>
+                      renderFilterFields(
+                        draft,
+                        setDraft,
+                        true,
+                        errors,
+                        getErrorProps
+                      )
+                    }
+                  </OperationalFilterPopover>
+                }
+              />
+            }
+            summary={
+              <ActiveFilterSummary
+                resultLabel={t("Showing {{start}}–{{end}} / {{total}}", {
+                  start: resultStart,
+                  end: resultEnd,
+                  total: model.total,
+                })}
+                filters={activeFilters}
+                clearAllLabel={t("Clear all")}
+                onClearAll={clearAllFilters}
+              />
+            }
+            pagination={
+              commerce.state === "ready" && model.total > 0 ? (
+                <OperationalPagination
+                  page={model.page}
+                  pageCount={model.pageCount}
+                  ariaLabel={t("Order pagination")}
+                  previousLabel={t("Previous page")}
+                  nextLabel={t("Next page")}
+                  onPageChange={setPage}
+                />
+              ) : undefined
+            }
+          >
+            {hasError ? (
+              <OperationalListState kind="error">
+                {t("Order data is unavailable.")}
+              </OperationalListState>
+            ) : isLoading ? (
+              <OperationalListState kind="loading">
+                {t("Loading orders…")}
+              </OperationalListState>
+            ) : model.total === 0 ? (
+              <OperationalListState kind="empty">
                 {t("No orders match the current filters.")}
+              </OperationalListState>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[1180px] text-left text-sm">
+                  <thead className="border-b bg-muted/60 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="p-3">{t("Order")}</th>
+                      <th>{t("Created")}</th>
+                      <th>{t("Customer")}</th>
+                      <th>{t("Status")}</th>
+                      <th>{t("Payment")}</th>
+                      <th>{t("Fulfillment")}</th>
+                      <th>{t("Total")}</th>
+                      <th className="pr-3 text-right">{t("Actions")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {model.items.map((row) => (
+                      <OrderQuickRow
+                        key={row.order.id}
+                        row={row}
+                        open={expandedId === row.order.id}
+                        language={language}
+                        onToggle={() =>
+                          setExpandedId(
+                            expandedId === row.order.id ? null : row.order.id
+                          )
+                        }
+                        onDetail={() => navigate(`/orders/${row.order.id}`)}
+                        onCase={(caseId) =>
+                          navigate(`/operations-cases?caseId=${caseId}`)
+                        }
+                        t={t}
+                      />
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            ) : null}
-            <footer className="flex items-center justify-between border-t p-3 text-sm">
-              <span>{t("{{count}} results", { count: model.total })}</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="icon"
-                  variant="outline"
-                  disabled={model.page <= 1}
-                  onClick={() => setPage((value) => value - 1)}
-                  aria-label={t("Previous page")}
-                >
-                  <ChevronLeft />
-                </Button>
-                <span>
-                  {model.page} / {model.pageCount}
-                </span>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  disabled={model.page >= model.pageCount}
-                  onClick={() => setPage((value) => value + 1)}
-                  aria-label={t("Next page")}
-                >
-                  <ChevronRight />
-                </Button>
-              </div>
-            </footer>
-          </Card>
-        </GridBlock>
-      ) : null}
+            )}
+          </OperationalListPanel>
+        </section>
+      </GridBlock>
     </PageLayout>
   )
 }
@@ -767,29 +1062,29 @@ export const OrderDetailPage = () => {
         </Button>
       }
     >
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <OrderKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Order total")}
           value={formatMoney(order.amounts.total, language)}
           detail={order.amounts.total.currency}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <OrderKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Item quantity")}
           value={lines.reduce((sum, line) => sum + line.quantity, 0)}
           detail={t("Historical snapshot")}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <OrderKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Timeline events")}
           value={order.timeline.length}
           detail={formatDate(order.updatedAt, language)}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <OrderKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Related cases")}
           value={cases.length}
           detail={t("Operations references")}

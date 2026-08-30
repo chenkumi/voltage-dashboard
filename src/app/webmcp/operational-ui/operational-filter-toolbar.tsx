@@ -194,6 +194,7 @@ export function OperationalFilterPopover<T>({
   title,
   description,
   labels,
+  showErrorSummary = true,
   children,
 }: {
   value: T
@@ -204,6 +205,7 @@ export function OperationalFilterPopover<T>({
   title: string
   description?: string
   labels: { clear: string; cancel: string; apply: string }
+  showErrorSummary?: boolean
   children: (props: OperationalFilterPopoverRenderProps<T>) => ReactNode
 }) {
   const errorId = useId()
@@ -259,7 +261,7 @@ export function OperationalFilterPopover<T>({
             }),
             errorIdFor: (field) => `${errorId}-${field}`,
           })}
-          {Object.keys(errors).length > 0 ? (
+          {showErrorSummary && Object.keys(errors).length > 0 ? (
             <div
               id={errorId}
               role="alert"

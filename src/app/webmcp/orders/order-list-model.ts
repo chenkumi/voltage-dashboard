@@ -67,9 +67,17 @@ export const createOrderListModel = (
       return right.order.createdAt.localeCompare(left.order.createdAt)
     }
     if (filters.sort === "amount-asc") {
+      const currencyOrder = left.order.amounts.total.currency.localeCompare(
+        right.order.amounts.total.currency
+      )
+      if (currencyOrder !== 0) return currencyOrder
       return left.order.amounts.total.amount - right.order.amounts.total.amount
     }
     if (filters.sort === "amount-desc") {
+      const currencyOrder = left.order.amounts.total.currency.localeCompare(
+        right.order.amounts.total.currency
+      )
+      if (currencyOrder !== 0) return currencyOrder
       return right.order.amounts.total.amount - left.order.amounts.total.amount
     }
     return right.order.updatedAt.localeCompare(left.order.updatedAt)

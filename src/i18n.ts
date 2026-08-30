@@ -203,6 +203,17 @@ const zhTW = {
   "Filter inventory": "篩選庫存",
   "Inventory list": "庫存清單",
   "Inventory pagination": "庫存分頁",
+  "Filter orders": "篩選訂單",
+  "Order list": "訂單清單",
+  "Order pagination": "訂單分頁",
+  "Date range": "日期區間",
+  "Amount range": "金額區間",
+  "Start date must not be after end date.": "開始日期不得晚於結束日期。",
+  "Amounts must be zero or greater.": "金額必須大於或等於零。",
+  "Minimum amount must not exceed maximum amount.":
+    "最低金額不得高於最高金額。",
+  "Select a currency before setting amount range.":
+    "設定金額區間前請先選擇幣別。",
   "Search inventory…": "搜尋庫存…",
   "Low stock only": "只顯示低庫存",
   "Current stock": "目前庫存",

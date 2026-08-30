@@ -105,4 +105,24 @@ describe("order list model", () => {
 
     expect(model.items.map(({ order }) => order.id)).toEqual(["VM-25002"])
   })
+
+  it("groups mixed currencies before sorting their native amounts", () => {
+    const twdRow = row(9)
+    const usdLow = row(2)
+    const usdHigh = row(3)
+    usdLow.order.amounts.total.currency = "USD"
+    usdHigh.order.amounts.total.currency = "USD"
+
+    const model = createOrderListModel(
+      [usdHigh, twdRow, usdLow],
+      { ...filters, sort: "amount-asc" },
+      1
+    )
+
+    expect(model.items.map(({ order }) => order.id)).toEqual([
+      "VM-25009",
+      "VM-25002",
+      "VM-25003",
+    ])
+  })
 })
