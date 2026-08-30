@@ -273,58 +273,6 @@ export const Products = () => {
   )
 }
 
-export const Orders = () => {
-  const { t, i18n } = useTranslation()
-
-  return (
-    <PageLayout
-      ariaLabel={t("Voltage Dashboard Orders")}
-      pageName="Orders"
-      eyebrow={t("Order operations")}
-      title={t("A private, clear queue.")}
-      detail={t(
-        "Records are anonymized; final order actions remain outside WebMCP."
-      )}
-    >
-      <GridBlock>
-        <DataTable>
-          <table>
-            <thead>
-              <tr>
-                <th>{t("Order")}</th>
-                <th>{t("Customer ref")}</th>
-                <th>{t("Created")}</th>
-                <th>{t("Status")}</th>
-                <th>{t("Total")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {voltageAdminOrders.map((order) => (
-                <tr key={order.id}>
-                  <td>
-                    <strong>{order.id}</strong>
-                    <small>
-                      {t("{{count}} items", { count: order.itemCount })}
-                    </small>
-                  </td>
-                  <td>{order.customerId}</td>
-                  <td>{order.createdAt}</td>
-                  <td>
-                    <Badge className={statusClass(order.status)}>
-                      {t(order.status)}
-                    </Badge>
-                  </td>
-                  <td>{formatMoney(order.total, i18n.resolvedLanguage)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </DataTable>
-      </GridBlock>
-    </PageLayout>
-  )
-}
-
 export const Customers = () => {
   const { t, i18n } = useTranslation()
 

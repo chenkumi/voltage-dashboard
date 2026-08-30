@@ -1,6 +1,7 @@
 import { CheckCircle2, FileCheck2, Save, ShieldAlert } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
+import { useSearchParams } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { GridBlock, PageLayout } from "../voltage-admin-page-layout"
@@ -333,6 +334,7 @@ const CaseDraftEditor = ({
 export const OperationsCasesPage = () => {
   const { t } = useTranslation()
   const { workflow } = useVoltageAdmin()
+  const [searchParams] = useSearchParams()
   const [typeFilter, setTypeFilter] = useState<OpsCaseType | "all">("all")
   const [statusFilter, setStatusFilter] = useState<OpsCase["status"] | "all">(
     "all"
@@ -340,7 +342,12 @@ export const OperationsCasesPage = () => {
   const [priorityFilter, setPriorityFilter] = useState<
     OpsCase["priority"] | "all"
   >("all")
-  const [selectedId, setSelectedId] = useState(workflow.cases[0]?.id ?? "")
+  const requestedCaseId = searchParams.get("caseId")
+  const [selectedId, setSelectedId] = useState(
+    workflow.cases.some(({ id }) => id === requestedCaseId)
+      ? (requestedCaseId ?? "")
+      : (workflow.cases[0]?.id ?? "")
+  )
   const filteredCases = useMemo(
     () =>
       workflow.cases.filter(
