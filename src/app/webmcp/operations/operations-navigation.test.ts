@@ -7,6 +7,7 @@ import {
   type VoltageAdminView,
 } from "../voltage-admin"
 import { GridBlock, PageLayout } from "../voltage-admin-page-layout"
+import { LEGACY_OPERATIONS_REDIRECTS } from "../operations-redirects"
 
 const views: VoltageAdminView[] = [
   "dashboard",
@@ -14,18 +15,26 @@ const views: VoltageAdminView[] = [
   "orders",
   "customers",
   "inventory",
+  "returns",
+  "refund-approvals",
   "reports",
-  "operations-cases",
-  "approvals",
 ]
 
 describe("operations navigation", () => {
-  it("round-trips every existing and operations view", () => {
+  it("round-trips every current admin view", () => {
     for (const view of views) {
       const path = voltageAdminPath(view)
       expect(path).toBe(`/${view}`)
       expect(voltageAdminViewFromPath(path)).toBe(view)
     }
+  })
+
+  it("redirects legacy operations routes into the RMA workflow", () => {
+    expect(LEGACY_OPERATIONS_REDIRECTS).toEqual([
+      { path: "operations", to: "/returns" },
+      { path: "operations-cases", to: "/returns" },
+      { path: "approvals", to: "/refund-approvals" },
+    ])
   })
 
   it("falls back to dashboard for unknown and nested paths", () => {

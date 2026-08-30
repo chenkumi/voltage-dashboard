@@ -2,9 +2,9 @@ import { describe, expect, it } from "vitest"
 import {
   assertSafeOperationsText,
   assertSafeSpecifications,
-} from "./operations-content-safety"
+} from "./content-safety"
 
-describe("operations content safety", () => {
+describe("shared content safety", () => {
   it.each([
     "Contact agent@example.com",
     "收件人王小明",

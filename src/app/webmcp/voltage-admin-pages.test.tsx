@@ -25,9 +25,19 @@ const createContext = (state: StoreState = "ready") => ({
     state,
     products: [{ status: "draft" }, { status: "active" }],
   },
-  workflow: {
-    cases: [{ status: "open" }],
-    reviews: [{ state: "pending" }],
+  returns: {
+    state,
+    rmas: [{ status: "active" }],
+    approvals: [{ status: "pending" }],
+    timeline: [
+      {
+        id: "timeline-1",
+        rmaId: "RMA-1001",
+        actor: "user",
+        action: "return_submitted",
+        occurredAt: "2026-08-31T01:00:00.000Z",
+      },
+    ],
   },
 })
 
@@ -54,6 +64,18 @@ beforeEach(async () => {
 afterEach(() => cleanup())
 
 describe("Dashboard metrics", () => {
+  it("localizes structured return timeline actions", async () => {
+    await i18n.changeLanguage("zh-TW")
+    render(
+      <MemoryRouter>
+        <Dashboard />
+      </MemoryRouter>
+    )
+
+    expect(metricCard("最新動態").textContent).toContain("提交退貨申請")
+    expect(metricCard("最新動態").textContent).not.toContain("return submitted")
+  })
+
   it("uses the shared metric contract for ready, loading, and error states", () => {
     const { rerender } = render(
       <MemoryRouter>
@@ -68,7 +90,9 @@ describe("Dashboard metrics", () => {
     expect(document.querySelector(".voltage-admin-panel")).toBeNull()
 
     const latestActivity = metricCard("Latest activity")
-    expect(latestActivity.textContent).toContain("Order queue")
+    expect(latestActivity.textContent).toContain("Return activity")
+    expect(latestActivity.textContent).toContain("RMA-1001")
+    expect(latestActivity.textContent).not.toContain("customer")
     expect(latestActivity.className).toContain("bg-[rgb(245,246,241)]")
 
     const inventorySignal = metricCard("Inventory signal")
@@ -81,9 +105,9 @@ describe("Dashboard metrics", () => {
     expect(revenue.parentElement?.className).toContain("lg:col-span-3")
     expect(revenue.querySelector("strong")?.className).toContain("tabular-nums")
 
-    const workflow = metricCard("Draft products")
-    expect(workflow.parentElement?.className).toContain("md:col-span-6")
-    expect(workflow.parentElement?.className).toContain("lg:col-span-4")
+    const operational = metricCard("Draft products")
+    expect(operational.parentElement?.className).toContain("md:col-span-6")
+    expect(operational.parentElement?.className).toContain("lg:col-span-4")
 
     context = createContext("loading")
     rerender(
@@ -97,9 +121,15 @@ describe("Dashboard metrics", () => {
       "Customers",
       "Available SKUs",
       "Draft products",
+      "Active returns",
+      "Pending refunds",
     ]) {
       expect(screen.getByLabelText(`${label} loading`)).toBeTruthy()
     }
+    expect(metricCard("Latest activity").textContent).toContain(
+      "Loading returns…"
+    )
+    expect(metricCard("Latest activity").textContent).not.toContain("RMA-1001")
 
     context = createContext("error")
     rerender(
@@ -113,10 +143,16 @@ describe("Dashboard metrics", () => {
       "Customers",
       "Available SKUs",
       "Draft products",
+      "Active returns",
+      "Pending refunds",
     ]) {
       const card = metricCard(label)
       expect(card.querySelector("strong")?.textContent).toBe("—")
       expect(card.textContent).toContain("Data unavailable")
     }
+    expect(metricCard("Latest activity").textContent).toContain(
+      "Returns data is unavailable."
+    )
+    expect(metricCard("Latest activity").textContent).not.toContain("RMA-1001")
   })
 })

@@ -1,5 +1,5 @@
 import type { WebMcpRegisteredTool } from "../types"
-import { assertSafeOperationsText } from "../operations/operations-content-safety"
+import { assertSafeOperationsText } from "../content-safety"
 import type { ProductEditorController } from "./product-editor-controller"
 import type { ProductRepository } from "./product-repository"
 import type {

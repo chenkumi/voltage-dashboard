@@ -1,7 +1,6 @@
 import { ChevronRight, CircleAlert } from "lucide-react"
 import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { OperationalMetricCard } from "./operational-ui"
 import { useVoltageAdmin, voltageAdminPath } from "./voltage-admin"
@@ -15,44 +14,55 @@ const formatMoney = (value: number, currency: "USD" | "TWD", language = "en") =>
     maximumFractionDigits: currency === "TWD" ? 0 : 2,
   }).format(value)
 
-const statusClass = (status: string) => {
-  if (status === "delivered") return "bg-[#e5eee7] text-[#48614c]"
-  if (status === "action_needed") return "bg-[#f4e5d7] text-[#8b5d3c]"
-  if (status === "shipped") return "bg-[#e4eaed] text-[#4f6975]"
-  return "bg-[#ece8d9] text-[#6e6746]"
-}
-
 export const Dashboard = () => {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { commerce, dashboard, workflow, products } = useVoltageAdmin()
+  const { commerce, dashboard, products, returns } = useVoltageAdmin()
   const commerceLoading = ["idle", "loading"].includes(commerce.state)
   const productLoading = ["idle", "loading"].includes(products.state)
+  const returnsLoading = ["idle", "loading"].includes(returns.state)
   const commerceUnavailable = commerce.state === "error"
   const productUnavailable = products.state === "error"
-  const workflowMetrics = [
-    [
-      "Draft products",
-      products.products
+  const returnsUnavailable = returns.state === "error"
+  const operationalMetrics = [
+    {
+      label: "Draft products",
+      value: products.products
         .filter(({ status }) => status === "draft")
         .length.toString(),
-      "Awaiting publication",
-    ],
-    [
-      "Exception cases",
-      workflow.cases
-        .filter(({ status }) => status !== "resolved")
+      detail: "Awaiting publication",
+      loading: productLoading,
+      unavailable: productUnavailable,
+      tone: "neutral" as const,
+    },
+    {
+      label: "Active returns",
+      value: returns.rmas
+        .filter(({ status }) => status === "active")
         .length.toString(),
-      "Safe operational cases",
-    ],
-    [
-      "Human approvals",
-      workflow.reviews
-        .filter(({ state }) => state === "pending" || state === "approved")
+      detail: "Awaiting return processing",
+      loading: returnsLoading,
+      unavailable: returnsUnavailable,
+      tone: returns.rmas.some(({ status }) => status === "active")
+        ? ("warning" as const)
+        : ("neutral" as const),
+    },
+    {
+      label: "Pending refunds",
+      value: returns.approvals
+        .filter(({ status }) => status === "pending")
         .length.toString(),
-      "Final actions stay in UI",
-    ],
+      detail: "Awaiting refund approval",
+      loading: returnsLoading,
+      unavailable: returnsUnavailable,
+      tone: returns.approvals.some(({ status }) => status === "pending")
+        ? ("critical" as const)
+        : ("neutral" as const),
+    },
   ]
+  const latestReturnActivity = [...returns.timeline]
+    .sort((left, right) => right.occurredAt.localeCompare(left.occurredAt))
+    .slice(0, 5)
 
   return (
     <PageLayout
@@ -126,25 +136,23 @@ export const Dashboard = () => {
           />
         </GridBlock>
       ))}
-      {workflowMetrics.map(([label, value, detail]) => (
-        <GridBlock
-          key={label}
-          className="col-span-12 md:col-span-6 lg:col-span-4"
-        >
-          <OperationalMetricCard
-            label={t(label)}
-            value={
-              productUnavailable && label === "Draft products"
-                ? undefined
-                : value
-            }
-            detail={t(detail)}
-            loading={productLoading && label === "Draft products"}
-            tone={label === "Exception cases" ? "critical" : "neutral"}
-            unavailableDetail={t("Data unavailable")}
-          />
-        </GridBlock>
-      ))}
+      {operationalMetrics.map(
+        ({ label, value, detail, loading, unavailable, tone }) => (
+          <GridBlock
+            key={label}
+            className="col-span-12 md:col-span-6 lg:col-span-4"
+          >
+            <OperationalMetricCard
+              label={t(label)}
+              value={unavailable ? undefined : value}
+              detail={t(detail)}
+              loading={loading}
+              tone={tone}
+              unavailableDetail={t("Data unavailable")}
+            />
+          </GridBlock>
+        )
+      )}
       <GridBlock className="col-span-12 xl:col-span-8">
         <OperationalMetricCard
           className="h-full"
@@ -154,42 +162,48 @@ export const Dashboard = () => {
               variant="ghost"
               size="sm"
               className="cursor-pointer"
-              onClick={() => navigate(voltageAdminPath("orders"))}
+              onClick={() => navigate(voltageAdminPath("returns"))}
             >
-              {t("All orders")} <ChevronRight className="size-4" />
+              {t("All returns")} <ChevronRight className="size-4" />
             </Button>
           }
         >
           <h2 className="font-heading text-xl leading-tight font-medium tracking-tight">
-            {t("Order queue")}
+            {t("Return activity")}
           </h2>
           <div className="space-y-1">
-            {dashboard.latestOrders.map((order) => (
-              <div key={order.id} className="voltage-admin-list-row">
-                <span>
-                  <strong>{order.id}</strong>
-                  <small>
-                    {t("{{count}} items", { count: order.itemCount })} ·{" "}
-                    {new Intl.DateTimeFormat(
-                      i18n.resolvedLanguage === "zh-TW" ? "zh-TW" : "en-US",
-                      { dateStyle: "medium" }
-                    ).format(new Date(order.createdAt))}
-                  </small>
-                </span>
-                <span>
-                  <Badge className={statusClass(order.status)}>
-                    {t(order.status)}
-                  </Badge>
-                  <strong>
-                    {formatMoney(
-                      order.total.amount,
-                      order.total.currency,
-                      i18n.resolvedLanguage
-                    )}
-                  </strong>
-                </span>
-              </div>
-            ))}
+            {returnsLoading ? (
+              <p className="py-6 text-sm text-muted-foreground">
+                {t("Loading returns…")}
+              </p>
+            ) : returnsUnavailable ? (
+              <p className="py-6 text-sm text-muted-foreground">
+                {t("Returns data is unavailable.")}
+              </p>
+            ) : latestReturnActivity.length > 0 ? (
+              latestReturnActivity.map((activity) => (
+                <div key={activity.id} className="voltage-admin-list-row">
+                  <span>
+                    <strong>{activity.rmaId}</strong>
+                    <small>
+                      {t(activity.action, {
+                        defaultValue: activity.action.replaceAll("_", " "),
+                      })}{" "}
+                      ·{" "}
+                      {new Intl.DateTimeFormat(
+                        i18n.resolvedLanguage === "zh-TW" ? "zh-TW" : "en-US",
+                        { dateStyle: "medium", timeStyle: "short" }
+                      ).format(new Date(activity.occurredAt))}
+                    </small>
+                  </span>
+                  <strong className="capitalize">{t(activity.actor)}</strong>
+                </div>
+              ))
+            ) : (
+              <p className="py-6 text-sm text-muted-foreground">
+                {t("No return activity yet.")}
+              </p>
+            )}
           </div>
         </OperationalMetricCard>
       </GridBlock>

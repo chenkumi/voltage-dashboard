@@ -7,7 +7,6 @@ import {
   useMemo,
   useRef,
   useState,
-  useSyncExternalStore,
 } from "react"
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import type {
@@ -37,8 +36,6 @@ import {
   isReportAuthoringTool,
   REPORT_AUTHORING_TOOLS,
 } from "./reporting/report-tools"
-import { OperationsController } from "./operations/operations-controller"
-import type { WorkflowSnapshot } from "./operations/types"
 import { ProductRepository } from "./products/product-repository"
 import {
   COMMERCE_SEED_VERSION,
@@ -90,9 +87,8 @@ export type VoltageAdminView =
   | "customers"
   | "inventory"
   | "returns"
+  | "refund-approvals"
   | "reports"
-  | "operations-cases"
-  | "approvals"
 
 const schema = (
   properties: Record<string, unknown>,
@@ -126,9 +122,8 @@ export const isVoltageAdminView = (value: unknown): value is VoltageAdminView =>
   value === "customers" ||
   value === "inventory" ||
   value === "returns" ||
-  value === "reports" ||
-  value === "operations-cases" ||
-  value === "approvals"
+  value === "refund-approvals" ||
+  value === "reports"
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const voltageAdminPath = (view: VoltageAdminView) => `/${view}`
@@ -183,7 +178,7 @@ const VOLTAGE_ADMIN_COMMON_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "open_voltage_admin_section",
     description:
-      "Purpose: open a Dashboard section, including products, operations cases, approvals, inventory, or reports. Examples: ‘Open products’, ‘Take me to operations cases’, ‘View approvals’, ‘Go to reports’. Do not call to perform a final action.",
+      "Purpose: open a Dashboard section, including products, returns, refund approvals, inventory, or reports. Examples: ‘Open products’, ‘Take me to returns’, ‘View refund approvals’, ‘Go to reports’. Do not call to perform a final action.",
     inputSchema: schema(
       {
         section: {
@@ -195,9 +190,8 @@ const VOLTAGE_ADMIN_COMMON_TOOLS: WebMcpRegisteredTool[] = [
             "customers",
             "inventory",
             "returns",
+            "refund-approvals",
             "reports",
-            "operations-cases",
-            "approvals",
           ],
         },
       },
@@ -265,7 +259,6 @@ type VoltageAdminContextValue = {
   commerce: CommerceStoreSnapshot
   commerceRepository: CommerceRepository
   dashboard: ReturnType<typeof getVoltageAdminDashboard>
-  operationsController: OperationsController
   productRepository: ProductRepository
   productEditorController: ProductEditorController
   products: ProductStoreSnapshot
@@ -273,7 +266,6 @@ type VoltageAdminContextValue = {
   returnRepository: ReturnRepository
   returnEditorController: ReturnEditorController
   returns: ReturnStoreSnapshot
-  workflow: WorkflowSnapshot
 }
 
 const VoltageAdminContext = createContext<VoltageAdminContextValue | null>(null)
@@ -366,7 +358,6 @@ export const VoltageAdminProvider = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const [reportingController] = useState(() => new ReportingRuntimeController())
-  const [operationsController] = useState(() => new OperationsController())
   const [productRepository] = useState(() => new ProductRepository())
   const [commerceSeed] = useState(() => createCommerceSeed())
   const [commerceRepository] = useState(
@@ -392,11 +383,6 @@ export const VoltageAdminProvider = () => {
   const dashboard = useMemo(
     () => getVoltageAdminDashboard(products.products, commerce),
     [commerce, products.products]
-  )
-  const workflow = useSyncExternalStore(
-    operationsController.subscribe,
-    operationsController.getSnapshot,
-    operationsController.getSnapshot
   )
   const sectionRef = useRef(voltageAdminViewFromPath(location.pathname))
   const routeTools = useMemo(
@@ -460,10 +446,9 @@ export const VoltageAdminProvider = () => {
   useEffect(() => {
     return () => {
       void reportingController.dispose()
-      operationsController.dispose()
       returnRepository.close()
     }
-  }, [operationsController, reportingController, returnRepository])
+  }, [reportingController, returnRepository])
 
   const prepareProvider = useCallback(async () => {
     await Promise.all([
@@ -602,7 +587,6 @@ export const VoltageAdminProvider = () => {
       commerce,
       commerceRepository,
       dashboard,
-      operationsController,
       productRepository,
       productEditorController,
       products,
@@ -610,13 +594,11 @@ export const VoltageAdminProvider = () => {
       returnRepository,
       returnEditorController,
       returns,
-      workflow,
     }),
     [
       commerce,
       commerceRepository,
       dashboard,
-      operationsController,
       productRepository,
       productEditorController,
       products,
@@ -624,7 +606,6 @@ export const VoltageAdminProvider = () => {
       returnRepository,
       returnEditorController,
       returns,
-      workflow,
     ]
   )
 

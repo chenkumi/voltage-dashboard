@@ -1,6 +1,6 @@
 import { COMPLETION_VERIFIER_SCHEMA_KEY } from "../completion-policy"
 import type { CommerceDataSnapshot } from "../commerce-data/types"
-import { assertSafeOperationsText } from "../operations/operations-content-safety"
+import { assertSafeOperationsText } from "../content-safety"
 import type { WebMcpRegisteredTool } from "../types"
 import type {
   ReturnEditorController,

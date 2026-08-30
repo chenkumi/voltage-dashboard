@@ -2,8 +2,7 @@ import { Navigate, Route, Routes } from "react-router-dom"
 import "./i18n"
 import { EnterpriseAdminShell } from "@/app/webmcp/voltage-admin-shell"
 import { VoltageAdminProvider } from "@/app/webmcp/voltage-admin"
-import { ApprovalInboxPage } from "@/app/webmcp/operations/approval-inbox-page"
-import { OperationsCasesPage } from "@/app/webmcp/operations/operations-cases-page"
+import { LEGACY_OPERATIONS_REDIRECTS } from "@/app/webmcp/operations-redirects"
 import {
   RefundApprovalDetailPage,
   RefundApprovalsPage,
@@ -79,8 +78,13 @@ export function App() {
             element={<InventoryDetailPage />}
           />
           <Route path="reports" element={<Reports />} />
-          <Route path="operations-cases" element={<OperationsCasesPage />} />
-          <Route path="approvals" element={<ApprovalInboxPage />} />
+          {LEGACY_OPERATIONS_REDIRECTS.map(({ path, to }) => (
+            <Route
+              key={path}
+              path={path}
+              element={<Navigate to={to} replace />}
+            />
+          ))}
         </Route>
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />

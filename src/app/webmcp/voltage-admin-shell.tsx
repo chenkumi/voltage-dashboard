@@ -7,11 +7,10 @@ import {
   FileChartColumn,
   Languages,
   LayoutDashboard,
-  ListChecks,
   Menu,
   PackageSearch,
   Search,
-  TriangleAlert,
+  ShieldCheck,
   UserRound,
   Users,
   Undo2,
@@ -43,7 +42,7 @@ export const EnterpriseAdminShell = () => {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const { dashboard, returns, workflow } = useVoltageAdmin()
+  const { dashboard, returns } = useVoltageAdmin()
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const sidebarRef = useRef<HTMLElement>(null)
@@ -70,6 +69,12 @@ export const EnterpriseAdminShell = () => {
       label: "Orders and customers",
       items: [
         { label: "Orders", path: "/orders", icon: ClipboardList },
+        { label: "Customers", path: "/customers", icon: Users },
+      ],
+    },
+    {
+      label: "After-sales management",
+      items: [
         {
           label: "Returns",
           path: "/returns",
@@ -77,26 +82,12 @@ export const EnterpriseAdminShell = () => {
           badge: returns.rmas.filter(({ status }) => status === "active")
             .length,
         },
-        { label: "Customers", path: "/customers", icon: Users },
-      ],
-    },
-    {
-      label: "Operations",
-      items: [
         {
-          label: "Operations Cases",
-          path: "/operations-cases",
-          icon: TriangleAlert,
-          badge: workflow.cases.filter(({ status }) => status === "open")
+          label: "Refund approvals",
+          path: "/refund-approvals",
+          icon: ShieldCheck,
+          badge: returns.approvals.filter(({ status }) => status === "pending")
             .length,
-        },
-        {
-          label: "Approval Inbox",
-          path: "/approvals",
-          icon: ListChecks,
-          badge: workflow.reviews.filter(
-            ({ state }) => state === "pending" || state === "approved"
-          ).length,
         },
       ],
     },
@@ -187,7 +178,7 @@ export const EnterpriseAdminShell = () => {
             type="button"
             aria-label={t("Notifications")}
             title={t("Notifications")}
-            onClick={() => openPage("/approvals")}
+            onClick={() => openPage("/refund-approvals")}
           >
             <Bell />
           </button>
