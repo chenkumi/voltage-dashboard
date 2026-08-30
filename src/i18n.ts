@@ -200,6 +200,9 @@ const zhTW = {
   "Changes update this local Demo3 workspace only.":
     "變更只會更新此本機示範工作區。",
   "Search inventory": "搜尋庫存",
+  "Filter inventory": "篩選庫存",
+  "Inventory list": "庫存清單",
+  "Inventory pagination": "庫存分頁",
   "Search inventory…": "搜尋庫存…",
   "Low stock only": "只顯示低庫存",
   "Current stock": "目前庫存",

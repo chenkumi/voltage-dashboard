@@ -1,18 +1,38 @@
 import {
   ChevronDown,
   ChevronLeft,
-  ChevronRight,
   ChevronUp,
-  Search,
   SlidersHorizontal,
   X,
 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import {
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useEffect,
+  useMemo,
+  useState,
+} from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  ActiveFilterSummary,
+  OperationalFilterButton,
+  OperationalFilterPopover,
+  OperationalFilterToolbar,
+  OperationalListPanel,
+  OperationalListState,
+  OperationalMetricCard,
+  OperationalPagination,
+  OperationalToolbarSearch,
+  OperationalToolbarSelect,
+  useOperationalPagination,
+  type ActiveOperationalFilter,
+  type OperationalSelectOption,
+} from "../operational-ui"
 import { GridBlock, PageLayout } from "../voltage-admin-page-layout"
 import { useVoltageAdmin } from "../voltage-admin"
 import type { ProductRepository } from "../products/product-repository"
@@ -58,6 +78,36 @@ const riskTone = (risk: InventoryRisk) => {
   return "bg-amber-50 text-amber-900"
 }
 
+const initialInventoryFilters: InventoryListFilters = {
+  query: "",
+  category: "all",
+  risk: "all",
+  sort: "updated-desc",
+}
+
+type InventoryFilterDraft = InventoryListFilters & {
+  period: InventoryPeriod
+}
+
+const inventoryRiskOptions: readonly OperationalSelectOption[] = [
+  { value: "all", label: "All risks" },
+  ...Object.entries(riskLabel).map(([value, label]) => ({ value, label })),
+]
+
+const inventoryPeriodOptions: readonly OperationalSelectOption[] = [
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+  { value: "year", label: "Year" },
+]
+
+const inventorySortOptions: readonly OperationalSelectOption[] = [
+  { value: "updated-desc", label: "Recently updated" },
+  { value: "stock-asc", label: "Stock low to high" },
+  { value: "stock-desc", label: "Stock high to low" },
+  { value: "change-asc", label: "Largest decline" },
+  { value: "days-asc", label: "Supply days low to high" },
+]
+
 const formatDate = (value: string, language: string) =>
   new Intl.DateTimeFormat(language === "zh-TW" ? "zh-TW" : "en-US", {
     dateStyle: "medium",
@@ -88,26 +138,6 @@ const useInventoryMovements = (
   }, [productVersion, repository])
   return state
 }
-
-const InventoryKpi = ({
-  label,
-  value,
-  detail,
-}: {
-  label: string
-  value: string | number
-  detail: string
-}) => (
-  <Card size="sm" className="h-full">
-    <CardHeader>
-      <CardTitle className="text-muted-foreground">{label}</CardTitle>
-    </CardHeader>
-    <CardContent>
-      <strong className="text-2xl tabular-nums">{value}</strong>
-      <p className="mt-1 text-xs text-muted-foreground">{detail}</p>
-    </CardContent>
-  </Card>
-)
 
 const MovementBars = ({
   movements,
@@ -336,19 +366,29 @@ const InventoryState = ({ message }: { message: string }) => (
   </GridBlock>
 )
 
+const InventoryFilterField = ({
+  label,
+  children,
+}: {
+  label: string
+  children: ReactNode
+}) => (
+  <div className="grid gap-1.5 text-xs font-medium">
+    <span>{label}</span>
+    {children}
+  </div>
+)
+
 export const InventoryPage = () => {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const { commerce, productRepository, products } = useVoltageAdmin()
   const inventory = useInventoryMovements(productRepository, products.version)
   const [period, setPeriod] = useState<InventoryPeriod>("month")
-  const [filters, setFilters] = useState<InventoryListFilters>({
-    query: "",
-    category: "all",
-    risk: "all",
-    sort: "updated-desc",
-  })
-  const [page, setPage] = useState(1)
+  const [filters, setFilters] = useState<InventoryListFilters>(
+    initialInventoryFilters
+  )
+  const { page, setPage, applyAndReset } = useOperationalPagination()
   const [expandedId, setExpandedId] = useState<number | null>(null)
   const [adjusting, setAdjusting] = useState<Product | null>(null)
   const now = useMemo(() => new Date(), [])
@@ -409,6 +449,25 @@ export const InventoryPage = () => {
       ].sort(),
     [products.products]
   )
+  const categoryOptions = useMemo<readonly OperationalSelectOption[]>(
+    () => [
+      { value: "all", label: t("All categories") },
+      ...categories.map((category) => ({ value: category, label: category })),
+    ],
+    [categories, t]
+  )
+  const localizedRiskOptions = inventoryRiskOptions.map((option) => ({
+    ...option,
+    label: t(option.label),
+  }))
+  const localizedPeriodOptions = inventoryPeriodOptions.map((option) => ({
+    ...option,
+    label: t(option.label),
+  }))
+  const localizedSortOptions = inventorySortOptions.map((option) => ({
+    ...option,
+    label: t(option.label),
+  }))
   const activeRows = rows.filter(({ product }) => product.status !== "archived")
   const hasDataError =
     products.state === "error" ||
@@ -428,9 +487,152 @@ export const InventoryPage = () => {
     key: K,
     value: InventoryListFilters[K]
   ) => {
-    setPage(1)
-    setFilters((current) => ({ ...current, [key]: value }))
+    applyAndReset(() =>
+      setFilters((current) => ({ ...current, [key]: value }))
+    )
   }
+  const updatePeriod = (value: InventoryPeriod) =>
+    applyAndReset(() => setPeriod(value))
+  const applyFilterDraft = (next: InventoryFilterDraft) =>
+    applyAndReset(() => {
+      const { period: nextPeriod, ...nextFilters } = next
+      setPeriod(nextPeriod)
+      setFilters(nextFilters)
+    })
+
+  const resultStart = model.total === 0 ? 0 : (model.page - 1) * PAGE_SIZE + 1
+  const resultEnd = model.total === 0 ? 0 : resultStart + model.items.length - 1
+  const activeFilters: ActiveOperationalFilter[] = []
+  const addActiveFilter = <K extends keyof InventoryListFilters>(
+    id: string,
+    label: string,
+    key: K,
+    resetValue: InventoryListFilters[K]
+  ) =>
+    activeFilters.push({
+      id,
+      label,
+      onRemove: () => updateFilter(key, resetValue),
+    })
+  if (filters.query) {
+    addActiveFilter("query", `${t("Search")}: ${filters.query}`, "query", "")
+  }
+  if (filters.category !== "all") {
+    addActiveFilter(
+      "category",
+      `${t("Category")}: ${filters.category}`,
+      "category",
+      "all"
+    )
+  }
+  if (filters.risk !== "all") {
+    addActiveFilter(
+      "risk",
+      `${t("Risk")}: ${t(riskLabel[filters.risk])}`,
+      "risk",
+      "all"
+    )
+  }
+  if (period !== "month") {
+    activeFilters.push({
+      id: "period",
+      label: `${t("Period")}: ${t(period === "week" ? "Week" : "Year")}`,
+      onRemove: () => updatePeriod("month"),
+    })
+  }
+  if (filters.sort !== "updated-desc") {
+    const sortLabel = localizedSortOptions.find(
+      (option) => option.value === filters.sort
+    )?.label
+    addActiveFilter(
+      "sort",
+      `${t("Sort")}: ${sortLabel ?? filters.sort}`,
+      "sort",
+      "updated-desc"
+    )
+  }
+
+  const clearAllFilters = () =>
+    applyAndReset(() => {
+      setFilters(initialInventoryFilters)
+      setPeriod("month")
+    })
+  const currentDraft: InventoryFilterDraft = { ...filters, period }
+  const desktopEmptyDraft: InventoryFilterDraft = {
+    ...currentDraft,
+    sort: "updated-desc",
+  }
+  const mobileEmptyDraft: InventoryFilterDraft = {
+    ...initialInventoryFilters,
+    query: filters.query,
+    period: "month",
+  }
+
+  const renderFilterFields = (
+    draft: InventoryFilterDraft,
+    setDraft: Dispatch<SetStateAction<InventoryFilterDraft>>,
+    includePrimary: boolean
+  ) => (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      {includePrimary ? (
+        <>
+          <InventoryFilterField label={t("Category")}>
+            <OperationalToolbarSelect
+              label={t("Category")}
+              value={draft.category}
+              options={categoryOptions}
+              className="w-full"
+              onValueChange={(category) =>
+                setDraft((current) => ({ ...current, category }))
+              }
+            />
+          </InventoryFilterField>
+          <InventoryFilterField label={t("Risk")}>
+            <OperationalToolbarSelect
+              label={t("Risk")}
+              value={draft.risk}
+              options={localizedRiskOptions}
+              className="w-full"
+              onValueChange={(risk) =>
+                setDraft((current) => ({
+                  ...current,
+                  risk: risk as InventoryListFilters["risk"],
+                }))
+              }
+            />
+          </InventoryFilterField>
+          <InventoryFilterField label={t("Period")}>
+            <OperationalToolbarSelect
+              label={t("Period")}
+              value={draft.period}
+              options={localizedPeriodOptions}
+              className="w-full"
+              onValueChange={(nextPeriod) =>
+                setDraft((current) => ({
+                  ...current,
+                  period: nextPeriod as InventoryPeriod,
+                }))
+              }
+            />
+          </InventoryFilterField>
+        </>
+      ) : null}
+      <InventoryFilterField label={t("Sort")}>
+        <OperationalToolbarSelect
+          label={t("Sort")}
+          value={draft.sort}
+          options={localizedSortOptions}
+          className="w-full"
+          onValueChange={(sort) =>
+            setDraft((current) => ({
+              ...current,
+              sort: sort as InventoryListFilters["sort"],
+            }))
+          }
+        />
+      </InventoryFilterField>
+    </div>
+  )
 
   return (
     <PageLayout
@@ -442,15 +644,16 @@ export const InventoryPage = () => {
         </Badge>
       }
     >
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <InventoryKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Total units")}
           value={activeRows.reduce((sum, row) => sum + row.product.stock, 0)}
           detail={t("Across active products")}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <InventoryKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
+          tone="critical"
           label={t("Out of stock")}
           value={
             activeRows.filter((row) => row.risks.includes("out_of_stock"))
@@ -459,8 +662,9 @@ export const InventoryPage = () => {
           detail={t("Needs immediate review")}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <InventoryKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
+          tone="warning"
           label={t("Low stock")}
           value={
             activeRows.filter((row) => row.risks.includes("low_stock")).length
@@ -468,8 +672,9 @@ export const InventoryPage = () => {
           detail={t("At or below 12 units")}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <InventoryKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
+          tone="warning"
           label={t("Reorder risk")}
           value={
             activeRows.filter((row) => row.risks.includes("reorder_risk"))
@@ -479,124 +684,143 @@ export const InventoryPage = () => {
         />
       </GridBlock>
       <GridBlock>
-        <Card size="sm">
-          <CardContent className="grid gap-2 pt-1 md:grid-cols-2 xl:grid-cols-6">
-            <label className="relative xl:col-span-2">
-              <Search className="absolute top-2.5 left-2.5 size-4 text-muted-foreground" />
-              <span className="sr-only">{t("Search inventory")}</span>
-              <input
-                type="search"
-                className="h-9 w-full rounded-md border bg-background pr-2 pl-8"
-                placeholder={t("Search title, SKU, brand or category")}
-                value={filters.query}
-                onChange={(event) => updateFilter("query", event.target.value)}
+        <section aria-label={t("Inventory list")}>
+          <OperationalListPanel
+            toolbar={
+              <OperationalFilterToolbar
+                search={
+                  <OperationalToolbarSearch
+                    label={t("Search inventory")}
+                    value={filters.query}
+                    placeholder={t("Search title, SKU, brand or category")}
+                    onChange={(query) => updateFilter("query", query)}
+                  />
+                }
+                primaryFilters={
+                  <>
+                    <OperationalToolbarSelect
+                      label={t("Category")}
+                      value={filters.category}
+                      options={categoryOptions}
+                      onValueChange={(category) =>
+                        updateFilter("category", category)
+                      }
+                    />
+                    <OperationalToolbarSelect
+                      label={t("Risk")}
+                      value={filters.risk}
+                      options={localizedRiskOptions}
+                      onValueChange={(risk) =>
+                        updateFilter(
+                          "risk",
+                          risk as InventoryListFilters["risk"]
+                        )
+                      }
+                    />
+                    <OperationalToolbarSelect
+                      label={t("Period")}
+                      value={period}
+                      options={localizedPeriodOptions}
+                      onValueChange={(nextPeriod) =>
+                        updatePeriod(nextPeriod as InventoryPeriod)
+                      }
+                    />
+                  </>
+                }
+                moreFilter={
+                  <OperationalFilterPopover
+                    value={currentDraft}
+                    emptyValue={desktopEmptyDraft}
+                    onApply={applyFilterDraft}
+                    trigger={
+                      <OperationalFilterButton
+                        kind="more"
+                        label={t("More filters")}
+                        activeCount={
+                          filters.sort === "updated-desc" ? 0 : 1
+                        }
+                      />
+                    }
+                    title={t("More filters")}
+                    labels={{
+                      clear: t("Clear"),
+                      cancel: t("Cancel"),
+                      apply: t("Apply"),
+                    }}
+                  >
+                    {({ draft, setDraft }) =>
+                      renderFilterFields(draft, setDraft, false)
+                    }
+                  </OperationalFilterPopover>
+                }
+                mobileFilter={
+                  <OperationalFilterPopover
+                    value={currentDraft}
+                    emptyValue={mobileEmptyDraft}
+                    onApply={applyFilterDraft}
+                    trigger={
+                      <OperationalFilterButton
+                        kind="filter"
+                        label={t("Filter inventory")}
+                        activeCount={
+                          activeFilters.filter(({ id }) => id !== "query")
+                            .length
+                        }
+                      />
+                    }
+                    title={t("Filter inventory")}
+                    labels={{
+                      clear: t("Clear"),
+                      cancel: t("Cancel"),
+                      apply: t("Apply"),
+                    }}
+                  >
+                    {({ draft, setDraft }) =>
+                      renderFilterFields(draft, setDraft, true)
+                    }
+                  </OperationalFilterPopover>
+                }
               />
-            </label>
-            <select
-              aria-label={t("Category")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.category}
-              onChange={(event) => updateFilter("category", event.target.value)}
-            >
-              <option value="all">{t("All categories")}</option>
-              {categories.map((category) => (
-                <option key={category}>{category}</option>
-              ))}
-            </select>
-            <select
-              aria-label={t("Risk")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.risk}
-              onChange={(event) =>
-                updateFilter(
-                  "risk",
-                  event.target.value as InventoryListFilters["risk"]
-                )
-              }
-            >
-              <option value="all">{t("All risks")}</option>
-              {Object.entries(riskLabel).map(([value, label]) => (
-                <option key={value} value={value}>
-                  {t(label)}
-                </option>
-              ))}
-            </select>
-            <select
-              aria-label={t("Period")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={period}
-              onChange={(event) =>
-                setPeriod(event.target.value as InventoryPeriod)
-              }
-            >
-              <option value="week">{t("Week")}</option>
-              <option value="month">{t("Month")}</option>
-              <option value="year">{t("Year")}</option>
-            </select>
-            <select
-              aria-label={t("Sort")}
-              className="h-9 rounded-md border bg-background px-2"
-              value={filters.sort}
-              onChange={(event) =>
-                updateFilter(
-                  "sort",
-                  event.target.value as InventoryListFilters["sort"]
-                )
-              }
-            >
-              <option value="updated-desc">{t("Recently updated")}</option>
-              <option value="stock-asc">{t("Stock low to high")}</option>
-              <option value="stock-desc">{t("Stock high to low")}</option>
-              <option value="change-asc">{t("Largest decline")}</option>
-              <option value="days-asc">{t("Supply days low to high")}</option>
-            </select>
-          </CardContent>
-          {filters.query ||
-          filters.category !== "all" ||
-          filters.risk !== "all" ? (
-            <div className="flex flex-wrap items-center gap-2 border-t px-3 py-2 text-xs">
-              <span className="text-muted-foreground">
-                {t("Active filters")}
-              </span>
-              {filters.query ? (
-                <Badge variant="secondary">{filters.query}</Badge>
-              ) : null}
-              {filters.category !== "all" ? (
-                <Badge variant="secondary">{filters.category}</Badge>
-              ) : null}
-              {filters.risk !== "all" ? (
-                <Badge variant="secondary">{t(riskLabel[filters.risk])}</Badge>
-              ) : null}
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7"
-                onClick={() => {
-                  setPage(1)
-                  setFilters((current) => ({
-                    ...current,
-                    query: "",
-                    category: "all",
-                    risk: "all",
-                  }))
-                }}
-              >
-                {t("Clear filters")}
-              </Button>
-            </div>
-          ) : null}
-        </Card>
-      </GridBlock>
-      {isDataLoading ? (
-        <InventoryState message={t("Loading inventory…")} />
-      ) : null}
-      {hasDataError ? (
-        <InventoryState message={t("Inventory data is unavailable.")} />
-      ) : null}
-      {isDataReady ? (
-        <GridBlock>
-          <Card size="sm" className="overflow-hidden">
-            <div className="overflow-x-auto">
+            }
+            summary={
+              <ActiveFilterSummary
+                resultLabel={t("Showing {{start}}–{{end}} / {{total}}", {
+                  start: resultStart,
+                  end: resultEnd,
+                  total: model.total,
+                })}
+                filters={activeFilters}
+                clearAllLabel={t("Clear all")}
+                onClearAll={clearAllFilters}
+              />
+            }
+            pagination={
+              isDataReady && model.total > 0 ? (
+                <OperationalPagination
+                  page={model.page}
+                  pageCount={model.pageCount}
+                  ariaLabel={t("Inventory pagination")}
+                  previousLabel={t("Previous page")}
+                  nextLabel={t("Next page")}
+                  onPageChange={setPage}
+                />
+              ) : undefined
+            }
+          >
+            {isDataLoading ? (
+              <OperationalListState kind="loading">
+                {t("Loading inventory…")}
+              </OperationalListState>
+            ) : hasDataError ? (
+              <OperationalListState kind="error">
+                {t("Inventory data is unavailable.")}
+              </OperationalListState>
+            ) : model.total === 0 ? (
+              <OperationalListState kind="empty">
+                {t("No inventory matches the current filters.")}
+              </OperationalListState>
+            ) : (
+              <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] text-left text-sm">
                 <thead className="border-b bg-muted/60 text-xs text-muted-foreground">
                   <tr>
@@ -645,41 +869,11 @@ export const InventoryPage = () => {
                   })}
                 </tbody>
               </table>
-            </div>
-            {model.total === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
-                {t("No inventory matches the current filters.")}
               </div>
-            ) : null}
-            <footer className="flex items-center justify-between border-t p-3 text-sm">
-              <span>{t("{{count}} results", { count: model.total })}</span>
-              <div className="flex items-center gap-2">
-                <Button
-                  size="icon"
-                  variant="outline"
-                  disabled={model.page <= 1}
-                  onClick={() => setPage((value) => value - 1)}
-                  aria-label={t("Previous page")}
-                >
-                  <ChevronLeft />
-                </Button>
-                <span>
-                  {model.page} / {model.pageCount}
-                </span>
-                <Button
-                  size="icon"
-                  variant="outline"
-                  disabled={model.page >= model.pageCount}
-                  onClick={() => setPage((value) => value + 1)}
-                  aria-label={t("Next page")}
-                >
-                  <ChevronRight />
-                </Button>
-              </div>
-            </footer>
-          </Card>
-        </GridBlock>
-      ) : null}
+            )}
+          </OperationalListPanel>
+        </section>
+      </GridBlock>
       {adjusting ? (
         <InventoryAdjustmentDialog
           product={adjusting}
@@ -940,22 +1134,22 @@ export const InventoryDetailPage = () => {
         </>
       }
     >
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <InventoryKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Current stock")}
           value={product.stock}
           detail={product.sku}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <InventoryKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Period change")}
           value={`${summary.netChange > 0 ? "+" : ""}${summary.netChange}`}
           detail={`${summary.openingStock} → ${summary.closingStock}`}
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <InventoryKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Average daily sales")}
           value={
             sales.unitsPerDay === null ? "—" : sales.unitsPerDay.toFixed(2)
@@ -967,8 +1161,8 @@ export const InventoryDetailPage = () => {
           }
         />
       </GridBlock>
-      <GridBlock className="col-span-6 lg:col-span-3">
-        <InventoryKpi
+      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+        <OperationalMetricCard
           label={t("Supply days")}
           value={
             risk.estimatedDaysOfSupply === null

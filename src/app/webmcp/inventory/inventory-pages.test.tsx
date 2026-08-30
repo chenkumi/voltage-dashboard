@@ -69,6 +69,42 @@ describe("inventory pages", () => {
     render(<RouterProvider router={router} />)
 
     expect(await screen.findByText("Total units")).toBeTruthy()
+    await waitFor(
+      () => {
+        const totalCard = screen
+          .getByText("Total units")
+          .closest("[data-slot='card']")
+        expect(totalCard?.querySelector("strong")?.textContent).toBe("9779")
+      },
+      { timeout: 5_000 }
+    )
+    for (const [label, value, detail, tone] of [
+      [
+        "Total units",
+        "9779",
+        "Across active products",
+        "before:bg-muted-foreground/45",
+      ],
+      [
+        "Out of stock",
+        "4",
+        "Needs immediate review",
+        "before:bg-destructive",
+      ],
+      ["Low stock", "29", "At or below 12 units", "before:bg-amber-500"],
+      [
+        "Reorder risk",
+        "0",
+        "21 days of supply or less",
+        "before:bg-amber-500",
+      ],
+    ] as const) {
+      const card = screen.getByText(label).closest("[data-slot='card']")
+      expect(card).not.toBeNull()
+      expect(card?.className).toContain(tone)
+      expect(within(card as HTMLElement).getByText(detail)).toBeTruthy()
+      expect(card?.querySelector("strong")?.textContent).toBe(value)
+    }
     expect(
       screen.getByRole("searchbox", { name: "Search inventory" })
     ).toBeTruthy()
@@ -76,7 +112,9 @@ describe("inventory pages", () => {
       screen.getByRole("searchbox", { name: "Search inventory" }),
       "no-such-inventory-item"
     )
-    expect(await screen.findByText("Active filters")).toBeTruthy()
+    expect(
+      await screen.findByText("Search: no-such-inventory-item")
+    ).toBeTruthy()
     expect(
       await screen.findByText(
         "No inventory matches the current filters.",
@@ -84,7 +122,7 @@ describe("inventory pages", () => {
         { timeout: 5_000 }
       )
     ).toBeTruthy()
-    await user.click(screen.getByRole("button", { name: "Clear filters" }))
+    await user.click(screen.getByRole("button", { name: "Clear all" }))
     await user.click(
       await screen.findByRole(
         "button",
@@ -99,14 +137,16 @@ describe("inventory pages", () => {
         }) as HTMLButtonElement
       ).disabled
     ).toBe(false)
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Period" }),
-      "year"
-    )
+    await user.click(screen.getByRole("combobox", { name: "Period" }))
+    await user.click(screen.getByRole("option", { name: "Year" }))
+    expect(screen.getAllByText("Period: Year").length).toBeGreaterThan(0)
     expect(
-      (screen.getByRole("combobox", { name: "Period" }) as HTMLSelectElement)
-        .value
-    ).toBe("year")
+      (
+        screen.getByRole("button", {
+          name: "Previous page",
+        }) as HTMLButtonElement
+      ).disabled
+    ).toBe(true)
     const quickViewButtons = await screen.findAllByRole(
       "button",
       { name: /Quick view/ },
@@ -161,6 +201,59 @@ describe("inventory pages", () => {
       ).toBeTruthy()
     )
     expect(await screen.findByText("Cycle count")).toBeTruthy()
+  })
+
+  it("applies sort from More and all mobile inventory filters", async () => {
+    const router = createMemoryRouter([{ path: "*", element: <App /> }], {
+      initialEntries: ["/inventory"],
+    })
+    const user = userEvent.setup()
+    render(<RouterProvider router={router} />)
+
+    expect(await screen.findByText("Total units")).toBeTruthy()
+    await screen.findByRole("button", { name: "Next page" }, { timeout: 5_000 })
+    await user.click(screen.getByRole("button", { name: "More filters" }))
+    let popover = document.querySelector<HTMLElement>(
+      '[data-slot="popover-content"]'
+    )
+    expect(popover).toBeTruthy()
+    await user.click(within(popover!).getByRole("combobox", { name: "Sort" }))
+    await user.click(
+      await screen.findByRole("option", { name: "Stock low to high" })
+    )
+    await user.click(within(popover!).getByRole("button", { name: "Apply" }))
+    expect(screen.getByText("Sort: Stock low to high")).toBeTruthy()
+
+    await user.click(screen.getByRole("button", { name: "Filter inventory" }))
+    popover = document.querySelector<HTMLElement>(
+      '[data-slot="popover-content"]'
+    )
+    expect(popover).toBeTruthy()
+    await user.click(
+      within(popover!).getByRole("combobox", { name: "Category" })
+    )
+    await user.keyboard("b{Enter}")
+    await user.click(within(popover!).getByRole("combobox", { name: "Risk" }))
+    await user.keyboard("{ArrowDown}{Enter}")
+    await user.click(
+      within(popover!).getByRole("combobox", { name: "Period" })
+    )
+    await user.click(screen.getByRole("option", { name: "Year" }))
+    await user.click(within(popover!).getByRole("button", { name: "Apply" }))
+
+    expect(
+      screen.getByRole("button", { name: /^Category: .+ remove$/ })
+    ).toBeTruthy()
+    expect(
+      screen.getByRole("button", { name: /^Risk: .+ remove$/ })
+    ).toBeTruthy()
+    expect(screen.getAllByText("Period: Year").length).toBeGreaterThan(0)
+    expect(screen.getAllByText("Sort: Stock low to high").length).toBeGreaterThan(
+      0
+    )
+    await user.click(screen.getByRole("button", { name: "Clear all" }))
+    expect(screen.queryByText("Period: Year")).toBeNull()
+    expect(screen.queryByText("Sort: Stock low to high")).toBeNull()
   })
 
   it("shows a safe not-found state for an unknown inventory route", async () => {
