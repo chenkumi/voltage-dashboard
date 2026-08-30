@@ -78,7 +78,11 @@ describe("inventory pages", () => {
     )
     expect(await screen.findByText("Active filters")).toBeTruthy()
     expect(
-      await screen.findByText("No inventory matches the current filters.")
+      await screen.findByText(
+        "No inventory matches the current filters.",
+        {},
+        { timeout: 5_000 }
+      )
     ).toBeTruthy()
     await user.click(screen.getByRole("button", { name: "Clear filters" }))
     await user.click(

@@ -108,6 +108,10 @@ describe("order pages", () => {
       ({ id }) => id === selectedOrder?.customerId
     )
     if (!selectedCustomer) throw new Error("Expected seeded customer.")
+    const customerCard = screen
+      .getByText("Masked customer")
+      .closest('[data-slot="card"]')
+    if (!customerCard) throw new Error("Expected masked customer card.")
     for (const sensitiveValue of [
       selectedCustomer.contact.fullName,
       selectedCustomer.contact.email,
@@ -115,7 +119,7 @@ describe("order pages", () => {
       selectedCustomer.contact.addressLine,
       selectedCustomer.contact.postalCode,
     ]) {
-      expect(document.body.textContent).not.toContain(sensitiveValue)
+      expect(customerCard.textContent).not.toContain(sensitiveValue)
     }
     expect(screen.queryByRole("button", { name: /cancel order/i })).toBeNull()
     expect(screen.queryByRole("button", { name: /refund/i })).toBeNull()

@@ -47,6 +47,8 @@ type CommerceRepositoryOptions = {
   createId?: () => string
 }
 
+const COMMERCE_SEED_VERSION = 2
+
 export class CommerceRepositoryError extends Error {
   readonly code:
     | "CUSTOMER_NOT_FOUND"
@@ -177,6 +179,22 @@ export class CommerceRepository {
         if (metadata) {
           this.assertValidMetadata(metadata)
           existingDatabase = true
+          if (metadata.version < COMMERCE_SEED_VERSION) {
+            await Promise.all([
+              this.database.orders.bulkPut(this.seed.orders.map(clone)),
+              this.database.orderLines.bulkPut(
+                this.seed.orderLines.map(clone)
+              ),
+              this.database.activities.bulkPut(
+                this.seed.activities.map(clone)
+              ),
+            ])
+            await this.database.metadata.put({
+              ...metadata,
+              version: COMMERCE_SEED_VERSION,
+            })
+            inserted = true
+          }
           return
         }
         const counts = await Promise.all([
@@ -206,7 +224,7 @@ export class CommerceRepository {
         }
         await this.database.metadata.put({
           key: "commerce-seed",
-          version: 1,
+          version: COMMERCE_SEED_VERSION,
           initializedAt: this.getTimestamp(),
         })
       }
@@ -593,7 +611,7 @@ export class CommerceRepository {
     if (
       !isRecord(value) ||
       value.key !== "commerce-seed" ||
-      value.version !== 1 ||
+      ![1, COMMERCE_SEED_VERSION].includes(value.version as number) ||
       typeof value.initializedAt !== "string" ||
       !Number.isFinite(Date.parse(value.initializedAt)) ||
       new Date(Date.parse(value.initializedAt)).toISOString() !==

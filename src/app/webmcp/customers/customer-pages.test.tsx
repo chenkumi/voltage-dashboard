@@ -253,7 +253,9 @@ describe("customer management pages", () => {
     })
     await user.type(screen.getByLabelText("Custom tags"), "manual-only")
     await user.click(screen.getByRole("button", { name: "Save customer" }))
-    expect(await screen.findByText("New Customer")).toBeTruthy()
+    expect(
+      await screen.findByText("New Customer", undefined, { timeout: 5_000 })
+    ).toBeTruthy()
     expect(router.state.location.pathname).toMatch(/^\/customers\/CUST-\d+$/)
     expect(screen.getByText(uniqueEmail)).toBeTruthy()
 

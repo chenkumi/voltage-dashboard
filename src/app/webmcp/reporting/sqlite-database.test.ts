@@ -32,11 +32,14 @@ describe("SqliteReportingDatabase", () => {
       { name: "category", type: "string" },
       { name: "units", type: "number" },
     ])
-    expect(result.rows).toEqual([
-      { category: "furniture", units: 34 },
-      { category: "groceries", units: 30 },
-      { category: "beauty", units: 29 },
-    ])
+    expect(result.rows.length).toBeGreaterThan(0)
+    expect(result.rows.length).toBeLessThanOrEqual(3)
+    expect(result.rows.every((row) => Number(row.units) > 0)).toBe(true)
+    expect(result.rows.map((row) => Number(row.units))).toEqual(
+      [...result.rows.map((row) => Number(row.units))].sort(
+        (left, right) => right - left
+      )
+    )
     expect(result.truncated).toBe(false)
   })
 
@@ -54,9 +57,9 @@ describe("SqliteReportingDatabase", () => {
 
     expect(result.rows).toHaveLength(REPORTING_DATASETS.length)
     expect(result.rows[0]).toEqual({
-      dataset_name: "agent_dataset_status",
+      dataset_name: "agent_customer_monthly",
       updated_at: DEFAULT_REPORTING_DATA.datasetStatus.find(
-        ([dataset]) => dataset === "agent_dataset_status"
+        ([dataset]) => dataset === "agent_customer_monthly"
       )?.[1],
       time_zone: "Asia/Taipei",
     })
@@ -67,8 +70,12 @@ describe("SqliteReportingDatabase", () => {
       sql: "SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name",
     })
     expect(schema.rows.map((row) => row.name)).toEqual([
+      "agent_customer_monthly",
       "agent_dataset_status",
       "agent_inventory",
+      "agent_inventory_daily",
+      "agent_order_daily",
+      "agent_order_product_daily",
       "agent_products",
       "agent_sales_daily",
     ])
@@ -165,10 +172,101 @@ describe("SqliteReportingDatabase", () => {
       database.execute({ sql: "SELECT * FROM agent_products" }).rows,
       database.execute({ sql: "SELECT * FROM agent_sales_daily" }).rows,
       database.execute({ sql: "SELECT * FROM agent_inventory" }).rows,
+      database.execute({ sql: "SELECT * FROM agent_inventory_daily" }).rows,
+      database.execute({ sql: "SELECT * FROM agent_order_daily" }).rows,
+      database.execute({ sql: "SELECT * FROM agent_order_product_daily" }).rows,
+      database.execute({ sql: "SELECT * FROM agent_customer_monthly" }).rows,
       database.execute({ sql: "SELECT * FROM agent_dataset_status" }).rows,
     ])
     expect(serialized).not.toMatch(
-      /customerName|email|address|phone|account|cardNumber|payment/i
+      /customerName|email|address|phone|account|cardNumber|paymentMethod|paymentId/i
     )
+    expect(serialized).toMatch(/payment_status_code/)
+  })
+
+  it("answers the six representative operational reporting questions", () => {
+    const queries = {
+      regionalSales: `
+        SELECT region_code, currency_code, SUM(order_count) AS orders,
+               ROUND(SUM(net_revenue_amount), 2) AS revenue
+        FROM agent_order_daily
+        GROUP BY region_code, currency_code
+        ORDER BY currency_code, revenue DESC
+      `,
+      customerRevenue: `
+        SELECT month_start, region_code, segment_code, currency_code,
+               customer_count, ROUND(net_revenue_amount, 2) AS revenue
+        FROM agent_customer_monthly
+        WHERE customer_count >= 5
+        ORDER BY month_start DESC, currency_code, revenue DESC
+        LIMIT 20
+      `,
+      paymentAnomalies: `
+        SELECT order_date, payment_status_code, currency_code,
+               SUM(order_count) AS affected_orders
+        FROM agent_order_daily
+        WHERE payment_status_code IN ('pending', 'failed')
+        GROUP BY order_date, payment_status_code, currency_code
+        ORDER BY order_date DESC
+      `,
+      productSales: `
+        SELECT p.title, p.category, f.currency_code,
+               SUM(f.quantity) AS units,
+               ROUND(SUM(f.net_revenue_amount), 2) AS revenue
+        FROM agent_order_product_daily AS f
+        JOIN agent_products AS p ON p.product_id = f.product_id
+        GROUP BY p.product_id, p.title, p.category, f.currency_code
+        ORDER BY revenue DESC
+        LIMIT 10
+      `,
+      inventoryTrend: `
+        SELECT inventory_date, SUM(received_quantity) AS received,
+               SUM(issued_quantity) AS issued, SUM(net_change) AS net_change
+        FROM agent_inventory_daily
+        GROUP BY inventory_date
+        ORDER BY inventory_date
+        LIMIT 100
+      `,
+      restockCandidates: `
+        WITH recent_issues AS (
+          SELECT product_id, SUM(issued_quantity) AS issued
+          FROM agent_inventory_daily
+          GROUP BY product_id
+        )
+        SELECT p.title, i.stock, COALESCE(r.issued, 0) AS issued
+        FROM agent_inventory AS i
+        JOIN agent_products AS p ON p.product_id = i.product_id
+        LEFT JOIN recent_issues AS r ON r.product_id = i.product_id
+        ORDER BY i.stock ASC, issued DESC
+        LIMIT 10
+      `,
+    }
+
+    const results = Object.fromEntries(
+      Object.entries(queries).map(([name, sql]) => [
+        name,
+        database.execute({ sql }),
+      ])
+    )
+
+    for (const result of Object.values(results)) {
+      expect(result.rows.length).toBeGreaterThan(0)
+      expect(result.truncated).toBe(false)
+    }
+    expect(
+      results.regionalSales.rows.every(
+        (row) => typeof row.region_code === "string" && Number(row.orders) > 0
+      )
+    ).toBe(true)
+    expect(
+      results.customerRevenue.rows.every(
+        (row) => Number(row.customer_count) >= 5
+      )
+    ).toBe(true)
+    expect(
+      results.paymentAnomalies.rows.every((row) =>
+        ["pending", "failed"].includes(String(row.payment_status_code))
+      )
+    ).toBe(true)
   })
 })

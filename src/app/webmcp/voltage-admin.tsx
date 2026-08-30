@@ -94,6 +94,14 @@ const noInput = schema({})
 const isAbortError = (error: unknown) =>
   error instanceof Error && error.name === "AbortError"
 
+const operationalReportingVersion = (
+  productVersion: number,
+  commerceVersion: number
+) => {
+  const sum = productVersion + commerceVersion
+  return (sum * (sum + 1)) / 2 + commerceVersion
+}
+
 // Route utilities are shared by the nested route layout and WebMCP provider.
 // eslint-disable-next-line react-refresh/only-export-components
 export const isVoltageAdminView = (value: unknown): value is VoltageAdminView =>
@@ -373,16 +381,29 @@ export const VoltageAdminProvider = () => {
   }, [location.pathname])
 
   useEffect(() => {
-    return productRepository.subscribe(async (mutation) => {
-      const currentProducts = await productRepository.list({
-        includeArchived: true,
+    if (products.state !== "ready" || commerce.state !== "ready") return
+    let cancelled = false
+    void productRepository
+      .listInventoryMovements()
+      .then((movements) => {
+        if (cancelled) return
+        return reportingController.prepare(
+          createReportingDataSnapshot({
+            products: products.products,
+            inventoryMovements: movements,
+            commerce,
+          }),
+          operationalReportingVersion(products.version, commerce.version)
+        )
       })
-      await reportingController.prepare(
-        createReportingDataSnapshot(currentProducts),
-        mutation.version
-      )
-    })
-  }, [productRepository, reportingController])
+      .catch((error) => {
+        if (!cancelled)
+          console.error("Operational reporting refresh failed.", error)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [commerce, productRepository, products, reportingController])
 
   useEffect(() => {
     void productStore.initialize()
@@ -401,13 +422,22 @@ export const VoltageAdminProvider = () => {
   }, [operationsController, reportingController])
 
   const prepareProvider = useCallback(async () => {
-    await productStore.initialize()
-    const snapshot = productStore.getSnapshot()
+    await Promise.all([productStore.initialize(), commerceStore.initialize()])
+    const productSnapshot = productStore.getSnapshot()
+    const commerceSnapshot = commerceStore.getSnapshot()
+    const movements = await productRepository.listInventoryMovements()
     await reportingController.prepare(
-      createReportingDataSnapshot(snapshot.products),
-      productRepository.getVersion()
+      createReportingDataSnapshot({
+        products: productSnapshot.products,
+        inventoryMovements: movements,
+        commerce: commerceSnapshot,
+      }),
+      operationalReportingVersion(
+        productSnapshot.version,
+        commerceSnapshot.version
+      )
     )
-  }, [productRepository, productStore, reportingController])
+  }, [commerceStore, productRepository, productStore, reportingController])
 
   const getNavigationState = useCallback(() => {
     const historyIndex = window.history.state?.idx

@@ -30,6 +30,7 @@ export class ProductStore {
 
   initialize() {
     this.connect()
+    if (this.snapshot.state === "ready") return Promise.resolve()
     if (this.loadPromise) return this.loadPromise
     this.loadPromise = this.load()
     return this.loadPromise

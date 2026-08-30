@@ -17,31 +17,35 @@ const skills = [
     name: "voltage-admin-order-safety",
     description:
       "用途：說明匿名訂單查閱的安全邊界。何時呼叫：詢問訂單處理或客戶資料限制時。觸發例子：「訂單怎麼處理」、「取消訂單」、「客戶資料」、「付款狀態」。不該呼叫：僅需商品庫存時。",
-    text: "使用 search_orders 依訂單編號與安全營運維度查詢，使用 get_order_detail 讀取匿名明細，需人工檢視時才使用 open_order_detail。query 只能是訂單編號。固定付款結果狀態碼 paid、pending、failed、refunded 可作為篩選與回傳維度；不得接受或回傳付款方式、卡號、token、授權碼、帳戶資訊、姓名、Email、地址或電話。不得以任何 WebMCP tool 建立、確認、取消、退款或變更訂單。",
+    text: "使用 search_orders 依訂單編號與安全營運維度查詢，使用 get_order_detail 讀取匿名明細，需人工檢視時才使用 open_order_detail。query 只能是訂單編號。跨日期、區域、客群、狀態或幣別分析改用 agent_order_daily；商品交叉分析用 agent_order_product_daily，兩者皆不含訂單 ID。固定付款結果狀態碼 paid、pending、failed、refunded 可作為篩選與回傳維度；不得接受或回傳付款方式、卡號、token、授權碼、帳戶資訊、姓名、Email、地址或電話。不得以任何 WebMCP tool 建立、確認、取消、退款或變更訂單。",
   },
   {
     name: "voltage-admin-customer-analytics",
     description:
       "用途：查詢匿名客群統計與開啟安全篩選頁。何時呼叫：分析區域、客群、狀態或活動期間。觸發例子：「南區 VIP 統計」、「近 90 天客群」。不該呼叫：查詢個別客戶或要求修改客戶時。",
-    text: "get_customer_analytics 只接受 status、segment、region、period 與 groupBy，且只回傳至少 5 人的群組統計；小群組會抑制。open_customer_analysis 只把 status、segment、region、period 寫入 Customers 頁面的安全 query filters。不得傳入客戶 ID、姓名、Email、電話、地址、備註或任意標籤；新增、編輯、停權、復權與備註都由使用者在 UI 完成。",
+    text: "get_customer_analytics 只接受 status、segment、region、period 與 groupBy，且只回傳至少 5 人的群組統計；小群組會抑制。跨月份與營收分析使用 agent_customer_monthly，並按 currency_code 分組；other/suppressed 代表合併後的安全小群組，不可反推成個人。open_customer_analysis 只把 status、segment、region、period 寫入 Customers 頁面的安全 query filters。不得傳入客戶 ID、姓名、Email、電話、地址、備註或任意標籤；新增、編輯、停權、復權與備註都由使用者在 UI 完成。",
   },
   {
     name: "voltage-sales-data",
     description:
-      "用途：理解商品與每日銷售資料的粒度、單位、期間及 join 規則。何時呼叫：分析營收、銷量、品類或趨勢前。觸發例子：「本週營收」、「前三分類」、「每日趨勢」。不該呼叫：只需修改單一商品庫存時。",
+      "用途：理解匿名營運報表的八個資料集、粒度、幣別與 join 規則。何時呼叫：分析區域營收、客群、付款異常、商品銷售或趨勢前。觸發例子：「各區營收」、「失敗付款訂單」、「VIP 客群營收」。不該呼叫：查詢個別客戶或付款識別時。",
     text: `# Voltage sales data
 
 ## agent_products
 
 每列代表 Product Repository 目前的一個商品，包含 draft、published、archived。\`product_id\` 是商品鍵；\`title\` 與 \`category\` 是非個人的 curated 商品文字；\`price_amount\` 與 \`currency_code\` 保存商品原生價格；\`product_status\` 是商品狀態。只有 USD 商品的 \`price_usd\` 有值，TWD 商品為 NULL，不得自行推測匯率。
 
-## agent_sales_daily
+## 每日訂單與銷售 facts
 
-每列代表「銷售日期 × 商品」的每日彙總。\`sale_date\` 採 \`Asia/Taipei\` 日曆日期；\`product_id\` 可多對一連接 \`agent_products.product_id\`；\`quantity\` 單位為件；\`net_revenue_usd\` 是折扣後、不含運費的淨營收，單位為 USD。
+\`agent_sales_daily\` 的粒度是「銷售日期 × 商品 × 幣別」；\`agent_order_daily\` 每列是「日期 × 區域 × 客群 × 訂單狀態 × 付款結果狀態 × 履約狀態 × 幣別」；\`agent_order_product_daily\` 再增加商品維度。sales 與 order-product 來自同一批訂單明細，不可把兩表直接相乘 join。需要商品標題或分類時，才以 \`product_id\` join \`agent_products\`。
 
-目前 demo 銷售資料涵蓋 2026-08-21 至 2026-08-27。實際查詢前仍須讀取 \`agent_dataset_status\`，以其中的期間、時區、更新時間與完整度為準。
+\`net_revenue_amount\` 是原生幣別金額，必須連同 \`currency_code\` group；禁止跨 USD、TWD 加總。只有 USD 列的 \`net_revenue_usd\` 有值，非 USD 為 NULL，不得自行推測匯率。固定 \`payment_status_code\` paid、pending、failed、refunded 只代表營運結果，不是付款方式或付款識別。
 
-只在需要商品標題或分類時 join \`agent_products\`。不得將 \`agent_sales_daily\` 直接和具有不同粒度的每日快照做多對多 join。比較兩個期間時使用相同天數，並標示不完整資料。這些 curated tables 不包含個資、帳戶識別或付款資料。`,
+## agent_customer_monthly
+
+每列是「月份 × 區域 × 客群 × 客戶狀態 × 幣別」的匿名群組，\`customer_count\` 至少為 5；較小群組只會併入 other/suppressed 或不提供。不得反查、推斷或要求個別客戶。
+
+分析前先查 \`agent_dataset_status\` 的實際期間、\`Asia/Taipei\` 時區、更新時間與完整度。商品、庫存、訂單或客戶安全資料變更都會重建 reporting context，舊 queryId、報表與證據隨即失效。八個 curated tables 不含姓名、Email、電話、地址、備註、客戶／訂單 ID、帳戶或付款識別。`,
   },
   {
     name: "voltage-inventory-data",
@@ -51,7 +55,13 @@ const skills = [
 
 ## agent_inventory
 
-每列代表 Product Repository 中一個商品的目前庫存快照。\`product_id\` 是商品鍵，可一對一連接 \`agent_products.product_id\`；\`stock\` 單位為件且不得為負數；\`updated_at\` 是 ISO 8601 更新時間。查詢時應以 \`agent_dataset_status\` 的動態狀態為準；商品變更會重建目前 reporting context，使先前 queryId 失效。
+每列代表 Product Repository 中一個商品的目前庫存快照。\`product_id\` 是商品鍵，可一對一連接 \`agent_products.product_id\`；\`stock\` 單位為件且不得為負數；\`updated_at\` 是 ISO 8601 更新時間。
+
+## agent_inventory_daily
+
+每列是「日期 × 商品」的庫存彙總，包含 opening/closing stock、received/issued quantity、reconciliation delta 與 net change。它由安全的異動投影產生，不含異動 ID、來源或備註。趨勢與補貨分析先按商品和期間聚合 daily facts，再一對一 join 目前庫存；不可重複加總 current stock。
+
+查詢時先讀 \`agent_dataset_status\`；任何商品或庫存安全資料變更都會重建 reporting context，使舊 queryId 失效。
 
 低庫存門檻不是資料本身的固定業務規則；分析時要明確揭露採用的門檻。\`stock = 0\` 應與低庫存分開呈現。若要搭配近期銷量，先將 \`agent_sales_daily\` 聚合成每個 \`product_id\` 一列，再與 inventory 一對一連接；禁止把庫存快照直接連到多日銷售明細後加總 stock，避免多對多或重複計算。
 
@@ -65,7 +75,7 @@ const skills = [
       "用途：規劃可追溯且可由使用者繼續編輯的營運報表。何時呼叫：開始製作或修改報表前。觸發例子：「做本週營運報表」、「修改既有報表」、「加入證據摘要」。不該呼叫：只需回答單一資料問題時。",
     text: `# Voltage report authoring
 
-開始分析前先查詢 \`agent_dataset_status\`。每個結論都要引用實際查詢證據，並清楚標示資料期間、\`Asia/Taipei\` 時區、更新時間、完整度及查詢結果是否截斷。資料不足或結果截斷時，不得把結果描述為完整分析。
+開始分析前先查詢 \`agent_dataset_status\`。每個結論都要引用實際查詢證據，並清楚標示資料期間、\`Asia/Taipei\` 時區、更新時間、完整度及查詢結果是否截斷。資料不足或結果截斷時，不得把結果描述為完整分析。金額必須依 \`currency_code\` 分開聚合；非 USD 的 \`net_revenue_usd\` 為 NULL，不得跨幣別填補或加總。
 
 SQL 負責探索與聚合資料；本 skill 負責報表品質與語意。只有在目前頁面實際 discovery 到報表建立或編輯 tools 時才能使用它們；未 discovery 到時，不得宣稱已建立 Report Canvas、已保存 query result 或已修改報表。
 

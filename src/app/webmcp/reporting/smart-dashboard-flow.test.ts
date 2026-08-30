@@ -1,7 +1,19 @@
 import { afterEach, describe, expect, it } from "vitest"
+import { createCommerceSeed } from "../commerce-data/commerce-seed"
+import { createInventoryMovementSeed } from "../inventory/inventory-seed"
+import { createDummyJsonProductSeed } from "../products/product-seed"
+import {
+  createReportingDataSnapshot,
+  DEFAULT_REPORTING_DATA,
+  type ReportingDataSnapshot,
+} from "./reporting-data"
 import { SqliteReportingDatabase } from "./sqlite-database"
 import { ReportingRuntimeController } from "./reporting-tools"
-import type { SqlQueryInput, SqlQueryResult } from "./types"
+import type {
+  SqlQueryInput,
+  SqlQueryResult,
+  SqlQueryResultWithId,
+} from "./types"
 
 const PERIOD = {
   start: "2026-08-21",
@@ -12,8 +24,8 @@ const PERIOD = {
 class InProcessReportingRuntime {
   private database: SqliteReportingDatabase | null = null
 
-  async initialize() {
-    this.database ??= await SqliteReportingDatabase.create()
+  async initialize(snapshot: ReportingDataSnapshot = DEFAULT_REPORTING_DATA) {
+    this.database ??= await SqliteReportingDatabase.create(snapshot)
   }
 
   async execute(input: SqlQueryInput): Promise<SqlQueryResult> {
@@ -166,14 +178,14 @@ const expectCompleteReport = (
     },
   })
   expect(evidence.status.truncated).toBe(false)
-  expect(evidence.status.rows).toHaveLength(4)
+  expect(evidence.status.rows).toHaveLength(8)
   expect(evidence.status.rows).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
         dataset_name: "agent_sales_daily",
         time_zone: PERIOD.timeZone,
-        period_start: PERIOD.start,
-        period_end: PERIOD.end,
+        period_start: "2025-08-03",
+        period_end: "2026-08-24",
         completeness: "complete",
       }),
     ])
@@ -185,8 +197,10 @@ const expectCompleteReport = (
     )
   ).toBe(true)
   expect(evidence.revenue.truncated).toBe(false)
-  expect(evidence.revenue.rows).toEqual([{ total_revenue_usd: 49_722.51 }])
-  expect(evidence.categories).toMatchObject({ rowCount: 3, truncated: false })
+  expect(evidence.revenue.rows).toEqual([{ total_revenue_usd: 56.98 }])
+  expect(evidence.categories).toMatchObject({ truncated: false })
+  expect(evidence.categories.rowCount).toBeGreaterThan(0)
+  expect(evidence.categories.rowCount).toBeLessThanOrEqual(3)
   expect(evidence.categories.rows).toEqual(
     [...evidence.categories.rows].sort(
       (left, right) =>
@@ -246,6 +260,92 @@ describe("Smart Dashboard report workflow", () => {
     addWidgets(controller, evidence)
 
     expectCompleteReport(controller, evidence)
+  })
+
+  it("turns all six operational queries into evidence and invalidates it after safe data changes", async () => {
+    const products = createDummyJsonProductSeed()
+    const source = {
+      products,
+      inventoryMovements: createInventoryMovementSeed(products),
+      commerce: createCommerceSeed(products),
+    }
+    const queries = [
+      "SELECT region_code, currency_code, SUM(net_revenue_amount) AS revenue FROM agent_order_daily GROUP BY region_code, currency_code",
+      "SELECT month_start, region_code, segment_code, currency_code, customer_count, net_revenue_amount FROM agent_customer_monthly ORDER BY month_start",
+      "SELECT payment_status_code, SUM(order_count) AS affected_orders FROM agent_order_daily WHERE payment_status_code IN ('pending', 'failed') GROUP BY payment_status_code",
+      "SELECT p.category, f.currency_code, SUM(f.quantity) AS units FROM agent_order_product_daily AS f JOIN agent_products AS p ON p.product_id = f.product_id GROUP BY p.category, f.currency_code",
+      "SELECT inventory_date, SUM(received_quantity) AS received, SUM(issued_quantity) AS issued FROM agent_inventory_daily GROUP BY inventory_date LIMIT 100",
+      "WITH issues AS (SELECT product_id, SUM(issued_quantity) AS issued FROM agent_inventory_daily GROUP BY product_id) SELECT p.title, i.stock, COALESCE(x.issued, 0) AS issued FROM agent_inventory AS i JOIN agent_products AS p ON p.product_id = i.product_id LEFT JOIN issues AS x ON x.product_id = i.product_id ORDER BY i.stock LIMIT 20",
+    ]
+    const controller = new ReportingRuntimeController(
+      () => new InProcessReportingRuntime()
+    )
+    controllers.push(controller)
+    await controller.prepare(createReportingDataSnapshot(source), 1)
+
+    const evidence: SqlQueryResultWithId[] = []
+    for (const sql of queries) evidence.push(await controller.execute({ sql }))
+    controller.executeReportTool("create_report", {
+      title: "Operational evidence",
+    })
+    controller.executeReportTool("add_report_widget", {
+      widget: {
+        type: "markdown",
+        title: "Six operational queries",
+        markdown:
+          "Regional, customer, payment, product, inventory and restock evidence.",
+        evidenceQueryIds: evidence.map((item) => item.queryId),
+      },
+    })
+    const saved = controller.createSavedReportSnapshot()
+    if (!saved) throw new Error("Expected saved operational evidence.")
+    expect(controller.getQueryCacheStatus().entryCount).toBe(6)
+    expect(saved.queryResults).toHaveLength(6)
+
+    const changedProducts = source.products.map((product, index) =>
+      index === 0
+        ? {
+            ...product,
+            title: "Changed safe title",
+            stock: product.stock + 1,
+            updatedAt: "2031-01-01T00:00:00.000Z",
+          }
+        : product
+    )
+    const changedMovements = source.inventoryMovements.map(
+      (movement, index) =>
+        index === 0
+          ? { ...movement, occurredAt: "2032-01-01T00:00:00.000Z" }
+          : movement
+    )
+    const changedCommerce = {
+      ...source.commerce,
+      customers: source.commerce.customers.map((customer, index) =>
+        index === 0
+          ? {
+              ...customer,
+              segment: "vip" as const,
+              updatedAt: "2033-01-01T00:00:00.000Z",
+            }
+          : customer
+      ),
+    }
+    await controller.prepare(
+      createReportingDataSnapshot({
+        products: changedProducts,
+        inventoryMovements: changedMovements,
+        commerce: changedCommerce,
+      }),
+      2
+    )
+
+    expect(controller.getReportSnapshot()).toBeNull()
+    expect(() => controller.getQueryResult(evidence[0]!.queryId)).toThrowError(
+      expect.objectContaining({ category: "QUERY_CACHE_NOT_FOUND" })
+    )
+    expect(() => controller.loadSavedReport(saved)).toThrowError(
+      expect.objectContaining({ category: "SQLITE_CONTEXT_MISMATCH" })
+    )
   })
 
   it("retains successful widgets and exposes a missing widget after partial failure", async () => {

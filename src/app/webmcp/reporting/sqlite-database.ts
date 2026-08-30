@@ -111,13 +111,33 @@ export class SqliteReportingDatabase {
       )
       insertRows(
         database,
-        "INSERT INTO agent_sales_daily VALUES (?, ?, ?, ?)",
+        "INSERT INTO agent_sales_daily VALUES (?, ?, ?, ?, ?, ?)",
         snapshot.sales
       )
       insertRows(
         database,
         "INSERT INTO agent_inventory VALUES (?, ?, ?)",
         snapshot.inventory
+      )
+      insertRows(
+        database,
+        "INSERT INTO agent_inventory_daily VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        snapshot.inventoryDaily
+      )
+      insertRows(
+        database,
+        "INSERT INTO agent_order_daily VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        snapshot.orderDaily
+      )
+      insertRows(
+        database,
+        "INSERT INTO agent_order_product_daily VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        snapshot.orderProductDaily
+      )
+      insertRows(
+        database,
+        "INSERT INTO agent_customer_monthly VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        snapshot.customerMonthly
       )
       insertRows(
         database,

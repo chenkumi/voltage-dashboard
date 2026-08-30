@@ -66,10 +66,13 @@ describe("Voltage Admin skills", () => {
       /agent_products[\s\S]*agent_sales_daily[\s\S]*銷售日期 × 商品/
     )
     expect("text" in actual ? actual.text : "").toMatch(
-      /USD[\s\S]*Asia\/Taipei[\s\S]*2026-08-21 至 2026-08-27/
+      /USD[\s\S]*TWD[\s\S]*agent_dataset_status[\s\S]*實際期間[\s\S]*Asia\/Taipei/
     )
     expect("text" in actual ? actual.text : "").toMatch(
-      /product_id[\s\S]*agent_dataset_status[\s\S]*不得.*多對多 join/
+      /agent_sales_daily[\s\S]*agent_order_product_daily[\s\S]*同一批訂單明細[\s\S]*不可.*join/
+    )
+    expect("text" in actual ? actual.text : "").toMatch(
+      /agent_customer_monthly[\s\S]*customer_count[\s\S]*至少為 5/
     )
   })
 

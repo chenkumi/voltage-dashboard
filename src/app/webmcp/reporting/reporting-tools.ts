@@ -34,7 +34,7 @@ export const EXECUTE_READONLY_SQL_TOOL_NAME = "execute_readonly_sql"
 export const EXECUTE_READONLY_SQL_TOOL: WebMcpRegisteredTool = {
   name: EXECUTE_READONLY_SQL_TOOL_NAME,
   description:
-    "Run a read-only SQLite SELECT/WITH. Tables: agent_products(product_id,title,category,price_usd,price_amount,currency_code,product_status), agent_sales_daily(net_revenue_usd), agent_inventory(stock), and agent_dataset_status. price_usd is NULL for TWD; never convert currencies. For labels, join agent_inventory to agent_products. 100 rows max; queryIds expire after product changes. No writes or sensitive data. Use for price comparisons, low-stock checks, or sales reports.",
+    "SQLite read-only SELECT/WITH; 100 rows max. Tables: agent_products, agent_sales_daily, agent_inventory, agent_inventory_daily, agent_order_daily, agent_order_product_daily, agent_customer_monthly, agent_dataset_status. Fields: price_amount, price_usd, currency_code, product_status, net_revenue_usd, payment_status_code; join agent_inventory to agent_products by product_id. price_usd is NULL for non-USD. Keep currencies separate. Customer groups >=5; no personal/payment IDs. queryIds expire.",
   inputSchema: {
     type: "object",
     properties: {
@@ -136,6 +136,12 @@ const SAFE_DATE_FORMATS = new Set([
 const DEFAULT_SAFE_REPORTING_STRINGS = collectReportingStrings(
   DEFAULT_REPORTING_DATA
 )
+const SAFE_PAYMENT_STATUS_VALUES = new Set([
+  "paid",
+  "pending",
+  "failed",
+  "refunded",
+])
 const SAFE_SCHEMA_DEFINITIONS = new Set(
   REPORTING_SCHEMA_SQL.split(";")
     .map((statement) => statement.trim())
@@ -146,6 +152,7 @@ const normalizeFieldName = (name: string) =>
   name.toLowerCase().replace(/[^a-z0-9]/g, "")
 
 const isSensitiveFieldName = (name: string) => {
+  if (name === "payment_status_code") return false
   const normalized = normalizeFieldName(name)
   return (
     normalized === "name" ||
@@ -158,15 +165,31 @@ const isSensitiveFieldName = (name: string) => {
     normalized.includes("phone") ||
     normalized.includes("telephone") ||
     normalized.includes("account") ||
-    normalized.includes("cardnumber") ||
+    normalized.includes("token") ||
+    normalized === "auth" ||
+    normalized.includes("authentication") ||
+    normalized.includes("authorization") ||
+    normalized.includes("authcode") ||
+    normalized.includes("cvv") ||
+    normalized.includes("cvc") ||
+    normalized.includes("iban") ||
+    normalized.includes("routing") ||
+    normalized.includes("swift") ||
+    normalized.includes("card") ||
     normalized.includes("payment")
   )
 }
 
 const containsStrongSensitiveFieldName = (sql: string) => {
-  const normalized = normalizeFieldName(sql)
-  return /(?:customername|firstname|lastname|fullname|email|address|phone|telephone|account|cardnumber|payment)/.test(
-    normalized
+  const identifiers = sql
+    .replace(/'(?:''|[^'])*'/g, " ")
+    .replace(/--.*$/gm, " ")
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+    .match(/[a-z_][a-z0-9_]*/gi)
+  return (identifiers ?? []).some(
+    (identifier) =>
+      normalizeFieldName(identifier) !== "name" &&
+      isSensitiveFieldName(identifier)
   )
 }
 
@@ -197,6 +220,7 @@ const isSafeReportingInputString = (
   value: string,
   safeStrings: ReadonlySet<string>
 ) => {
+  if (SAFE_PAYMENT_STATUS_VALUES.has(value)) return true
   if (isSafeReportingOutputString(value, safeStrings)) return true
   if (SAFE_NUMERIC_STRING_PATTERN.test(value)) return true
 
@@ -215,6 +239,163 @@ const extractSqlStringLiterals = (sql: string) =>
     match[0].slice(1, -1).replaceAll("''", "'")
   )
 
+type PaymentSqlToken = {
+  raw: string
+  lower: string
+  parameterIndex: number | null
+}
+
+const tokenizePaymentSql = (sql: string): PaymentSqlToken[] => {
+  const withoutComments = sql
+    .replace(/--.*$/gm, " ")
+    .replace(/\/\*[\s\S]*?\*\//g, " ")
+  const rawTokens =
+    withoutComments.match(
+      /'(?:''|[^'])*'|\?\d+|\?|!=|<>|=|\.|\(|\)|,|[a-z_][a-z0-9_]*|[+-]?\d+(?:\.\d+)?/gi
+    ) ?? []
+  let parameterIndex = 0
+  return rawTokens.map((raw) => ({
+    raw,
+    lower: raw.toLowerCase(),
+    parameterIndex: raw === "?" ? parameterIndex++ : null,
+  }))
+}
+
+const paymentFilterError = () =>
+  new SqliteReportingRuntimeError(
+    "SQL_LITERAL_ERROR",
+    "payment_status_code filters accept only paid, pending, failed, or refunded."
+  )
+
+const isSafePaymentValueToken = (
+  token: PaymentSqlToken | undefined,
+  parameters: SqlScalar[] | undefined
+) => {
+  if (!token) return false
+  if (token.parameterIndex !== null) {
+    const value = parameters?.[token.parameterIndex]
+    return typeof value === "string" && SAFE_PAYMENT_STATUS_VALUES.has(value)
+  }
+  if (!token.raw.startsWith("'")) return false
+  const value = token.raw.slice(1, -1).replaceAll("''", "'")
+  return SAFE_PAYMENT_STATUS_VALUES.has(value)
+}
+
+const assertSafePaymentStatusFilters = (
+  sql: string,
+  parameters: SqlScalar[] | undefined
+) => {
+  const tokens = tokenizePaymentSql(sql)
+  if (
+    tokens.some((token) => token.raw === "payment_status_code") &&
+    tokens.some((token) => /^\?\d+$/.test(token.raw))
+  )
+    throw paymentFilterError()
+  if (
+    tokens[0]?.lower === "with" &&
+    tokens.some((token) => token.raw === "payment_status_code")
+  )
+    throw paymentFilterError()
+  const terminalTokens = new Set([
+    ",",
+    ")",
+    "from",
+    "group",
+    "order",
+    "having",
+    "limit",
+    "offset",
+    "asc",
+    "desc",
+  ])
+  for (let index = 0; index < tokens.length; index += 1) {
+    if (tokens[index]!.raw !== "payment_status_code") continue
+    const previous = tokens[index - 1]
+    const next = tokens[index + 1]
+
+    if (
+      previous?.lower === "as" ||
+      next?.lower === "as"
+    )
+      throw paymentFilterError()
+
+    if (["=", "!=", "<>"].includes(next?.lower ?? "")) {
+      if (!isSafePaymentValueToken(tokens[index + 2], parameters))
+        throw paymentFilterError()
+      continue
+    }
+    if (next?.lower === "is") {
+      const valueIndex = tokens[index + 2]?.lower === "not" ? index + 3 : index + 2
+      if (!isSafePaymentValueToken(tokens[valueIndex], parameters))
+        throw paymentFilterError()
+      continue
+    }
+    const isNotIn = next?.lower === "not" && tokens[index + 2]?.lower === "in"
+    if (next?.lower === "in" || isNotIn) {
+      const openIndex = isNotIn ? index + 3 : index + 2
+      if (tokens[openIndex]?.lower !== "(") throw paymentFilterError()
+      let valueIndex = openIndex + 1
+      let expectsValue = true
+      let valueCount = 0
+      while (tokens[valueIndex] && tokens[valueIndex]!.lower !== ")") {
+        if (expectsValue) {
+          if (!isSafePaymentValueToken(tokens[valueIndex], parameters))
+            throw paymentFilterError()
+          valueCount += 1
+        } else if (tokens[valueIndex]!.lower !== ",") {
+          throw paymentFilterError()
+        }
+        expectsValue = !expectsValue
+        valueIndex += 1
+      }
+      if (
+        valueCount === 0 ||
+        expectsValue ||
+        tokens[valueIndex]?.lower !== ")"
+      )
+        throw paymentFilterError()
+      continue
+    }
+
+    if (["=", "!=", "<>"].includes(previous?.lower ?? "")) {
+      if (!isSafePaymentValueToken(tokens[index - 2], parameters))
+        throw paymentFilterError()
+      continue
+    }
+    if (previous?.lower === "is") {
+      if (!isSafePaymentValueToken(tokens[index - 2], parameters))
+        throw paymentFilterError()
+      continue
+    }
+    if (
+      previous?.lower === "not" &&
+      tokens[index - 2]?.lower === "is"
+    ) {
+      if (!isSafePaymentValueToken(tokens[index - 3], parameters))
+        throw paymentFilterError()
+      continue
+    }
+
+    if (
+      previous?.lower === "(" ||
+      ["where", "and", "or", "on", "when", "not"].includes(
+        previous?.lower ?? ""
+      )
+    )
+      throw paymentFilterError()
+    if (!next || terminalTokens.has(next.lower)) {
+      if (
+        ["select", "distinct", ",", ".", "by"].includes(
+          previous?.lower ?? ""
+        )
+      )
+        continue
+      throw paymentFilterError()
+    }
+    throw paymentFilterError()
+  }
+}
+
 const assertSafeReportingInput = (
   sql: string,
   parameters: SqlScalar[] | undefined,
@@ -232,6 +413,7 @@ const assertSafeReportingInput = (
       "The query references a restricted field. Use only curated reporting fields."
     )
   }
+  assertSafePaymentStatusFilters(sql, parameters)
   if (
     containsSensitiveValue(sql) ||
     parameters?.some((value) => containsSensitiveValue(value))
@@ -269,12 +451,26 @@ const assertSafeReportingResult = (
   safeStrings: ReadonlySet<string>
 ) => {
   const schemaNames = new Set([
+    "agent_customer_monthly",
     "agent_dataset_status",
     "agent_inventory",
+    "agent_inventory_daily",
+    "agent_order_daily",
+    "agent_order_product_daily",
     "agent_products",
     "agent_sales_daily",
   ])
   const hasSensitiveColumn = result.columns.some((column) => {
+    if (
+      column.name === "payment_status_code" &&
+      !result.rows.every((row) => {
+        const value = row[column.name]
+        return (
+          typeof value === "string" && SAFE_PAYMENT_STATUS_VALUES.has(value)
+        )
+      })
+    )
+      return true
     if (!isSensitiveFieldName(column.name)) return false
     if (normalizeFieldName(column.name) !== "name") return true
     return !result.rows.every(
@@ -292,6 +488,9 @@ const assertSafeReportingResult = (
             typeof value === "string" &&
             schemaNames.has(value)
           )) ||
+        (name === "payment_status_code" &&
+          (typeof value !== "string" ||
+            !SAFE_PAYMENT_STATUS_VALUES.has(value))) ||
         containsSensitiveValue(value) ||
         (typeof value === "number" &&
           Number.isInteger(value) &&
@@ -403,7 +602,9 @@ export class ReportingRuntimeController {
       }
       return this.prepareSnapshot(snapshot, dataVersion)
     }
-    const scheduled = this.prepareQueue ? this.prepareQueue.then(start) : start()
+    const scheduled = this.prepareQueue
+      ? this.prepareQueue.then(start)
+      : start()
     const queueTail = scheduled.catch(() => undefined)
     this.prepareQueue = queueTail
     void queueTail.finally(() => {

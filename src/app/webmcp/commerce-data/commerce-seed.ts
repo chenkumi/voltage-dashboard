@@ -134,13 +134,20 @@ export const createCommerceSeed = (
   )
 
   for (let index = 0; index < 65; index += 1) {
-    const customer =
-      customers[
-        (index * 5 + Math.floor(index / customers.length)) % customers.length
-      ]
+    const monthOffset = index % 13
+    const monthlyOrderIndex = Math.floor(index / 13)
+    const cohortCustomers = customers.filter((customer) =>
+      monthOffset < 8
+        ? customer.status === "active" &&
+          customer.region === REGIONS[monthOffset % REGIONS.length]
+        : customer.status === "active" &&
+          customer.segment === SEGMENTS[(monthOffset - 8) % SEGMENTS.length]
+    )
+    const customer = cohortCustomers[monthlyOrderIndex]
     const createdAt = orderDate(index)
     const orderId = `VM-${25001 + index}`
-    const preferredCurrency: ProductCurrency = index % 4 === 0 ? "TWD" : "USD"
+    const preferredCurrency: ProductCurrency =
+      Math.floor(monthOffset / 4) % 2 === 0 ? "TWD" : "USD"
     const preferredProducts = products.filter(
       (product) => product.price.currency === preferredCurrency
     )

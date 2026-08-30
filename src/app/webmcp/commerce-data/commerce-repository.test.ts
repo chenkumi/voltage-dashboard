@@ -75,6 +75,51 @@ describe("CommerceRepository", () => {
     expect((await second.getSnapshot()).customers).toHaveLength(29)
   })
 
+  it("migrates legacy reporting facts without overwriting customer mutations", async () => {
+    const databaseName = `commerce-${crypto.randomUUID()}`
+    const first = createRepository(databaseName)
+    await first.initialize()
+    const baselineCustomer = (await first.getSnapshot()).customers[0]!
+    await first.updateCustomer(baselineCustomer.id, {
+      ...createCustomerInput(baselineCustomer.contact.email),
+      segment: "returning",
+    })
+    first.close()
+
+    const legacyDatabase = new Dexie(databaseName)
+    legacyDatabase.version(1).stores(COMMERCE_DATABASE_SCHEMA)
+    await legacyDatabase.table("orders").update("VM-25001", {
+      customerSnapshot: { region: "east", segment: "vip" },
+    })
+    await legacyDatabase.table("metadata").update("commerce-seed", {
+      version: 1,
+    })
+    legacyDatabase.close()
+
+    const migrated = createRepository(databaseName)
+    await migrated.initialize()
+    const snapshot = await migrated.getSnapshot()
+    const expectedOrder = createCommerceSeed().orders.find(
+      ({ id }) => id === "VM-25001"
+    )!
+
+    expect(
+      snapshot.orders.find(({ id }) => id === expectedOrder.id)
+        ?.customerSnapshot
+    ).toEqual(expectedOrder.customerSnapshot)
+    expect(await migrated.getCustomer(baselineCustomer.id)).toMatchObject({
+      segment: "returning",
+    })
+
+    migrated.close()
+    const migratedDatabase = new Dexie(databaseName)
+    migratedDatabase.version(1).stores(COMMERCE_DATABASE_SCHEMA)
+    await expect(
+      migratedDatabase.table("metadata").get("commerce-seed")
+    ).resolves.toMatchObject({ version: 2 })
+    migratedDatabase.close()
+  })
+
   it("validates and normalizes customer Email uniqueness", async () => {
     const repository = createRepository()
     await repository.initialize()

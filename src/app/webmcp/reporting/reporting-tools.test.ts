@@ -238,6 +238,22 @@ describe("execute_readonly_sql WebMCP tool", () => {
     "customerEmail",
     "e-mail",
     "card-number",
+    "card_token",
+    "authorization_code",
+    "auth_code",
+    "auth",
+    "authentication",
+    "payment_token",
+    "cvv",
+    "iban",
+    "routing_code",
+    "routing_number",
+    "swift_code",
+    "card_security_code",
+    "credit_card_number",
+    "paymentStatusCode",
+    "payment__status__code",
+    "payment_status_code_backup",
     "deliveryAddress",
     "accountId",
   ])("rejects a normalized sensitive result field: %s", async (name) => {
@@ -253,6 +269,215 @@ describe("execute_readonly_sql WebMCP tool", () => {
         { sql: "SELECT category FROM agent_products" }
       )
     ).rejects.toMatchObject({ category: "SQL_OUTPUT_PRIVACY_ERROR" })
+  })
+
+  it("allows fixed payment results but rejects every payment identifier field", async () => {
+    const paymentStatusResult = {
+      ...result,
+      columns: [
+        { name: "payment_status_code", type: "string" as const },
+        { name: "affected_orders", type: "number" as const },
+      ],
+      rows: [{ payment_status_code: "failed", affected_orders: 3 }],
+    }
+    const execute = vi.fn(async () => paymentStatusResult)
+
+    await expect(
+      executeReadonlySqlTool(
+        { execute },
+        {
+          sql: "SELECT payment_status_code, SUM(order_count) AS affected_orders FROM agent_order_daily WHERE payment_status_code = 'failed' GROUP BY payment_status_code",
+        }
+      )
+    ).resolves.toEqual(paymentStatusResult)
+    await expect(
+      executeReadonlySqlTool(
+        { execute },
+        {
+          sql: "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code = ?",
+          parameters: ["paid"],
+        }
+      )
+    ).resolves.toEqual(paymentStatusResult)
+    await expect(
+      executeReadonlySqlTool(
+        { execute },
+        {
+          sql: "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code = ?",
+          parameters: ["active"],
+        }
+      )
+    ).rejects.toMatchObject({ category: "SQL_LITERAL_ERROR" })
+    await expect(
+      executeReadonlySqlTool(
+        { execute },
+        {
+          sql: "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code IN ('paid', 'active')",
+        }
+      )
+    ).rejects.toMatchObject({ category: "SQL_LITERAL_ERROR" })
+
+    for (const field of [
+      "payment_method",
+      "payment_id",
+      "account_id",
+      "card_token",
+      "authorization_code",
+      "auth_code",
+      "auth",
+      "authentication",
+      "payment_token",
+      "cvv",
+      "iban",
+      "routing_code",
+      "routing_number",
+      "swift_code",
+      "card_security_code",
+      "credit_card_number",
+      "paymentStatusCode",
+      "payment__status__code",
+      "payment_status_code_backup",
+    ]) {
+      await expect(
+        executeReadonlySqlTool(
+          { execute },
+          { sql: `SELECT 1 AS ${field}` }
+        )
+      ).rejects.toMatchObject({ category: "SQL_SENSITIVE_FIELD_ERROR" })
+    }
+  })
+
+  it("rejects a non-enum value under the exact payment status field", async () => {
+    const execute = vi.fn(async () => ({
+      ...result,
+      columns: [
+        { name: "payment_status_code", type: "string" as const },
+      ],
+      rows: [{ payment_status_code: "card" }],
+    }))
+
+    await expect(
+      executeReadonlySqlTool(
+        { execute },
+        { sql: "SELECT payment_status_code FROM agent_order_daily" }
+      )
+    ).rejects.toMatchObject({ category: "SQL_OUTPUT_PRIVACY_ERROR" })
+  })
+
+  it.each([
+    ["SELECT 'active' IS payment_status_code FROM agent_order_daily", undefined],
+    ["SELECT ? IS payment_status_code FROM agent_order_daily", ["active"]],
+    [
+      "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code NOT IN ('active')",
+      undefined,
+    ],
+    [
+      "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code NOT IN (?)",
+      ["active"],
+    ],
+    ["SELECT 'active' IN (payment_status_code) FROM agent_order_daily", undefined],
+    [
+      "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code COLLATE NOCASE = 'active'",
+      undefined,
+    ],
+    [
+      "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code = CAST('active' AS TEXT)",
+      undefined,
+    ],
+    [
+      "WITH statuses AS (SELECT payment_status_code AS ps FROM agent_order_daily) SELECT ps FROM statuses WHERE ps = 'active'",
+      undefined,
+    ],
+    [
+      "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code = 1",
+      undefined,
+    ],
+    [
+      "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code IS NULL",
+      undefined,
+    ],
+    [
+      "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code IN (1)",
+      undefined,
+    ],
+    [
+      "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code = TRUE",
+      undefined,
+    ],
+    [
+      "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code NOT LIKE 'paid'",
+      undefined,
+    ],
+    [
+      "SELECT payment_status_code FROM agent_order_daily WHERE ?2 IS NOT NULL AND payment_status_code = ?1",
+      ["complete", "paid"],
+    ],
+  ])("rejects an unsafe payment predicate: %s", async (sql, parameters) => {
+    const execute = vi.fn(async () => result)
+
+    await expect(
+      executeReadonlySqlTool(
+        { execute },
+        { sql, ...(parameters ? { parameters } : {}) }
+      )
+    ).rejects.toMatchObject({ category: "SQL_LITERAL_ERROR" })
+    expect(execute).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    [
+      "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code IS NOT ?",
+      ["paid"],
+    ],
+    [
+      "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code NOT IN (?, ?)",
+      ["failed", "refunded"],
+    ],
+    [
+      "SELECT 'paid' IS payment_status_code FROM agent_order_daily",
+      undefined,
+    ],
+  ])("allows a fixed-enum payment predicate: %s", async (sql, parameters) => {
+    const execute = vi.fn(async () => result)
+
+    await expect(
+      executeReadonlySqlTool(
+        { execute },
+        { sql, ...(parameters ? { parameters } : {}) }
+      )
+    ).resolves.toEqual(result)
+  })
+
+  it.each([
+    ["SELECT 'paid' payment_status_code FROM agent_order_daily LIMIT 1", undefined],
+    ["SELECT ? payment_status_code FROM agent_order_daily LIMIT 1", ["paid"]],
+    [
+      "SELECT CASE WHEN order_status_code = 'processing' THEN 'paid' ELSE 'failed' END payment_status_code FROM agent_order_daily LIMIT 3",
+      undefined,
+    ],
+  ])("rejects an implicit payment status alias: %s", async (sql, parameters) => {
+    const execute = vi.fn(async () => result)
+
+    await expect(
+      executeReadonlySqlTool(
+        { execute },
+        { sql, ...(parameters ? { parameters } : {}) }
+      )
+    ).rejects.toMatchObject({ category: "SQL_LITERAL_ERROR" })
+    expect(execute).not.toHaveBeenCalled()
+  })
+
+  it("allows a qualified fixed payment status field", async () => {
+    const execute = vi.fn(async () => result)
+
+    await expect(
+      executeReadonlySqlTool(
+        { execute },
+        {
+          sql: "SELECT o.payment_status_code FROM agent_order_daily AS o WHERE o.payment_status_code = 'paid'",
+        }
+      )
+    ).resolves.toEqual(result)
   })
 
   it("allows sqlite_schema name discovery for approved reporting tables", async () => {
@@ -710,6 +935,38 @@ describe("ReportingRuntimeController", () => {
     await controller.prepare()
     expect(() => controller.getQueryResult(first.queryId)).toThrowError(
       expect.objectContaining({ category: "QUERY_CACHE_NOT_FOUND" })
+    )
+  })
+
+  it("invalidates query evidence and reports when operational data changes", async () => {
+    const createRuntime = () => ({
+      initialize: vi.fn(async () => undefined),
+      execute: vi.fn(async () => result),
+      dispose: vi.fn(async () => undefined),
+    })
+    const controller = new ReportingRuntimeController(createRuntime)
+    await controller.prepare(undefined, 100)
+    controller.executeReportTool("create_report", { title: "Operations" })
+    const query = await controller.execute({ sql: "SELECT 1" })
+    controller.executeReportTool("add_report_widget", {
+      widget: {
+        type: "table",
+        title: "Evidence",
+        queryId: query.queryId,
+        columns: ["category"],
+      },
+    })
+    const saved = controller.createSavedReportSnapshot()
+    if (!saved) throw new Error("Expected saved evidence.")
+
+    await controller.prepare(undefined, 101)
+
+    expect(controller.getReportSnapshot()).toBeNull()
+    expect(() => controller.getQueryResult(query.queryId)).toThrowError(
+      expect.objectContaining({ category: "QUERY_CACHE_NOT_FOUND" })
+    )
+    expect(() => controller.loadSavedReport(saved)).toThrowError(
+      expect.objectContaining({ category: "SQLITE_CONTEXT_MISMATCH" })
     )
   })
 

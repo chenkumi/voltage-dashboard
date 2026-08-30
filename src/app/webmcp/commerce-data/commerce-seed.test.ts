@@ -96,4 +96,19 @@ describe("createCommerceSeed", () => {
       })
     )
   })
+
+  it("keeps every order customer snapshot consistent with its customer", () => {
+    const snapshot = createCommerceSeed()
+    const customers = new Map(
+      snapshot.customers.map((customer) => [customer.id, customer])
+    )
+
+    for (const order of snapshot.orders) {
+      const customer = customers.get(order.customerId)
+      expect(order.customerSnapshot).toEqual({
+        region: customer?.region,
+        segment: customer?.segment,
+      })
+    }
+  })
 })

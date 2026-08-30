@@ -45,6 +45,10 @@ describe("ProductStore", () => {
       version: 1,
     })
 
+    await store.initialize()
+    expect(store.getSnapshot().version).toBe(1)
+    expect(repository.list).toHaveBeenCalledOnce()
+
     repositoryListener?.()
     await vi.waitFor(() => expect(store.getSnapshot().version).toBe(2))
     expect(listener).toHaveBeenCalled()
