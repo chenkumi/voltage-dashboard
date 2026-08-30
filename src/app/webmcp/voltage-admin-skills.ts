@@ -28,7 +28,7 @@ const skills = [
   {
     name: "voltage-sales-data",
     description:
-      "用途：理解匿名營運報表的八個資料集、粒度、幣別與 join 規則。何時呼叫：分析區域營收、客群、付款異常、商品銷售或趨勢前。觸發例子：「各區營收」、「失敗付款訂單」、「VIP 客群營收」。不該呼叫：查詢個別客戶或付款識別時。",
+      "用途：理解匿名營運報表的銷售資料集、粒度、幣別與 join 規則。何時呼叫：分析區域營收、客群、付款異常、商品銷售或趨勢前。觸發例子：「各區營收」、「失敗付款訂單」、「VIP 客群營收」。不該呼叫：查詢個別客戶或付款識別時。",
     text: `# Voltage sales data
 
 ## agent_products
@@ -45,7 +45,7 @@ const skills = [
 
 每列是「月份 × 區域 × 客群 × 客戶狀態 × 幣別」的匿名群組，\`customer_count\` 至少為 5；較小群組只會併入 other/suppressed 或不提供。不得反查、推斷或要求個別客戶。
 
-分析前先查 \`agent_dataset_status\` 的實際期間、\`Asia/Taipei\` 時區、更新時間與完整度。商品、庫存、訂單或客戶安全資料變更都會重建 reporting context，舊 queryId、報表與證據隨即失效。八個 curated tables 不含姓名、Email、電話、地址、備註、客戶／訂單 ID、帳戶或付款識別。`,
+分析前先查 \`agent_dataset_status\` 的實際期間、\`Asia/Taipei\` 時區、更新時間與完整度。商品、庫存、訂單、客戶或退貨安全資料變更都會重建 reporting context，舊 queryId、報表與證據隨即失效。所有 curated tables 都不含姓名、Email、電話、地址、備註、客戶／訂單／RMA ID、帳戶或付款識別。`,
   },
   {
     name: "voltage-inventory-data",
@@ -68,6 +68,26 @@ const skills = [
 需要商品標題或分類時，欄位必須從 \`agent_products\` 取得，不可直接從 \`agent_inventory\` 選取。低庫存查詢可使用：\`SELECT p.title, p.category, i.stock, i.updated_at FROM agent_inventory AS i JOIN agent_products AS p ON p.product_id = i.product_id WHERE i.stock <= ? ORDER BY i.stock ASC, p.title ASC\`，門檻以數字 parameter 傳入。
 
 庫存資料不含供應商聯絡方式、客戶個資、帳戶識別或付款資料；不得推導或要求這些資料。`,
+  },
+  {
+    name: "voltage-returns-data",
+    description:
+      "用途：理解匿名 RMA、驗貨、退款與退貨客群報表。何時呼叫：分析退貨率、原因、SLA、退款失敗、驗貨或重新入庫前。觸發例子：「各分類退貨率」、「退款失敗率」、「退貨處理時間」。不該呼叫：查詢個別 RMA 的顧客陳述或付款識別時。",
+    text: `# Voltage returns data
+
+## 每日退貨商品與營運 facts
+
+\`agent_return_product_daily\` 的粒度是「退貨建立日 × 商品 × 來源 × 原因 × eligibility × 驗貨結果 × 庫存處置 × 處置執行狀態 × 幣別」。只有 \`inventory_disposition_code = 'restock'\` 且 \`inventory_disposition_status_code = 'completed'\` 的 accepted quantity 才是實際重新入庫量；pending/failed 不可計入。可先按期間及 \`product_id\` 聚合 requested/received/accepted quantity，再與同期間聚合成每個商品一列的 \`agent_sales_daily\` 比較退貨件數與售出件數；需要分類時才 join \`agent_products\`。不得直接將多日退貨明細與多日銷售明細相乘 join。
+
+\`agent_return_operational_daily\` 的粒度是「退貨建立日 × 各流程狀態」，包含 RMA 數、SLA 超時數、完成數與完成案件的 cycle time hours 總和。\`sla_breached_count_as_of_snapshot\` 只代表 \`agent_dataset_status.updated_at\` 所標示快照時間的逾期數，不是即時時鐘；長時間開啟頁面後要取得新的 as-of 狀態，必須使用 Repository 更新後或新 page context 的 reporting snapshot。平均處理時間應為 \`SUM(cycle_time_hours_total) / NULLIF(SUM(completed_count), 0)\`，不能用所有 RMA 當分母。
+
+## 退款與安全客群
+
+\`agent_refund_daily\` 依退款核准日、approval/refund 狀態及幣別聚合退款筆數、原幣金額、執行嘗試、失敗嘗試與成功退款數。退款失敗率應揭露採用的分母；金額必須依 \`currency_code\` 分開，只有 USD 列的 \`refund_usd\` 有值。
+
+\`agent_return_cohort_monthly\` 是月份、區域、客群、退貨原因、退款狀態及幣別的匿名群組，每列至少 5 位不同顧客；other/suppressed 只能作安全彙總，不得反推個人。四張退貨表都不含 RMA、訂單、客戶、核准、退款、Timeline 或庫存異動 ID，也不含顧客陳述、審查理由、備註、付款方式或付款識別。
+
+分析前先查 \`agent_dataset_status\`。Return Repository 版本改變會重建 reporting context 並使舊 queryId、active report 與 saved evidence 失效。`,
   },
   {
     name: "voltage-report-authoring",

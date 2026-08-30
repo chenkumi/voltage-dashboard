@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest"
 import { createCommerceSeed } from "../commerce-data/commerce-seed"
 import { createInventoryMovementSeed } from "../inventory/inventory-seed"
 import { createDummyJsonProductSeed } from "../products/product-seed"
+import { createReturnSeed } from "../returns/return-seed"
 import {
   createReportingDataSnapshot,
   DEFAULT_REPORTING_DATA,
@@ -178,7 +179,7 @@ const expectCompleteReport = (
     },
   })
   expect(evidence.status.truncated).toBe(false)
-  expect(evidence.status.rows).toHaveLength(8)
+  expect(evidence.status.rows).toHaveLength(12)
   expect(evidence.status.rows).toEqual(
     expect.arrayContaining([
       expect.objectContaining({
@@ -264,10 +265,12 @@ describe("Smart Dashboard report workflow", () => {
 
   it("turns all six operational queries into evidence and invalidates it after safe data changes", async () => {
     const products = createDummyJsonProductSeed()
+    const commerce = createCommerceSeed(products)
     const source = {
       products,
       inventoryMovements: createInventoryMovementSeed(products),
-      commerce: createCommerceSeed(products),
+      commerce,
+      returns: createReturnSeed(commerce),
     }
     const queries = [
       "SELECT region_code, currency_code, SUM(net_revenue_amount) AS revenue FROM agent_order_daily GROUP BY region_code, currency_code",
@@ -312,11 +315,10 @@ describe("Smart Dashboard report workflow", () => {
           }
         : product
     )
-    const changedMovements = source.inventoryMovements.map(
-      (movement, index) =>
-        index === 0
-          ? { ...movement, occurredAt: "2032-01-01T00:00:00.000Z" }
-          : movement
+    const changedMovements = source.inventoryMovements.map((movement, index) =>
+      index === 0
+        ? { ...movement, occurredAt: "2032-01-01T00:00:00.000Z" }
+        : movement
     )
     const changedCommerce = {
       ...source.commerce,
@@ -335,6 +337,19 @@ describe("Smart Dashboard report workflow", () => {
         products: changedProducts,
         inventoryMovements: changedMovements,
         commerce: changedCommerce,
+        returns: {
+          ...source.returns,
+          version: source.returns.version + 1,
+          rmas: source.returns.rmas.map((rma, index) =>
+            index === 0
+              ? {
+                  ...rma,
+                  updatedAt: "2034-01-01T00:00:00.000Z",
+                  version: rma.version + 1,
+                }
+              : rma
+          ),
+        },
       }),
       2
     )
@@ -345,6 +360,64 @@ describe("Smart Dashboard report workflow", () => {
     )
     expect(() => controller.loadSavedReport(saved)).toThrowError(
       expect.objectContaining({ category: "SQLITE_CONTEXT_MISMATCH" })
+    )
+  })
+
+  it("keeps SLA evidence fixed to its context snapshot until the context version changes", async () => {
+    const products = createDummyJsonProductSeed()
+    const commerce = createCommerceSeed(products)
+    const returns = createReturnSeed(commerce)
+    const activeRma = {
+      ...returns.rmas[0]!,
+      status: "active" as const,
+      slaDueAt: "2026-08-29T00:00:00.000Z",
+      completedAt: null,
+    }
+    const source = {
+      products,
+      inventoryMovements: createInventoryMovementSeed(products),
+      commerce,
+      returns: { ...returns, rmas: [activeRma] },
+    }
+    const controller = new ReportingRuntimeController(
+      () => new InProcessReportingRuntime()
+    )
+    controllers.push(controller)
+    const query = {
+      sql: "SELECT SUM(sla_breached_count_as_of_snapshot) AS breaches FROM agent_return_operational_daily",
+    }
+
+    await controller.prepare(
+      createReportingDataSnapshot({
+        ...source,
+        asOf: "2026-08-28T23:59:59.000Z",
+      }),
+      1
+    )
+    const before = await controller.execute(query)
+    expect(before.rows).toEqual([{ breaches: 0 }])
+
+    await controller.prepare(
+      createReportingDataSnapshot({
+        ...source,
+        asOf: "2026-08-29T00:00:01.000Z",
+      }),
+      1
+    )
+    const sameContext = await controller.execute(query)
+    expect(sameContext.rows).toEqual([{ breaches: 0 }])
+
+    await controller.prepare(
+      createReportingDataSnapshot({
+        ...source,
+        asOf: "2026-08-29T00:00:01.000Z",
+      }),
+      2
+    )
+    const refreshed = await controller.execute(query)
+    expect(refreshed.rows).toEqual([{ breaches: 1 }])
+    expect(() => controller.getQueryResult(before.queryId)).toThrowError(
+      expect.objectContaining({ category: "QUERY_CACHE_NOT_FOUND" })
     )
   })
 

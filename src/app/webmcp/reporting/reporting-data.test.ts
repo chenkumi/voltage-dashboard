@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest"
 import { createCommerceSeed } from "../commerce-data/commerce-seed"
 import { createInventoryMovementSeed } from "../inventory/inventory-seed"
 import { createDummyJsonProductSeed } from "../products/product-seed"
+import { createReturnSeed } from "../returns/return-seed"
+import type { ReturnRepositorySnapshot } from "../returns/types"
 import {
   collectReportingStrings,
+  createOperationalReportingVersion,
   createReportingDataSnapshot,
   createSafeOperationalProjection,
   REPORTING_DATASETS,
@@ -11,15 +14,40 @@ import {
 
 const createSource = () => {
   const products = createDummyJsonProductSeed()
+  const commerce = createCommerceSeed(products)
   return {
     products,
     inventoryMovements: createInventoryMovementSeed(products),
-    commerce: createCommerceSeed(products),
+    commerce,
+    returns: createReturnSeed(commerce),
   }
 }
 
 describe("unified operational reporting projection", () => {
-  it("publishes eight documented datasets with 13 reproducible months", () => {
+  it("uses all three repository versions in the reporting context version", () => {
+    const baseline = createOperationalReportingVersion(1, 2, 3)
+
+    expect(createOperationalReportingVersion(2, 2, 3)).not.toBe(baseline)
+    expect(createOperationalReportingVersion(1, 3, 3)).not.toBe(baseline)
+    expect(createOperationalReportingVersion(1, 2, 4)).not.toBe(baseline)
+    expect(
+      new Set(
+        Array.from({ length: 4 }, (_, productVersion) =>
+          Array.from({ length: 4 }, (_, commerceVersion) =>
+            Array.from({ length: 4 }, (_, returnVersion) =>
+              createOperationalReportingVersion(
+                productVersion,
+                commerceVersion,
+                returnVersion
+              )
+            )
+          )
+        ).flat(2)
+      ).size
+    ).toBe(64)
+  })
+
+  it("publishes twelve documented datasets with 13 reproducible months", () => {
     const snapshot = createReportingDataSnapshot(createSource())
 
     expect(snapshot.datasetStatus.map(([name]) => name)).toEqual(
@@ -37,11 +65,9 @@ describe("unified operational reporting projection", () => {
     expect(
       new Set(snapshot.customerMonthly.map((row) => String(row[2]))).size
     ).toBeGreaterThan(1)
-    expect(
-      snapshot.customerMonthly.some(
-        (row) => row[1] !== "other"
-      )
-    ).toBe(true)
+    expect(snapshot.customerMonthly.some((row) => row[1] !== "other")).toBe(
+      true
+    )
     expect(snapshot.customerMonthly.some((row) => row[2] !== "other")).toBe(
       true
     )
@@ -142,13 +168,298 @@ describe("unified operational reporting projection", () => {
       true
     )
     expect(
-      snapshot.customerMonthly.every(
-        (row) => Number(row[5]) <= Number(row[6])
-      )
+      snapshot.customerMonthly.every((row) => Number(row[5]) <= Number(row[6]))
     ).toBe(true)
     expect(strings.has(secret)).toBe(false)
     expect(strings.has(email)).toBe(false)
     expect(JSON.stringify(snapshot)).not.toContain("CUST-")
+  })
+
+  it("projects RMA facts without IDs, free text, or raw timeline content", () => {
+    const source = createSource()
+    const orders = source.commerce.orders.filter(
+      (order, index, all) =>
+        order.amounts.total.currency === "USD" &&
+        all.findIndex(
+          (candidate) => candidate.customerId === order.customerId
+        ) === index
+    )
+    expect(orders.length).toBeGreaterThanOrEqual(5)
+    const templateRma = source.returns.rmas[0]!
+    const templateItem = source.returns.items[0]!
+    const cohortOrders = orders.slice(0, 5)
+    const rmas = cohortOrders.map((order, index) => ({
+      ...templateRma,
+      id: `PRIVATE-RMA-${index}`,
+      orderId: order.id,
+      customerStatement: "private return statement",
+      createdAt: `2026-08-${String(20 + index).padStart(2, "0")}T01:00:00.000Z`,
+      updatedAt: `2026-08-${String(20 + index).padStart(2, "0")}T02:00:00.000Z`,
+    }))
+    const items = cohortOrders.map((order, index) => {
+      const line = source.commerce.orderLines.find(
+        (candidate) => candidate.orderId === order.id
+      )!
+      return {
+        ...templateItem,
+        id: `PRIVATE-ITEM-${index}`,
+        rmaId: rmas[index]!.id,
+        orderLineId: line.id,
+        productId: line.productId,
+        sku: line.sku,
+        title: line.title,
+        paidAmount: line.paidAmount,
+        paidUnitAmounts: line.paidUnitAmounts,
+      }
+    })
+    const snapshot = createReportingDataSnapshot({
+      ...source,
+      returns: {
+        ...source.returns,
+        rmas,
+        items,
+        calculations: [],
+        approvals: [],
+        executionAttempts: [],
+        timeline: rmas.map((rma, index) => ({
+          id: `PRIVATE-TIMELINE-${index}`,
+          rmaId: rma.id,
+          actor: "user" as const,
+          action: "private_action",
+          entityId: `PRIVATE-ENTITY-${index}`,
+          occurredAt: rma.updatedAt,
+          result: "private timeline result",
+          version: 1,
+        })),
+      },
+    })
+    const serialized = JSON.stringify(snapshot)
+
+    expect(snapshot.returnProductDaily.length).toBeGreaterThan(0)
+    expect(snapshot.returnOperationalDaily.length).toBeGreaterThan(0)
+    expect(snapshot.returnCohortMonthly.length).toBeGreaterThan(0)
+    expect(
+      snapshot.returnCohortMonthly.every((row) => Number(row[6]) >= 5)
+    ).toBe(true)
+    expect(serialized).not.toMatch(
+      /PRIVATE-RMA|PRIVATE-ITEM|PRIVATE-TIMELINE|PRIVATE-ENTITY|private return statement|private timeline result|CUST-|ORD-/
+    )
+  })
+
+  it("keeps refund reporting in native currencies and excludes execution identifiers", () => {
+    const source = createSource()
+    const templateRma = source.returns.rmas[0]!
+    const templateItem = source.returns.items[0]!
+    const usdOrder = source.commerce.orders[0]!
+    const usdLine = source.commerce.orderLines.find(
+      (candidate) => candidate.orderId === usdOrder.id
+    )!
+    const twdMoney = (amount: number) => ({
+      amount,
+      currency: "TWD" as const,
+    })
+    const twdOrder = {
+      ...usdOrder,
+      id: "PRIVATE-ORDER-TWD",
+      amounts: {
+        subtotal: twdMoney(1_000),
+        discount: twdMoney(0),
+        shipping: twdMoney(0),
+        tax: twdMoney(0),
+        total: twdMoney(1_000),
+      },
+    }
+    const twdLine = {
+      ...usdLine,
+      id: "PRIVATE-LINE-TWD",
+      orderId: twdOrder.id,
+      unitPrice: twdMoney(1_000),
+      discount: twdMoney(0),
+      subtotal: twdMoney(1_000),
+      paidAmount: twdMoney(1_000),
+      paidUnitAmounts: [twdMoney(1_000)],
+    }
+    source.commerce = {
+      ...source.commerce,
+      orders: [...source.commerce.orders, twdOrder],
+      orderLines: [...source.commerce.orderLines, twdLine],
+    }
+    const fixtures = (["USD", "TWD"] as const).map((currency, index) => {
+      const order = source.commerce.orders.find(
+        (candidate) => candidate.amounts.total.currency === currency
+      )!
+      const line = source.commerce.orderLines.find(
+        (candidate) => candidate.orderId === order.id
+      )!
+      const rmaId = `PRIVATE-RMA-${currency}`
+      const itemId = `PRIVATE-ITEM-${currency}`
+      const calculationId = `PRIVATE-CALC-${currency}`
+      const approvalId = `PRIVATE-APPROVAL-${currency}`
+      const amount = line.paidUnitAmounts[0]!
+      return {
+        rma: {
+          ...templateRma,
+          id: rmaId,
+          orderId: order.id,
+          status: "completed" as const,
+          approvalStatus: "approved" as const,
+          refundStatus: "succeeded" as const,
+          completedAt: `2026-08-2${index + 1}T04:00:00.000Z`,
+        },
+        item: {
+          ...templateItem,
+          id: itemId,
+          rmaId,
+          orderLineId: line.id,
+          productId: line.productId,
+          sku: line.sku,
+          title: line.title,
+          requestedQuantity: 1,
+          acceptedQuantity: 1,
+          paidAmount: amount,
+          paidUnitAmounts: [amount],
+        },
+        calculation: {
+          id: calculationId,
+          rmaId,
+          orderId: order.id,
+          rmaVersion: 1,
+          inspectionVersion: 1,
+          orderSnapshotVersion: source.returns.orderSnapshotVersion,
+          version: 1,
+          items: [
+            {
+              returnItemId: itemId,
+              orderLineId: line.id,
+              acceptedQuantity: 1,
+              refundedUnitIndexes: [0],
+              amount,
+            },
+          ],
+          shippingAmount: { amount: 0, currency },
+          total: amount,
+          createdAt: `2026-08-2${index + 1}T02:00:00.000Z`,
+        },
+        approval: {
+          id: approvalId,
+          rmaId,
+          calculationId,
+          calculationVersion: 1,
+          status: "approved" as const,
+          decidedBy: "private approver",
+          reason: "private approval reason",
+          createdAt: `2026-08-2${index + 1}T02:30:00.000Z`,
+          decidedAt: `2026-08-2${index + 1}T03:00:00.000Z`,
+          version: 1,
+        },
+        attempt: {
+          id: `PRIVATE-ATTEMPT-${currency}`,
+          approvalId,
+          calculationVersion: 1,
+          sequence: 1,
+          result: "succeeded" as const,
+          resultCode: "recorded_success" as const,
+          note: "private execution note",
+          executedBy: "private executor",
+          executedAt: `2026-08-2${index + 1}T04:00:00.000Z`,
+        },
+      }
+    })
+    const returns: ReturnRepositorySnapshot = {
+      ...source.returns,
+      rmas: fixtures.map(({ rma }) => rma),
+      items: fixtures.map(({ item }) => item),
+      calculations: fixtures.map(({ calculation }) => calculation),
+      approvals: fixtures.map(({ approval }) => approval),
+      executionAttempts: fixtures.map(({ attempt }) => attempt),
+      timeline: [],
+    }
+    const snapshot = createReportingDataSnapshot({ ...source, returns })
+
+    expect(snapshot.refundDaily.map((row) => row[3]).sort()).toEqual([
+      "TWD",
+      "USD",
+    ])
+    for (const row of snapshot.refundDaily) {
+      expect(row[3] === "USD" ? row[5] : null).toBe(row[6])
+      expect(row[7]).toBe(1)
+      expect(row[8]).toBe(0)
+      expect(row[9]).toBe(1)
+    }
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /PRIVATE-RMA|PRIVATE-ORDER|PRIVATE-LINE|PRIVATE-CALC|PRIVATE-APPROVAL|PRIVATE-ATTEMPT|private approver|private approval reason|private execution note|private executor/
+    )
+  })
+
+  it("separates inventory disposition execution states", () => {
+    const source = createSource()
+    const rma = source.returns.rmas[0]!
+    const item = source.returns.items.find(
+      (candidate) => candidate.rmaId === rma.id
+    )!
+    const common = {
+      ...item,
+      condition: "opened" as const,
+      packaging: "intact" as const,
+      missingContents: false,
+      inspectionResult: "accepted" as const,
+      inventoryDisposition: "restock" as const,
+      receivedQuantity: 1,
+      acceptedQuantity: 1,
+    }
+    const projection = createSafeOperationalProjection({
+      ...source,
+      returns: {
+        ...source.returns,
+        rmas: [rma],
+        items: [
+          {
+            ...common,
+            id: "PRIVATE-PENDING-ITEM",
+            inventoryDispositionStatus: "pending",
+          },
+          {
+            ...common,
+            id: "PRIVATE-COMPLETED-ITEM",
+            inventoryDispositionStatus: "completed",
+          },
+        ],
+      },
+    })
+
+    expect(projection.returnProductDaily.map((row) => row[7]).sort()).toEqual([
+      "completed",
+      "pending",
+    ])
+    expect(
+      projection.returnProductDaily
+        .filter((row) => row[6] === "restock" && row[7] === "completed")
+        .reduce((sum, row) => sum + Number(row[12]), 0)
+    ).toBe(1)
+  })
+
+  it("uses reporting as-of time for active RMA SLA breaches", () => {
+    const source = createSource()
+    const rma = {
+      ...source.returns.rmas[0]!,
+      status: "active" as const,
+      slaDueAt: "2026-08-29T00:00:00.000Z",
+      updatedAt: "2026-08-28T00:00:00.000Z",
+      completedAt: null,
+    }
+    const projectAt = (asOf: string) =>
+      createSafeOperationalProjection({
+        ...source,
+        asOf,
+        returns: {
+          ...source.returns,
+          rmas: [rma],
+          items: source.returns.items.filter((item) => item.rmaId === rma.id),
+        },
+      }).returnOperationalDaily[0]!
+
+    expect(projectAt("2026-08-28T23:59:59.000Z")[10]).toBe(0)
+    expect(projectAt("2026-08-29T00:00:01.000Z")[10]).toBe(1)
   })
 
   it("projects inventory history without movement identifiers or notes", () => {

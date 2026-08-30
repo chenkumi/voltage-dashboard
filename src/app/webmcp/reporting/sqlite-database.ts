@@ -141,6 +141,26 @@ export class SqliteReportingDatabase {
       )
       insertRows(
         database,
+        "INSERT INTO agent_return_product_daily VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        snapshot.returnProductDaily
+      )
+      insertRows(
+        database,
+        "INSERT INTO agent_return_operational_daily VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        snapshot.returnOperationalDaily
+      )
+      insertRows(
+        database,
+        "INSERT INTO agent_refund_daily VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        snapshot.refundDaily
+      )
+      insertRows(
+        database,
+        "INSERT INTO agent_return_cohort_monthly VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        snapshot.returnCohortMonthly
+      )
+      insertRows(
+        database,
         "INSERT INTO agent_dataset_status VALUES (?, ?, ?, ?, ?, ?)",
         snapshot.datasetStatus
       )

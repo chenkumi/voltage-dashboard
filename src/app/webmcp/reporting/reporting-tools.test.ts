@@ -27,15 +27,13 @@ describe("execute_readonly_sql WebMCP tool", () => {
       untrustedContentHint: true,
     })
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("SQLite")
-    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("agent_products")
-    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("net_revenue_usd")
-    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("price_amount")
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("products")
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("returns")
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("refunds")
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("sqlite_schema")
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("currency_code")
-    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("product_status")
-    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("price_usd is NULL")
-    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain(
-      "join agent_inventory to agent_products"
-    )
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("at least 5 people")
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("RMA")
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("100 rows")
     expect(EXECUTE_READONLY_SQL_TOOL.description?.length).toBeLessThanOrEqual(
       500
@@ -339,10 +337,7 @@ describe("execute_readonly_sql WebMCP tool", () => {
       "payment_status_code_backup",
     ]) {
       await expect(
-        executeReadonlySqlTool(
-          { execute },
-          { sql: `SELECT 1 AS ${field}` }
-        )
+        executeReadonlySqlTool({ execute }, { sql: `SELECT 1 AS ${field}` })
       ).rejects.toMatchObject({ category: "SQL_SENSITIVE_FIELD_ERROR" })
     }
   })
@@ -350,9 +345,7 @@ describe("execute_readonly_sql WebMCP tool", () => {
   it("rejects a non-enum value under the exact payment status field", async () => {
     const execute = vi.fn(async () => ({
       ...result,
-      columns: [
-        { name: "payment_status_code", type: "string" as const },
-      ],
+      columns: [{ name: "payment_status_code", type: "string" as const }],
       rows: [{ payment_status_code: "card" }],
     }))
 
@@ -365,7 +358,10 @@ describe("execute_readonly_sql WebMCP tool", () => {
   })
 
   it.each([
-    ["SELECT 'active' IS payment_status_code FROM agent_order_daily", undefined],
+    [
+      "SELECT 'active' IS payment_status_code FROM agent_order_daily",
+      undefined,
+    ],
     ["SELECT ? IS payment_status_code FROM agent_order_daily", ["active"]],
     [
       "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code NOT IN ('active')",
@@ -375,7 +371,10 @@ describe("execute_readonly_sql WebMCP tool", () => {
       "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code NOT IN (?)",
       ["active"],
     ],
-    ["SELECT 'active' IN (payment_status_code) FROM agent_order_daily", undefined],
+    [
+      "SELECT 'active' IN (payment_status_code) FROM agent_order_daily",
+      undefined,
+    ],
     [
       "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code COLLATE NOCASE = 'active'",
       undefined,
@@ -433,10 +432,7 @@ describe("execute_readonly_sql WebMCP tool", () => {
       "SELECT payment_status_code FROM agent_order_daily WHERE payment_status_code NOT IN (?, ?)",
       ["failed", "refunded"],
     ],
-    [
-      "SELECT 'paid' IS payment_status_code FROM agent_order_daily",
-      undefined,
-    ],
+    ["SELECT 'paid' IS payment_status_code FROM agent_order_daily", undefined],
   ])("allows a fixed-enum payment predicate: %s", async (sql, parameters) => {
     const execute = vi.fn(async () => result)
 
@@ -449,23 +445,29 @@ describe("execute_readonly_sql WebMCP tool", () => {
   })
 
   it.each([
-    ["SELECT 'paid' payment_status_code FROM agent_order_daily LIMIT 1", undefined],
+    [
+      "SELECT 'paid' payment_status_code FROM agent_order_daily LIMIT 1",
+      undefined,
+    ],
     ["SELECT ? payment_status_code FROM agent_order_daily LIMIT 1", ["paid"]],
     [
       "SELECT CASE WHEN order_status_code = 'processing' THEN 'paid' ELSE 'failed' END payment_status_code FROM agent_order_daily LIMIT 3",
       undefined,
     ],
-  ])("rejects an implicit payment status alias: %s", async (sql, parameters) => {
-    const execute = vi.fn(async () => result)
+  ])(
+    "rejects an implicit payment status alias: %s",
+    async (sql, parameters) => {
+      const execute = vi.fn(async () => result)
 
-    await expect(
-      executeReadonlySqlTool(
-        { execute },
-        { sql, ...(parameters ? { parameters } : {}) }
-      )
-    ).rejects.toMatchObject({ category: "SQL_LITERAL_ERROR" })
-    expect(execute).not.toHaveBeenCalled()
-  })
+      await expect(
+        executeReadonlySqlTool(
+          { execute },
+          { sql, ...(parameters ? { parameters } : {}) }
+        )
+      ).rejects.toMatchObject({ category: "SQL_LITERAL_ERROR" })
+      expect(execute).not.toHaveBeenCalled()
+    }
+  )
 
   it("allows a qualified fixed payment status field", async () => {
     const execute = vi.fn(async () => result)
@@ -500,6 +502,33 @@ describe("execute_readonly_sql WebMCP tool", () => {
         { sql: "SELECT name FROM sqlite_schema WHERE type = 'table'" }
       )
     ).resolves.toEqual(schemaResult)
+  })
+
+  it("allows curated return dimensions through the output privacy boundary", async () => {
+    const database = await SqliteReportingDatabase.create()
+    try {
+      const actual = await executeReadonlySqlTool(
+        { execute: async (input) => database.execute(input) },
+        {
+          sql: `
+            SELECT source_code, reason_code, eligibility_status_code,
+                   inspection_result_code, inventory_disposition_code,
+                   inventory_disposition_status_code,
+                   currency_code, SUM(requested_quantity) AS requested
+            FROM agent_return_product_daily
+            GROUP BY source_code, reason_code, eligibility_status_code,
+                     inspection_result_code, inventory_disposition_code,
+                     inventory_disposition_status_code,
+                     currency_code
+          `,
+        }
+      )
+
+      expect(actual.rows.length).toBeGreaterThan(0)
+      expect(actual.rows.every((row) => Number(row.requested) > 0)).toBe(true)
+    } finally {
+      database.close()
+    }
   })
 
   it.each(["start of month", "weekday 0", "unixepoch"])(

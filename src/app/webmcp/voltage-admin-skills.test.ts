@@ -9,6 +9,7 @@ import {
 const smartDashboardSkillNames = [
   "voltage-sales-data",
   "voltage-inventory-data",
+  "voltage-returns-data",
   "voltage-report-authoring",
 ]
 
@@ -20,7 +21,7 @@ const operationsSkillNames = [
 ]
 
 describe("Voltage Admin skills", () => {
-  it("discovers the three Smart Dashboard skills alongside existing safety skills", () => {
+  it("discovers the four Smart Dashboard skills alongside existing safety skills", () => {
     const actualNames = listVoltageAdminSkills().skills.map(
       (skill) => skill.name
     )
@@ -86,6 +87,31 @@ describe("Voltage Admin skills", () => {
     expect(text).toMatch(
       /agent_products[\s\S]*JOIN agent_products[\s\S]*i\.stock <= \?/
     )
+  })
+
+  it("documents safe return grains, joins, currencies, and cohort privacy", () => {
+    const actual = loadVoltageAdminSkill("voltage-returns-data")
+    const text = "text" in actual ? actual.text : ""
+
+    expect(text).toMatch(
+      /agent_return_product_daily[\s\S]*agent_sales_daily[\s\S]*不得直接.*join/
+    )
+    expect(text).toMatch(
+      /inventory_disposition_status_code[\s\S]*completed[\s\S]*pending\/failed/
+    )
+    expect(text).toMatch(
+      /agent_return_operational_daily[\s\S]*cycle_time_hours_total[\s\S]*completed_count/
+    )
+    expect(text).toMatch(
+      /sla_breached_count_as_of_snapshot[\s\S]*agent_dataset_status\.updated_at[\s\S]*不是即時/
+    )
+    expect(text).toMatch(
+      /agent_refund_daily[\s\S]*currency_code[\s\S]*refund_usd/
+    )
+    expect(text).toMatch(
+      /agent_return_cohort_monthly[\s\S]*至少 5 位[\s\S]*不得反推/
+    )
+    expect(text).toMatch(/Return Repository[\s\S]*queryId/)
   })
 
   it("documents native product currencies without invented conversion", () => {

@@ -4,6 +4,8 @@ import { createInventoryMovementSeed } from "../inventory/inventory-seed"
 import type { InventoryMovement } from "../inventory/types"
 import { createDummyJsonProductSeed } from "../products/product-seed"
 import type { Product, ProductCurrency } from "../products/types"
+import { createReturnSeed } from "../returns/return-seed"
+import type { ReturnRepositorySnapshot } from "../returns/types"
 
 export const REPORTING_DATASETS = [
   "agent_products",
@@ -13,6 +15,10 @@ export const REPORTING_DATASETS = [
   "agent_order_daily",
   "agent_order_product_daily",
   "agent_customer_monthly",
+  "agent_return_product_daily",
+  "agent_return_operational_daily",
+  "agent_refund_daily",
+  "agent_return_cohort_monthly",
   "agent_dataset_status",
 ] as const
 
@@ -24,6 +30,10 @@ CREATE TABLE agent_inventory_daily (inventory_date TEXT NOT NULL,product_id INTE
 CREATE TABLE agent_order_daily (order_date TEXT NOT NULL,region_code TEXT NOT NULL,segment_code TEXT NOT NULL,order_status_code TEXT NOT NULL,payment_status_code TEXT NOT NULL CHECK(payment_status_code IN('paid','pending','failed','refunded')),fulfillment_status_code TEXT NOT NULL,currency_code TEXT NOT NULL CHECK(currency_code IN('USD','TWD')),order_count INTEGER NOT NULL CHECK(order_count>=0),net_revenue_amount REAL NOT NULL CHECK(net_revenue_amount>=0),net_revenue_usd REAL CHECK(net_revenue_usd IS NULL OR net_revenue_usd>=0),PRIMARY KEY(order_date,region_code,segment_code,order_status_code,payment_status_code,fulfillment_status_code,currency_code));
 CREATE TABLE agent_order_product_daily (order_date TEXT NOT NULL,product_id INTEGER NOT NULL REFERENCES agent_products(product_id),region_code TEXT NOT NULL,segment_code TEXT NOT NULL,order_status_code TEXT NOT NULL,payment_status_code TEXT NOT NULL CHECK(payment_status_code IN('paid','pending','failed','refunded')),fulfillment_status_code TEXT NOT NULL,currency_code TEXT NOT NULL CHECK(currency_code IN('USD','TWD')),order_count INTEGER NOT NULL CHECK(order_count>=0),quantity INTEGER NOT NULL CHECK(quantity>=0),net_revenue_amount REAL NOT NULL CHECK(net_revenue_amount>=0),net_revenue_usd REAL CHECK(net_revenue_usd IS NULL OR net_revenue_usd>=0),PRIMARY KEY(order_date,product_id,region_code,segment_code,order_status_code,payment_status_code,fulfillment_status_code,currency_code));
 CREATE TABLE agent_customer_monthly (month_start TEXT NOT NULL,region_code TEXT NOT NULL,segment_code TEXT NOT NULL,customer_status_code TEXT NOT NULL,currency_code TEXT NOT NULL CHECK(currency_code IN('USD','TWD')),customer_count INTEGER NOT NULL CHECK(customer_count>=5),order_count INTEGER NOT NULL CHECK(order_count>=0),net_revenue_amount REAL NOT NULL CHECK(net_revenue_amount>=0),net_revenue_usd REAL CHECK(net_revenue_usd IS NULL OR net_revenue_usd>=0),PRIMARY KEY(month_start,region_code,segment_code,customer_status_code,currency_code));
+CREATE TABLE agent_return_product_daily (return_date TEXT NOT NULL,product_id INTEGER NOT NULL REFERENCES agent_products(product_id),source_code TEXT NOT NULL,reason_code TEXT NOT NULL,eligibility_status_code TEXT NOT NULL,inspection_result_code TEXT NOT NULL,inventory_disposition_code TEXT NOT NULL,inventory_disposition_status_code TEXT NOT NULL,currency_code TEXT NOT NULL CHECK(currency_code IN('USD','TWD')),rma_count INTEGER NOT NULL CHECK(rma_count>=0),requested_quantity INTEGER NOT NULL CHECK(requested_quantity>=0),received_quantity INTEGER NOT NULL CHECK(received_quantity>=0),accepted_quantity INTEGER NOT NULL CHECK(accepted_quantity>=0),refund_amount REAL NOT NULL CHECK(refund_amount>=0),refund_usd REAL CHECK(refund_usd IS NULL OR refund_usd>=0),PRIMARY KEY(return_date,product_id,source_code,reason_code,eligibility_status_code,inspection_result_code,inventory_disposition_code,inventory_disposition_status_code,currency_code));
+CREATE TABLE agent_return_operational_daily (return_date TEXT NOT NULL,source_code TEXT NOT NULL,reason_code TEXT NOT NULL,rma_status_code TEXT NOT NULL,eligibility_status_code TEXT NOT NULL,logistics_status_code TEXT NOT NULL,inspection_status_code TEXT NOT NULL,approval_status_code TEXT NOT NULL,refund_status_code TEXT NOT NULL,rma_count INTEGER NOT NULL CHECK(rma_count>=0),sla_breached_count_as_of_snapshot INTEGER NOT NULL CHECK(sla_breached_count_as_of_snapshot>=0),completed_count INTEGER NOT NULL CHECK(completed_count>=0),cycle_time_hours_total REAL NOT NULL CHECK(cycle_time_hours_total>=0),PRIMARY KEY(return_date,source_code,reason_code,rma_status_code,eligibility_status_code,logistics_status_code,inspection_status_code,approval_status_code,refund_status_code));
+CREATE TABLE agent_refund_daily (refund_date TEXT NOT NULL,approval_status_code TEXT NOT NULL,refund_status_code TEXT NOT NULL,currency_code TEXT NOT NULL CHECK(currency_code IN('USD','TWD')),refund_count INTEGER NOT NULL CHECK(refund_count>=0),refund_amount REAL NOT NULL CHECK(refund_amount>=0),refund_usd REAL CHECK(refund_usd IS NULL OR refund_usd>=0),execution_attempt_count INTEGER NOT NULL CHECK(execution_attempt_count>=0),failed_attempt_count INTEGER NOT NULL CHECK(failed_attempt_count>=0),succeeded_refund_count INTEGER NOT NULL CHECK(succeeded_refund_count>=0),PRIMARY KEY(refund_date,approval_status_code,refund_status_code,currency_code));
+CREATE TABLE agent_return_cohort_monthly (month_start TEXT NOT NULL,region_code TEXT NOT NULL,segment_code TEXT NOT NULL,reason_code TEXT NOT NULL,refund_status_code TEXT NOT NULL,currency_code TEXT NOT NULL CHECK(currency_code IN('USD','TWD')),customer_count INTEGER NOT NULL CHECK(customer_count>=5),rma_count INTEGER NOT NULL CHECK(rma_count>=0),requested_quantity INTEGER NOT NULL CHECK(requested_quantity>=0),accepted_quantity INTEGER NOT NULL CHECK(accepted_quantity>=0),refund_amount REAL NOT NULL CHECK(refund_amount>=0),refund_usd REAL CHECK(refund_usd IS NULL OR refund_usd>=0),PRIMARY KEY(month_start,region_code,segment_code,reason_code,refund_status_code,currency_code));
 CREATE TABLE agent_dataset_status (dataset_name TEXT PRIMARY KEY,updated_at TEXT NOT NULL,time_zone TEXT NOT NULL,period_start TEXT,period_end TEXT,completeness TEXT NOT NULL);
 `
 
@@ -32,6 +42,8 @@ export type OperationalReportingSource = {
   products: readonly Product[]
   inventoryMovements: readonly InventoryMovement[]
   commerce: CommerceDataSnapshot
+  returns: ReturnRepositorySnapshot
+  asOf?: string
 }
 export type ReportingDataSnapshot = {
   products: readonly Row[]
@@ -41,6 +53,10 @@ export type ReportingDataSnapshot = {
   orderDaily: readonly Row[]
   orderProductDaily: readonly Row[]
   customerMonthly: readonly Row[]
+  returnProductDaily: readonly Row[]
+  returnOperationalDaily: readonly Row[]
+  refundDaily: readonly Row[]
+  returnCohortMonthly: readonly Row[]
   datasetStatus: readonly Row[]
 }
 export type SafeOperationalProjection = Omit<
@@ -50,6 +66,17 @@ export type SafeOperationalProjection = Omit<
   updatedAtByDataset: Readonly<
     Record<(typeof REPORTING_DATASETS)[number], string>
   >
+}
+export const createOperationalReportingVersion = (
+  productVersion: number,
+  commerceVersion: number,
+  returnVersion: number
+) => {
+  const productCommerceSum = productVersion + commerceVersion
+  const productCommerceVersion =
+    (productCommerceSum * (productCommerceSum + 1)) / 2 + commerceVersion
+  const allSourcesSum = productCommerceVersion + returnVersion
+  return (allSourcesSum * (allSourcesSum + 1)) / 2 + returnVersion
 }
 const money = (amount: number, currency: ProductCurrency) =>
   [
@@ -77,6 +104,19 @@ const latestTimestamp = (timestamps: readonly string[]) =>
     timestamps[0] ?? "1970-01-01T00:00:00.000Z"
   )
 
+const emptyReturnSnapshot = (
+  orderSnapshotVersion = 0
+): ReturnRepositorySnapshot => ({
+  version: 0,
+  orderSnapshotVersion,
+  rmas: [],
+  items: [],
+  calculations: [],
+  approvals: [],
+  executionAttempts: [],
+  timeline: [],
+})
+
 export const createSafeOperationalProjection = (
   input: OperationalReportingSource | readonly Product[]
 ): SafeOperationalProjection => {
@@ -96,6 +136,7 @@ export const createSafeOperationalProjection = (
             orders: commerce.orders.filter((order) => orderIds.has(order.id)),
             orderLines,
           },
+          returns: emptyReturnSnapshot(),
         }
       })()
     : (input as OperationalReportingSource)
@@ -114,6 +155,7 @@ export const createSafeOperationalProjection = (
   const inventory = source.products.map(
     (p) => [p.id, p.stock, p.updatedAt] as const
   )
+  const reportingAsOf = source.asOf ?? new Date().toISOString()
   const byOrder = new Map(
     source.commerce.orders.map((order) => [order.id, order])
   )
@@ -303,6 +345,245 @@ export const createSafeOperationalProjection = (
       return projected
     })
   )
+  const rmaById = new Map(source.returns.rmas.map((rma) => [rma.id, rma]))
+  const calculationByRma = new Map(
+    [...source.returns.calculations]
+      .sort((left, right) => left.createdAt.localeCompare(right.createdAt))
+      .map((calculation) => [calculation.rmaId, calculation])
+  )
+  const returnItemFacts = source.returns.items.flatMap((item) => {
+    const rma = rmaById.get(item.rmaId)
+    if (!rma) return []
+    const calculation = calculationByRma.get(rma.id)
+    const calculationItem = calculation?.items.find(
+      (candidate) => candidate.returnItemId === item.id
+    )
+    return [{ rma, item, calculationItem }]
+  })
+  const returnProductDaily = groups(returnItemFacts, ({ rma, item }) =>
+    [
+      toReportingDate(rma.createdAt),
+      item.productId,
+      rma.source,
+      rma.reason,
+      rma.eligibility.status,
+      item.inspectionResult ?? "pending",
+      item.inventoryDisposition ?? "pending",
+      item.inventoryDispositionStatus,
+      item.paidAmount.currency,
+    ].join("|")
+  ).map((set) => {
+    const { rma, item } = set[0]!
+    const refundAmount = set.reduce(
+      (sum, fact) => sum + (fact.calculationItem?.amount.amount ?? 0),
+      0
+    )
+    return [
+      toReportingDate(rma.createdAt),
+      item.productId,
+      rma.source,
+      rma.reason,
+      rma.eligibility.status,
+      item.inspectionResult ?? "pending",
+      item.inventoryDisposition ?? "pending",
+      item.inventoryDispositionStatus,
+      item.paidAmount.currency,
+      new Set(set.map((fact) => fact.rma.id)).size,
+      set.reduce((sum, fact) => sum + fact.item.requestedQuantity, 0),
+      set.reduce((sum, fact) => sum + (fact.item.receivedQuantity ?? 0), 0),
+      set.reduce((sum, fact) => sum + (fact.item.acceptedQuantity ?? 0), 0),
+      ...money(refundAmount, item.paidAmount.currency),
+    ] as const
+  })
+  const returnOperationalDaily = groups(source.returns.rmas, (rma) =>
+    [
+      toReportingDate(rma.createdAt),
+      rma.source,
+      rma.reason,
+      rma.status,
+      rma.eligibility.status,
+      rma.logistics.status,
+      rma.inspection.status,
+      rma.approvalStatus,
+      rma.refundStatus,
+    ].join("|")
+  ).map((set) => {
+    const rma = set[0]!
+    const completed = set.filter((item) => item.completedAt)
+    return [
+      toReportingDate(rma.createdAt),
+      rma.source,
+      rma.reason,
+      rma.status,
+      rma.eligibility.status,
+      rma.logistics.status,
+      rma.inspection.status,
+      rma.approvalStatus,
+      rma.refundStatus,
+      set.length,
+      set.filter((item) =>
+        item.completedAt
+          ? Date.parse(item.completedAt) > Date.parse(item.slaDueAt)
+          : item.status === "active" &&
+            Date.parse(reportingAsOf) > Date.parse(item.slaDueAt)
+      ).length,
+      completed.length,
+      Number(
+        completed
+          .reduce(
+            (sum, item) =>
+              sum +
+              (Date.parse(item.completedAt!) - Date.parse(item.createdAt)) /
+                3_600_000,
+            0
+          )
+          .toFixed(2)
+      ),
+    ] as const
+  })
+  const refundFacts = source.returns.approvals.flatMap((approval) => {
+    const rma = rmaById.get(approval.rmaId)
+    const calculation = source.returns.calculations.find(
+      (candidate) => candidate.id === approval.calculationId
+    )
+    if (!rma || !calculation) return []
+    return [
+      {
+        approval,
+        rma,
+        calculation,
+        attempts: source.returns.executionAttempts.filter(
+          (attempt) => attempt.approvalId === approval.id
+        ),
+      },
+    ]
+  })
+  const refundDaily = groups(refundFacts, ({ approval, rma, calculation }) =>
+    [
+      toReportingDate(approval.decidedAt ?? approval.createdAt),
+      approval.status,
+      rma.refundStatus,
+      calculation.total.currency,
+    ].join("|")
+  ).map((set) => {
+    const { approval, rma, calculation } = set[0]!
+    const amount = set.reduce(
+      (sum, fact) => sum + fact.calculation.total.amount,
+      0
+    )
+    const attempts = set.flatMap((fact) => fact.attempts)
+    return [
+      toReportingDate(approval.decidedAt ?? approval.createdAt),
+      approval.status,
+      rma.refundStatus,
+      calculation.total.currency,
+      set.length,
+      ...money(amount, calculation.total.currency),
+      attempts.length,
+      attempts.filter(({ result }) => result === "failed").length,
+      set.filter(({ rma: item }) => item.refundStatus === "succeeded").length,
+    ] as const
+  })
+  const itemsByRma = new Map(
+    groups(source.returns.items, (item) => item.rmaId).map((set) => [
+      set[0]!.rmaId,
+      set,
+    ])
+  )
+  const returnCohortFacts = source.returns.rmas.flatMap((rma) => {
+    const order = byOrder.get(rma.orderId)
+    if (!order) return []
+    const calculation = calculationByRma.get(rma.id)
+    const items = itemsByRma.get(rma.id) ?? []
+    return [
+      {
+        rma,
+        customerId: order.customerId,
+        region: order.customerSnapshot.region,
+        segment: order.customerSnapshot.segment,
+        currency: calculation?.total.currency ?? order.amounts.total.currency,
+        requestedQuantity: items.reduce(
+          (sum, item) => sum + item.requestedQuantity,
+          0
+        ),
+        acceptedQuantity: items.reduce(
+          (sum, item) => sum + (item.acceptedQuantity ?? 0),
+          0
+        ),
+        refundAmount: calculation?.total.amount ?? 0,
+      },
+    ]
+  })
+  const returnCohortMonthly = groups(returnCohortFacts, ({ rma }) =>
+    toReportingDate(rma.createdAt).slice(0, 7)
+  ).flatMap((monthFacts) =>
+    (["USD", "TWD"] as const).flatMap((currency) => {
+      const facts = monthFacts.filter((fact) => fact.currency === currency)
+      const grouped = groups(facts, (fact) =>
+        [
+          fact.region,
+          fact.segment,
+          fact.rma.reason,
+          fact.rma.refundStatus,
+        ].join("|")
+      )
+      const safeGroups = grouped.filter(
+        (set) => new Set(set.map((fact) => fact.customerId)).size >= 5
+      )
+      const suppressed = grouped
+        .filter((set) => !safeGroups.includes(set))
+        .flat()
+      const createRow = (
+        set: typeof facts,
+        region: string,
+        segment: string,
+        reason: string,
+        refundStatus: string
+      ) => {
+        const refundAmount = set.reduce(
+          (sum, fact) => sum + fact.refundAmount,
+          0
+        )
+        return [
+          `${toReportingDate(set[0]!.rma.createdAt).slice(0, 7)}-01`,
+          region,
+          segment,
+          reason,
+          refundStatus,
+          currency,
+          new Set(set.map((fact) => fact.customerId)).size,
+          set.length,
+          set.reduce((sum, fact) => sum + fact.requestedQuantity, 0),
+          set.reduce((sum, fact) => sum + fact.acceptedQuantity, 0),
+          ...money(refundAmount, currency),
+        ] as const
+      }
+      const projected = safeGroups.map((set) => {
+        const first = set[0]!
+        return createRow(
+          set,
+          first.region,
+          first.segment,
+          first.rma.reason,
+          first.rma.refundStatus
+        )
+      })
+      if (new Set(suppressed.map((fact) => fact.customerId)).size >= 5) {
+        const regions = new Set(suppressed.map((fact) => fact.region))
+        const segments = new Set(suppressed.map((fact) => fact.segment))
+        projected.push(
+          createRow(
+            suppressed,
+            regions.size === 1 ? [...regions][0]! : "other",
+            segments.size === 1 ? [...segments][0]! : "other",
+            "suppressed",
+            "suppressed"
+          )
+        )
+      }
+      return projected
+    })
+  )
   const productUpdates = source.products.map((item) => item.updatedAt)
   const orderUpdates = source.commerce.orders.map((item) => item.updatedAt)
   const movementUpdates = source.inventoryMovements.map(
@@ -311,11 +592,19 @@ export const createSafeOperationalProjection = (
   const customerUpdates = source.commerce.customers.map(
     (item) => item.updatedAt
   )
+  const returnUpdates = source.returns.rmas.map((item) => item.updatedAt)
+  const refundUpdates = [
+    ...source.returns.calculations.map((item) => item.createdAt),
+    ...source.returns.approvals.map((item) => item.decidedAt ?? item.createdAt),
+    ...source.returns.executionAttempts.map((item) => item.executedAt),
+  ]
   const allUpdates = [
     ...productUpdates,
     ...orderUpdates,
     ...movementUpdates,
     ...customerUpdates,
+    ...returnUpdates,
+    ...refundUpdates,
   ]
   const updatedAtByDataset = {
     agent_products: latestTimestamp(productUpdates),
@@ -328,6 +617,17 @@ export const createSafeOperationalProjection = (
       ...orderUpdates,
       ...customerUpdates,
     ]),
+    agent_return_product_daily: latestTimestamp(returnUpdates),
+    agent_return_operational_daily: latestTimestamp([
+      ...returnUpdates,
+      reportingAsOf,
+    ]),
+    agent_refund_daily: latestTimestamp([...returnUpdates, ...refundUpdates]),
+    agent_return_cohort_monthly: latestTimestamp([
+      ...orderUpdates,
+      ...returnUpdates,
+      ...refundUpdates,
+    ]),
     agent_dataset_status: latestTimestamp(allUpdates),
   } satisfies SafeOperationalProjection["updatedAtByDataset"]
   return {
@@ -338,6 +638,10 @@ export const createSafeOperationalProjection = (
     orderDaily,
     orderProductDaily,
     customerMonthly,
+    returnProductDaily,
+    returnOperationalDaily,
+    refundDaily,
+    returnCohortMonthly,
     updatedAtByDataset,
   }
 }
@@ -356,6 +660,10 @@ export const createReportingDataSnapshot = (
     agent_order_daily: projection.orderDaily,
     agent_order_product_daily: projection.orderProductDaily,
     agent_customer_monthly: projection.customerMonthly,
+    agent_return_product_daily: projection.returnProductDaily,
+    agent_return_operational_daily: projection.returnOperationalDaily,
+    agent_refund_daily: projection.refundDaily,
+    agent_return_cohort_monthly: projection.returnCohortMonthly,
     agent_dataset_status: [],
   }
   const datasetStatus = REPORTING_DATASETS.map((name) => {
@@ -383,15 +691,21 @@ export const createReportingDataSnapshot = (
     orderDaily: projection.orderDaily,
     orderProductDaily: projection.orderProductDaily,
     customerMonthly: projection.customerMonthly,
+    returnProductDaily: projection.returnProductDaily,
+    returnOperationalDaily: projection.returnOperationalDaily,
+    refundDaily: projection.refundDaily,
+    returnCohortMonthly: projection.returnCohortMonthly,
     datasetStatus,
   }
 }
 
 const defaults = createDummyJsonProductSeed()
+const defaultCommerce = createCommerceSeed(defaults)
 export const DEFAULT_REPORTING_DATA = createReportingDataSnapshot({
   products: defaults,
   inventoryMovements: createInventoryMovementSeed(defaults),
-  commerce: createCommerceSeed(defaults),
+  commerce: defaultCommerce,
+  returns: createReturnSeed(defaultCommerce),
 })
 export const collectReportingStrings = (snapshot: ReportingDataSnapshot) =>
   new Set(

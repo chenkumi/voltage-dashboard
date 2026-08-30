@@ -31,7 +31,10 @@ import {
   EXECUTE_READONLY_SQL_TOOL_NAME,
   ReportingRuntimeController,
 } from "./reporting/reporting-tools"
-import { createReportingDataSnapshot } from "./reporting/reporting-data"
+import {
+  createOperationalReportingVersion,
+  createReportingDataSnapshot,
+} from "./reporting/reporting-data"
 import {
   isReportAuthoringTool,
   REPORT_AUTHORING_TOOLS,
@@ -104,14 +107,6 @@ const noInput = schema({})
 
 const isAbortError = (error: unknown) =>
   error instanceof Error && error.name === "AbortError"
-
-const operationalReportingVersion = (
-  productVersion: number,
-  commerceVersion: number
-) => {
-  const sum = productVersion + commerceVersion
-  return (sum * (sum + 1)) / 2 + commerceVersion
-}
 
 // Route utilities are shared by the nested route layout and WebMCP provider.
 // eslint-disable-next-line react-refresh/only-export-components
@@ -408,7 +403,12 @@ export const VoltageAdminProvider = () => {
   }, [location.pathname])
 
   useEffect(() => {
-    if (products.state !== "ready" || commerce.state !== "ready") return
+    if (
+      products.state !== "ready" ||
+      commerce.state !== "ready" ||
+      returns.state !== "ready"
+    )
+      return
     let cancelled = false
     void productRepository
       .listInventoryMovements()
@@ -419,8 +419,13 @@ export const VoltageAdminProvider = () => {
             products: products.products,
             inventoryMovements: movements,
             commerce,
+            returns,
           }),
-          operationalReportingVersion(products.version, commerce.version)
+          createOperationalReportingVersion(
+            products.version,
+            commerce.version,
+            returns.version
+          )
         )
       })
       .catch((error) => {
@@ -430,7 +435,7 @@ export const VoltageAdminProvider = () => {
     return () => {
       cancelled = true
     }
-  }, [commerce, productRepository, products, reportingController])
+  }, [commerce, productRepository, products, reportingController, returns])
 
   useEffect(() => {
     void productStore.initialize()
@@ -458,16 +463,19 @@ export const VoltageAdminProvider = () => {
     ])
     const productSnapshot = productStore.getSnapshot()
     const commerceSnapshot = commerceStore.getSnapshot()
+    const returnSnapshot = returnStore.getSnapshot()
     const movements = await productRepository.listInventoryMovements()
     await reportingController.prepare(
       createReportingDataSnapshot({
         products: productSnapshot.products,
         inventoryMovements: movements,
         commerce: commerceSnapshot,
+        returns: returnSnapshot,
       }),
-      operationalReportingVersion(
+      createOperationalReportingVersion(
         productSnapshot.version,
-        commerceSnapshot.version
+        commerceSnapshot.version,
+        returnSnapshot.version
       )
     )
   }, [

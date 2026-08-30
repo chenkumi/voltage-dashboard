@@ -2,6 +2,7 @@ import type { WebMcpRegisteredTool } from "../types"
 import {
   collectReportingStrings,
   DEFAULT_REPORTING_DATA,
+  REPORTING_DATASETS,
   REPORTING_SCHEMA_SQL,
   type ReportingDataSnapshot,
 } from "./reporting-data"
@@ -34,7 +35,7 @@ export const EXECUTE_READONLY_SQL_TOOL_NAME = "execute_readonly_sql"
 export const EXECUTE_READONLY_SQL_TOOL: WebMcpRegisteredTool = {
   name: EXECUTE_READONLY_SQL_TOOL_NAME,
   description:
-    "SQLite read-only SELECT/WITH; 100 rows max. Tables: agent_products, agent_sales_daily, agent_inventory, agent_inventory_daily, agent_order_daily, agent_order_product_daily, agent_customer_monthly, agent_dataset_status. Fields: price_amount, price_usd, currency_code, product_status, net_revenue_usd, payment_status_code; join agent_inventory to agent_products by product_id. price_usd is NULL for non-USD. Keep currencies separate. Customer groups >=5; no personal/payment IDs. queryIds expire.",
+    "SQLite read-only SELECT/WITH; 100 rows max. Curated tables cover products, sales, inventory, orders, customer cohorts, returns, refunds, and dataset status; discover names and columns through sqlite_schema. Keep currency_code groups separate; non-USD compatibility fields are NULL. Customer and return cohorts contain at least 5 people. No customer, order, RMA, payment IDs, or free text. queryIds expire when Product, Commerce, or Returns data changes.",
   inputSchema: {
     type: "object",
     properties: {
@@ -313,10 +314,7 @@ const assertSafePaymentStatusFilters = (
     const previous = tokens[index - 1]
     const next = tokens[index + 1]
 
-    if (
-      previous?.lower === "as" ||
-      next?.lower === "as"
-    )
+    if (previous?.lower === "as" || next?.lower === "as")
       throw paymentFilterError()
 
     if (["=", "!=", "<>"].includes(next?.lower ?? "")) {
@@ -325,7 +323,8 @@ const assertSafePaymentStatusFilters = (
       continue
     }
     if (next?.lower === "is") {
-      const valueIndex = tokens[index + 2]?.lower === "not" ? index + 3 : index + 2
+      const valueIndex =
+        tokens[index + 2]?.lower === "not" ? index + 3 : index + 2
       if (!isSafePaymentValueToken(tokens[valueIndex], parameters))
         throw paymentFilterError()
       continue
@@ -348,11 +347,7 @@ const assertSafePaymentStatusFilters = (
         expectsValue = !expectsValue
         valueIndex += 1
       }
-      if (
-        valueCount === 0 ||
-        expectsValue ||
-        tokens[valueIndex]?.lower !== ")"
-      )
+      if (valueCount === 0 || expectsValue || tokens[valueIndex]?.lower !== ")")
         throw paymentFilterError()
       continue
     }
@@ -367,10 +362,7 @@ const assertSafePaymentStatusFilters = (
         throw paymentFilterError()
       continue
     }
-    if (
-      previous?.lower === "not" &&
-      tokens[index - 2]?.lower === "is"
-    ) {
+    if (previous?.lower === "not" && tokens[index - 2]?.lower === "is") {
       if (!isSafePaymentValueToken(tokens[index - 3], parameters))
         throw paymentFilterError()
       continue
@@ -385,9 +377,7 @@ const assertSafePaymentStatusFilters = (
       throw paymentFilterError()
     if (!next || terminalTokens.has(next.lower)) {
       if (
-        ["select", "distinct", ",", ".", "by"].includes(
-          previous?.lower ?? ""
-        )
+        ["select", "distinct", ",", ".", "by"].includes(previous?.lower ?? "")
       )
         continue
       throw paymentFilterError()
@@ -450,16 +440,7 @@ const assertSafeReportingResult = (
   result: SqlQueryResult,
   safeStrings: ReadonlySet<string>
 ) => {
-  const schemaNames = new Set([
-    "agent_customer_monthly",
-    "agent_dataset_status",
-    "agent_inventory",
-    "agent_inventory_daily",
-    "agent_order_daily",
-    "agent_order_product_daily",
-    "agent_products",
-    "agent_sales_daily",
-  ])
+  const schemaNames = new Set<string>(REPORTING_DATASETS)
   const hasSensitiveColumn = result.columns.some((column) => {
     if (
       column.name === "payment_status_code" &&

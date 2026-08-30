@@ -77,6 +77,10 @@ describe("SqliteReportingDatabase", () => {
       "agent_order_daily",
       "agent_order_product_daily",
       "agent_products",
+      "agent_refund_daily",
+      "agent_return_cohort_monthly",
+      "agent_return_operational_daily",
+      "agent_return_product_daily",
       "agent_sales_daily",
     ])
     expect(() =>
@@ -176,12 +180,56 @@ describe("SqliteReportingDatabase", () => {
       database.execute({ sql: "SELECT * FROM agent_order_daily" }).rows,
       database.execute({ sql: "SELECT * FROM agent_order_product_daily" }).rows,
       database.execute({ sql: "SELECT * FROM agent_customer_monthly" }).rows,
+      database.execute({ sql: "SELECT * FROM agent_return_product_daily" })
+        .rows,
+      database.execute({ sql: "SELECT * FROM agent_return_operational_daily" })
+        .rows,
+      database.execute({ sql: "SELECT * FROM agent_refund_daily" }).rows,
+      database.execute({ sql: "SELECT * FROM agent_return_cohort_monthly" })
+        .rows,
       database.execute({ sql: "SELECT * FROM agent_dataset_status" }).rows,
     ])
     expect(serialized).not.toMatch(
       /customerName|email|address|phone|account|cardNumber|paymentMethod|paymentId/i
     )
     expect(serialized).toMatch(/payment_status_code/)
+  })
+
+  it("supports product, policy, SLA, inspection, inventory, and refund analysis", () => {
+    const productReturns = database.execute({
+      sql: `
+        SELECT p.category, r.reason_code, r.eligibility_status_code,
+               r.inspection_result_code, r.inventory_disposition_code,
+               r.inventory_disposition_status_code,
+               SUM(r.requested_quantity) AS requested,
+               SUM(r.accepted_quantity) AS accepted
+        FROM agent_return_product_daily AS r
+        JOIN agent_products AS p ON p.product_id = r.product_id
+        GROUP BY p.category, r.reason_code, r.eligibility_status_code,
+                 r.inspection_result_code, r.inventory_disposition_code,
+                 r.inventory_disposition_status_code
+      `,
+    })
+    const operations = database.execute({
+      sql: `
+        SELECT return_date, SUM(rma_count) AS returns,
+               SUM(sla_breached_count_as_of_snapshot) AS sla_breaches,
+               SUM(completed_count) AS completed,
+               SUM(cycle_time_hours_total) AS cycle_hours
+        FROM agent_return_operational_daily
+        GROUP BY return_date
+      `,
+    })
+
+    expect(productReturns.rows.length).toBeGreaterThan(0)
+    expect(operations.rows.length).toBeGreaterThan(0)
+    expect(
+      productReturns.rows.every(
+        (row) =>
+          typeof row.category === "string" &&
+          Number(row.requested) >= Number(row.accepted)
+      )
+    ).toBe(true)
   })
 
   it("answers the six representative operational reporting questions", () => {
