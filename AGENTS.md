@@ -57,6 +57,9 @@ Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報�
   facts 與客戶人工 mutation；metadata v2 只遷移唯讀基線 facts，不覆寫使用者客戶修改。
 - `src/app/webmcp/inventory/`：InventoryMovement 歷史、週／月／年統計、風險分析與 UI
   人工調整流程。
+- `src/app/webmcp/operational-ui/`：Dashboard metric 與 Products、Inventory、Orders、
+  Customers 清單共用的視覺及互動元件；不承擔 Repository、資料投影或 WebMCP
+  schema／executor 安全邏輯。
 - `src/app/webmcp/voltage-admin-data.ts`：以 Product Repository snapshot 計算 Dashboard、
   商品搜尋與庫存投影。
 - `src/app/webmcp/reporting/`：SQLite runtime、查詢限制、query cache、報表狀態與

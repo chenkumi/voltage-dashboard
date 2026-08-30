@@ -639,7 +639,11 @@ export const CustomersPage = () => {
       pageName="Customers"
       status={
         <Badge variant="outline">
-          {t("{{count}} customers", { count: commerce.customers.length })}
+          {isLoading
+            ? t("Loading…")
+            : hasError
+              ? "—"
+              : t("{{count}} customers", { count: commerce.customers.length })}
         </Badge>
       }
       actions={
@@ -650,39 +654,54 @@ export const CustomersPage = () => {
     >
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
+          loading={isLoading}
           label={t("Total customers")}
-          value={rows.length}
+          value={hasError ? undefined : rows.length}
           detail={t("All customer records")}
+          unavailableDetail={t("Data unavailable")}
         />
       </GridBlock>
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
+          loading={isLoading}
           tone="positive"
           label={t("Active customers")}
           value={
-            rows.filter(({ customer }) => customer.status === "active").length
+            hasError
+              ? undefined
+              : rows.filter(({ customer }) => customer.status === "active")
+                  .length
           }
           detail={t("Available for service")}
+          unavailableDetail={t("Data unavailable")}
         />
       </GridBlock>
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
+          loading={isLoading}
           label={t("VIP customers")}
           value={
-            rows.filter(({ customer }) => customer.segment === "vip").length
+            hasError
+              ? undefined
+              : rows.filter(({ customer }) => customer.segment === "vip").length
           }
           detail={t("High-value segment")}
+          unavailableDetail={t("Data unavailable")}
         />
       </GridBlock>
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
+          loading={isLoading}
           tone="warning"
           label={t("Suspended customers")}
           value={
-            rows.filter(({ customer }) => customer.status === "suspended")
-              .length
+            hasError
+              ? undefined
+              : rows.filter(({ customer }) => customer.status === "suspended")
+                  .length
           }
           detail={t("Excluded from active totals")}
+          unavailableDetail={t("Data unavailable")}
         />
       </GridBlock>
       <GridBlock>

@@ -750,44 +750,64 @@ export const OrdersPage = () => {
       pageName="Orders"
       status={
         <Badge variant="outline">
-          {t("{{count}} orders", { count: commerce.orders.length })}
+          {isLoading
+            ? t("Loading…")
+            : hasError
+              ? "—"
+              : t("{{count}} orders", { count: commerce.orders.length })}
         </Badge>
       }
     >
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
+          loading={isLoading}
           label={t("Total orders")}
-          value={rows.length}
+          value={hasError ? undefined : rows.length}
           detail={t("Historical order snapshots")}
+          unavailableDetail={t("Data unavailable")}
         />
       </GridBlock>
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
+          loading={isLoading}
           label={t("Processing orders")}
           value={
-            rows.filter(({ order }) => order.status === "processing").length
+            hasError
+              ? undefined
+              : rows.filter(({ order }) => order.status === "processing").length
           }
           detail={t("Currently being prepared")}
+          unavailableDetail={t("Data unavailable")}
         />
       </GridBlock>
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
+          loading={isLoading}
           tone="critical"
           label={t("Action needed")}
           value={
-            rows.filter(({ order }) => order.status === "action_needed").length
+            hasError
+              ? undefined
+              : rows.filter(({ order }) => order.status === "action_needed")
+                  .length
           }
           detail={t("Requires operational review")}
+          unavailableDetail={t("Data unavailable")}
         />
       </GridBlock>
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
+          loading={isLoading}
           tone="critical"
           label={t("Failed payments")}
           value={
-            rows.filter(({ order }) => order.paymentStatus === "failed").length
+            hasError
+              ? undefined
+              : rows.filter(({ order }) => order.paymentStatus === "failed")
+                  .length
           }
           detail={t("Status only; no payment identifiers")}
+          unavailableDetail={t("Data unavailable")}
         />
       </GridBlock>
       <GridBlock>

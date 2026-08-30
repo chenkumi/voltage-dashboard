@@ -51,6 +51,11 @@ describe("inventory data states", () => {
 
     expect(screen.getByText("Loading inventory…")).toBeTruthy()
     expect(screen.queryByText("Inventory data is unavailable.")).toBeNull()
+    expect(screen.getByLabelText("Total units loading")).toBeTruthy()
+    expect(
+      screen.getByRole("heading", { name: "Inventory" }).parentElement
+        ?.textContent
+    ).toContain("Loading…")
   })
 
   it("gives a known error precedence over another loading store", () => {
@@ -73,5 +78,17 @@ describe("inventory data states", () => {
       2
     )
     expect(screen.queryByText("Loading inventory…")).toBeNull()
+    const totalCard = screen
+      .getByText("Total units")
+      .closest("[data-slot='card']")
+    expect(totalCard?.querySelector("strong")?.textContent).toBe("—")
+    expect(
+      screen
+        .getAllByRole("heading", { name: "Inventory" })
+        .every(
+          (heading) =>
+            !heading.parentElement?.textContent?.includes("0 products")
+        )
+    ).toBe(true)
   })
 })

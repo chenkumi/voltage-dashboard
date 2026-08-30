@@ -363,7 +363,6 @@
   font-size: 0.8rem;
 }
 
-.product-list-panel,
 .product-detail-panel {
   border: 1px solid var(--admin-border);
   border-radius: 0.75rem;
@@ -371,87 +370,12 @@
   box-shadow: 0 1px 2px rgb(31 41 34 / 5%);
 }
 
-.product-list-panel {
-  min-width: 0;
-  overflow: hidden;
-}
-
-.product-list-toolbar {
-  display: grid;
-  grid-template-columns: minmax(14rem, 1fr) repeat(3, minmax(9rem, 0.35fr));
-  gap: 0.55rem;
-  padding: 0.7rem;
-  border-bottom: 1px solid var(--admin-border);
-  background: #f5f6f2;
-}
-
-.product-list-toolbar > label:not(.product-list-search) {
-  display: grid;
-  gap: 0.22rem;
-}
-
-.product-list-toolbar > label > span {
-  color: var(--admin-subtle);
-  font-size: 0.63rem;
-  font-weight: 700;
-}
-
-.product-list-toolbar select,
-.product-list-search {
-  min-height: 2.25rem;
-  border: 1px solid var(--admin-border);
-  border-radius: 0.5rem;
-  background: #fff;
-  font-size: 0.75rem;
-}
-
-.product-list-toolbar select {
-  width: 100%;
-  padding: 0 0.55rem;
-  cursor: pointer;
-}
-
-.product-list-search {
-  display: flex;
-  align-items: center;
-  align-self: end;
-  gap: 0.45rem;
-  padding: 0 0.6rem;
-}
-
-.product-list-search svg {
-  width: 0.95rem;
-  color: var(--admin-subtle);
-}
-
-.product-list-search input {
-  min-width: 0;
-  flex: 1;
-  background: transparent;
-  outline: none;
-}
-
-.product-list-toolbar select:focus-visible,
-.product-list-search:focus-within,
 .product-table input:focus-visible,
 .product-detail-thumbnails button:focus-visible {
   outline: 2px solid #617966;
   outline-offset: 2px;
 }
 
-.product-list-summary {
-  display: flex;
-  min-height: 2.8rem;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.45rem 0.7rem;
-  border-bottom: 1px solid var(--admin-border);
-  color: var(--admin-subtle);
-  font-size: 0.72rem;
-}
-
-.product-list-message,
 .product-detail-message {
   padding: 0.55rem 0.7rem;
   border: 1px solid #b9cabb;
@@ -576,14 +500,6 @@
   display: flex;
   justify-content: flex-end;
   gap: 0.1rem;
-}
-
-.product-pagination {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-  gap: 0.3rem;
-  padding: 0.65rem;
 }
 
 .product-list-state {
@@ -939,23 +855,6 @@
     justify-content: flex-start;
   }
 
-  .product-list-toolbar {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .product-list-search {
-    grid-column: 1 / -1;
-  }
-
-  .product-list-summary {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .product-pagination {
-    justify-content: flex-start;
-  }
-
   .product-review-list {
     grid-template-columns: 1fr;
   }
@@ -982,30 +881,9 @@
   }
 }
 
-.voltage-admin-metric,
 .voltage-admin-panel {
   border-radius: 1rem;
   background: var(--admin-surface);
-}
-
-.voltage-admin-metric {
-  padding: 1.1rem;
-}
-
-.voltage-admin-metric span,
-.voltage-admin-metric small {
-  display: block;
-  color: var(--admin-subtle);
-  font-size: 0.75rem;
-}
-
-.voltage-admin-metric strong {
-  display: block;
-  margin: 0.5rem 0 0.2rem;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 1.8rem;
-  font-weight: 400;
-  letter-spacing: -0.05em;
 }
 
 .voltage-admin-panel {
@@ -1306,11 +1184,6 @@
   border-top: 1px solid var(--admin-border);
   color: var(--admin-subtle);
   font-size: 0.7rem;
-}
-
-.voltage-admin-workflow-metric {
-  border: 1px solid #d7dcd4;
-  background: #eef1eb;
 }
 
 .voltage-admin-review-list {

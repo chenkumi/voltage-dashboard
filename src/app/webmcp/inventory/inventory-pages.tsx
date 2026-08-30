@@ -487,9 +487,7 @@ export const InventoryPage = () => {
     key: K,
     value: InventoryListFilters[K]
   ) => {
-    applyAndReset(() =>
-      setFilters((current) => ({ ...current, [key]: value }))
-    )
+    applyAndReset(() => setFilters((current) => ({ ...current, [key]: value })))
   }
   const updatePeriod = (value: InventoryPeriod) =>
     applyAndReset(() => setPeriod(value))
@@ -640,47 +638,70 @@ export const InventoryPage = () => {
       pageName="Inventory"
       status={
         <Badge variant="outline">
-          {t("{{count}} products", { count: activeRows.length })}
+          {isDataLoading
+            ? t("Loading…")
+            : hasDataError
+              ? "—"
+              : t("{{count}} products", { count: activeRows.length })}
         </Badge>
       }
     >
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
+          loading={isDataLoading}
           label={t("Total units")}
-          value={activeRows.reduce((sum, row) => sum + row.product.stock, 0)}
+          value={
+            hasDataError
+              ? undefined
+              : activeRows.reduce((sum, row) => sum + row.product.stock, 0)
+          }
           detail={t("Across active products")}
+          unavailableDetail={t("Data unavailable")}
         />
       </GridBlock>
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
+          loading={isDataLoading}
           tone="critical"
           label={t("Out of stock")}
           value={
-            activeRows.filter((row) => row.risks.includes("out_of_stock"))
-              .length
+            hasDataError
+              ? undefined
+              : activeRows.filter((row) => row.risks.includes("out_of_stock"))
+                  .length
           }
           detail={t("Needs immediate review")}
+          unavailableDetail={t("Data unavailable")}
         />
       </GridBlock>
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
+          loading={isDataLoading}
           tone="warning"
           label={t("Low stock")}
           value={
-            activeRows.filter((row) => row.risks.includes("low_stock")).length
+            hasDataError
+              ? undefined
+              : activeRows.filter((row) => row.risks.includes("low_stock"))
+                  .length
           }
           detail={t("At or below 12 units")}
+          unavailableDetail={t("Data unavailable")}
         />
       </GridBlock>
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
+          loading={isDataLoading}
           tone="warning"
           label={t("Reorder risk")}
           value={
-            activeRows.filter((row) => row.risks.includes("reorder_risk"))
-              .length
+            hasDataError
+              ? undefined
+              : activeRows.filter((row) => row.risks.includes("reorder_risk"))
+                  .length
           }
           detail={t("21 days of supply or less")}
+          unavailableDetail={t("Data unavailable")}
         />
       </GridBlock>
       <GridBlock>
@@ -736,9 +757,7 @@ export const InventoryPage = () => {
                       <OperationalFilterButton
                         kind="more"
                         label={t("More filters")}
-                        activeCount={
-                          filters.sort === "updated-desc" ? 0 : 1
-                        }
+                        activeCount={filters.sort === "updated-desc" ? 0 : 1}
                       />
                     }
                     title={t("More filters")}
@@ -821,54 +840,54 @@ export const InventoryPage = () => {
               </OperationalListState>
             ) : (
               <div className="overflow-x-auto">
-              <table className="w-full min-w-[980px] text-left text-sm">
-                <thead className="border-b bg-muted/60 text-xs text-muted-foreground">
-                  <tr>
-                    <th className="p-3">{t("Product")}</th>
-                    <th>{t("Stock")}</th>
-                    <th>{t("Period change")}</th>
-                    <th>{t("Change rate")}</th>
-                    <th>{t("Supply days")}</th>
-                    <th>{t("Risk")}</th>
-                    <th>{t("Updated")}</th>
-                    <th className="pr-3 text-right">{t("Actions")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {model.items.map((row) => {
-                    const open = expandedId === row.product.id
-                    const movements = inventory.movements.filter(
-                      (movement) => movement.productId === row.product.id
-                    )
-                    const summary = selectInventoryPeriodSummary(
-                      row.product.id,
-                      inventory.movements,
-                      period,
-                      now
-                    )
-                    return (
-                      <FragmentRow
-                        key={row.product.id}
-                        row={row}
-                        open={open}
-                        movements={movements}
-                        summary={summary}
-                        language={i18n.resolvedLanguage ?? "en"}
-                        onToggle={() =>
-                          setExpandedId(open ? null : row.product.id)
-                        }
-                        onDetail={() =>
-                          navigate(
-                            `/inventory/${row.product.id}?period=${period}`
-                          )
-                        }
-                        onAdjust={() => setAdjusting(row.product)}
-                        t={t}
-                      />
-                    )
-                  })}
-                </tbody>
-              </table>
+                <table className="w-full min-w-[980px] text-left text-sm">
+                  <thead className="border-b bg-muted/60 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="p-3">{t("Product")}</th>
+                      <th>{t("Stock")}</th>
+                      <th>{t("Period change")}</th>
+                      <th>{t("Change rate")}</th>
+                      <th>{t("Supply days")}</th>
+                      <th>{t("Risk")}</th>
+                      <th>{t("Updated")}</th>
+                      <th className="pr-3 text-right">{t("Actions")}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {model.items.map((row) => {
+                      const open = expandedId === row.product.id
+                      const movements = inventory.movements.filter(
+                        (movement) => movement.productId === row.product.id
+                      )
+                      const summary = selectInventoryPeriodSummary(
+                        row.product.id,
+                        inventory.movements,
+                        period,
+                        now
+                      )
+                      return (
+                        <FragmentRow
+                          key={row.product.id}
+                          row={row}
+                          open={open}
+                          movements={movements}
+                          summary={summary}
+                          language={i18n.resolvedLanguage ?? "en"}
+                          onToggle={() =>
+                            setExpandedId(open ? null : row.product.id)
+                          }
+                          onDetail={() =>
+                            navigate(
+                              `/inventory/${row.product.id}?period=${period}`
+                            )
+                          }
+                          onAdjust={() => setAdjusting(row.product)}
+                          t={t}
+                        />
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             )}
           </OperationalListPanel>

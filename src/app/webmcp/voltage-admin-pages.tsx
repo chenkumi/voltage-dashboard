@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next"
 import { useNavigate } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
+import { OperationalMetricCard } from "./operational-ui"
 import { useVoltageAdmin, voltageAdminPath } from "./voltage-admin"
 import { GridBlock, PageLayout } from "./voltage-admin-page-layout"
 import { ReportCanvas } from "./reporting/report-canvas"
@@ -24,7 +25,11 @@ const statusClass = (status: string) => {
 export const Dashboard = () => {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { dashboard, workflow, products } = useVoltageAdmin()
+  const { commerce, dashboard, workflow, products } = useVoltageAdmin()
+  const commerceLoading = ["idle", "loading"].includes(commerce.state)
+  const productLoading = ["idle", "loading"].includes(products.state)
+  const commerceUnavailable = commerce.state === "error"
+  const productUnavailable = products.state === "error"
   const workflowMetrics = [
     [
       "Draft products",
@@ -58,54 +63,86 @@ export const Dashboard = () => {
       detail={t("Built from the embedded operational dataset.")}
     >
       {[
-        [
-          "Revenue",
-          dashboard.revenueByCurrency
-            .map(({ amount, currency }) =>
-              formatMoney(amount, currency, i18n.resolvedLanguage)
-            )
-            .join(" · "),
-          "Order totals by currency",
-        ],
-        [
-          "Orders",
-          dashboard.orderCount.toString(),
-          t("{{count}} need attention", {
+        {
+          label: "Revenue",
+          value: commerceUnavailable
+            ? undefined
+            : dashboard.revenueByCurrency
+                .map(({ amount, currency }) =>
+                  formatMoney(amount, currency, i18n.resolvedLanguage)
+                )
+                .join(" · "),
+          detail: "Order totals by currency",
+          loading: commerceLoading,
+          tone: "positive" as const,
+        },
+        {
+          label: "Orders",
+          value: commerceUnavailable
+            ? undefined
+            : dashboard.orderCount.toString(),
+          detail: t("{{count}} need attention", {
             count: dashboard.attentionOrderCount,
           }),
-        ],
-        [
-          "Customers",
-          dashboard.customerCount.toString(),
-          t("{{count}} active", { count: dashboard.activeCustomerCount }),
-        ],
-        [
-          "Available SKUs",
-          dashboard.availableProductCount.toString(),
-          t("{{count}} low stock", { count: dashboard.lowStockCount }),
-        ],
-      ].map(([label, value, detail]) => (
+          loading: commerceLoading,
+          tone: dashboard.attentionOrderCount
+            ? ("warning" as const)
+            : ("neutral" as const),
+        },
+        {
+          label: "Customers",
+          value: commerceUnavailable
+            ? undefined
+            : dashboard.customerCount.toString(),
+          detail: t("{{count}} active", {
+            count: dashboard.activeCustomerCount,
+          }),
+          loading: commerceLoading,
+          tone: "neutral" as const,
+        },
+        {
+          label: "Available SKUs",
+          value: productUnavailable
+            ? undefined
+            : dashboard.availableProductCount.toString(),
+          detail: t("{{count}} low stock", { count: dashboard.lowStockCount }),
+          loading: productLoading,
+          tone: dashboard.lowStockCount
+            ? ("warning" as const)
+            : ("positive" as const),
+        },
+      ].map(({ label, value, detail, loading, tone }) => (
         <GridBlock
           key={label}
-          className="col-span-12 sm:col-span-6 xl:col-span-3"
+          className="col-span-12 md:col-span-6 lg:col-span-3"
         >
-          <article className="voltage-admin-metric">
-            <span>{t(label)}</span>
-            <strong>{value}</strong>
-            <small>{t(detail)}</small>
-          </article>
+          <OperationalMetricCard
+            label={t(label)}
+            value={value}
+            detail={t(detail)}
+            loading={loading}
+            tone={tone}
+            unavailableDetail={t("Data unavailable")}
+          />
         </GridBlock>
       ))}
       {workflowMetrics.map(([label, value, detail]) => (
         <GridBlock
           key={label}
-          className="col-span-12 sm:col-span-6 xl:col-span-4"
+          className="col-span-12 md:col-span-6 lg:col-span-4"
         >
-          <article className="voltage-admin-metric voltage-admin-workflow-metric">
-            <span>{t(label)}</span>
-            <strong>{value}</strong>
-            <small>{t(detail)}</small>
-          </article>
+          <OperationalMetricCard
+            label={t(label)}
+            value={
+              productUnavailable && label === "Draft products"
+                ? undefined
+                : value
+            }
+            detail={t(detail)}
+            loading={productLoading && label === "Draft products"}
+            tone={label === "Exception cases" ? "critical" : "neutral"}
+            unavailableDetail={t("Data unavailable")}
+          />
         </GridBlock>
       ))}
       <GridBlock className="col-span-12 xl:col-span-8">

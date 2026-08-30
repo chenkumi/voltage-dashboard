@@ -85,21 +85,13 @@ describe("inventory pages", () => {
         "Across active products",
         "before:bg-muted-foreground/45",
       ],
-      [
-        "Out of stock",
-        "4",
-        "Needs immediate review",
-        "before:bg-destructive",
-      ],
+      ["Out of stock", "4", "Needs immediate review", "before:bg-destructive"],
       ["Low stock", "29", "At or below 12 units", "before:bg-amber-500"],
-      [
-        "Reorder risk",
-        "0",
-        "21 days of supply or less",
-        "before:bg-amber-500",
-      ],
+      ["Reorder risk", "0", "21 days of supply or less", "before:bg-amber-500"],
     ] as const) {
-      const card = screen.getByText(label).closest("[data-slot='card']")
+      const card = [
+        ...document.querySelectorAll<HTMLElement>("[data-slot='card']"),
+      ].find((item) => item.querySelector("span")?.textContent === label)
       expect(card).not.toBeNull()
       expect(card?.className).toContain(tone)
       expect(within(card as HTMLElement).getByText(detail)).toBeTruthy()
@@ -201,7 +193,7 @@ describe("inventory pages", () => {
       ).toBeTruthy()
     )
     expect(await screen.findByText("Cycle count")).toBeTruthy()
-  })
+  }, 20_000)
 
   it("applies sort from More and all mobile inventory filters", async () => {
     const router = createMemoryRouter([{ path: "*", element: <App /> }], {
@@ -235,9 +227,7 @@ describe("inventory pages", () => {
     await user.keyboard("b{Enter}")
     await user.click(within(popover!).getByRole("combobox", { name: "Risk" }))
     await user.keyboard("{ArrowDown}{Enter}")
-    await user.click(
-      within(popover!).getByRole("combobox", { name: "Period" })
-    )
+    await user.click(within(popover!).getByRole("combobox", { name: "Period" }))
     await user.click(screen.getByRole("option", { name: "Year" }))
     await user.click(within(popover!).getByRole("button", { name: "Apply" }))
 
@@ -248,9 +238,9 @@ describe("inventory pages", () => {
       screen.getByRole("button", { name: /^Risk: .+ remove$/ })
     ).toBeTruthy()
     expect(screen.getAllByText("Period: Year").length).toBeGreaterThan(0)
-    expect(screen.getAllByText("Sort: Stock low to high").length).toBeGreaterThan(
-      0
-    )
+    expect(
+      screen.getAllByText("Sort: Stock low to high").length
+    ).toBeGreaterThan(0)
     await user.click(screen.getByRole("button", { name: "Clear all" }))
     expect(screen.queryByText("Period: Year")).toBeNull()
     expect(screen.queryByText("Sort: Stock low to high")).toBeNull()

@@ -66,6 +66,11 @@ describe("customer data states", () => {
       </MemoryRouter>
     )
     expect(screen.getByText("Loading customers…")).toBeTruthy()
+    expect(screen.getByLabelText("Total customers loading")).toBeTruthy()
+    expect(
+      screen.getByRole("heading", { name: "Customers" }).parentElement
+        ?.textContent
+    ).toContain("Loading…")
 
     context = {
       ...context,
@@ -82,6 +87,14 @@ describe("customer data states", () => {
     )
     expect(screen.getByText("Customer data is unavailable.")).toBeTruthy()
     expect(screen.queryByText("Loading customers…")).toBeNull()
+    const totalCard = screen
+      .getByText("Total customers")
+      .closest("[data-slot='card']")
+    expect(totalCard?.querySelector("strong")?.textContent).toBe("—")
+    expect(
+      screen.getByRole("heading", { name: "Customers" }).parentElement
+        ?.textContent
+    ).not.toContain("0 customers")
   })
 
   it("renders safe not-found states for detail and edit routes", () => {

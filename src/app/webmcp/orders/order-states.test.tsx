@@ -57,6 +57,10 @@ describe("order data states", () => {
       </MemoryRouter>
     )
     expect(screen.getByText("Loading orders…")).toBeTruthy()
+    expect(screen.getByLabelText("Total orders loading")).toBeTruthy()
+    expect(
+      screen.getByRole("heading", { name: "Orders" }).parentElement?.textContent
+    ).toContain("Loading…")
   })
 
   it("renders repository error without a loading state", () => {
@@ -75,6 +79,13 @@ describe("order data states", () => {
     )
     expect(screen.getByText("Order data is unavailable.")).toBeTruthy()
     expect(screen.queryByText("Loading orders…")).toBeNull()
+    const totalCard = screen
+      .getByText("Total orders")
+      .closest("[data-slot='card']")
+    expect(totalCard?.querySelector("strong")?.textContent).toBe("—")
+    expect(
+      screen.getByRole("heading", { name: "Orders" }).parentElement?.textContent
+    ).not.toContain("0 orders")
   })
 
   it("retains historical lines when current customer and product are missing", () => {

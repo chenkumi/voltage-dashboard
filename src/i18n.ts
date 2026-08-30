@@ -225,6 +225,8 @@ const zhTW = {
   "{{product}} inventory": "{{product}} 庫存",
 
   "Smart Dashboard · shared workspace": "智慧儀表板 · 共用工作區",
+  "Data unavailable": "資料無法使用",
+  "Loading…": "載入中…",
   "Shape the report together.": "一起整理營運報表。",
   "Agent-created reports remain editable in the page.":
     "Agent 建立的報表仍可在頁面中編輯。",
