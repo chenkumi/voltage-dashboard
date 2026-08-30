@@ -1,23 +1,17 @@
 import { describe, expect, it } from "vitest"
 import { createCommerceSeed } from "../commerce-data/commerce-seed"
-import { operationsCases } from "../operations/operations-data"
-import { CASE_ORDER_LINKS, relatedCasesFor } from "./order-relations"
+import { createReturnSeed } from "../returns/return-seed"
+import { relatedReturnsFor } from "./order-relations"
 
-describe("order operations-case relations", () => {
-  it("only links existing demonstration orders and cases", () => {
-    const orderIds = new Set(
-      createCommerceSeed().orders.map((order) => order.id)
-    )
-    const caseIds = new Set(operationsCases.map((item) => item.id))
+describe("order return relations", () => {
+  it("links RMAs directly through the authoritative order ID", () => {
+    const commerce = createCommerceSeed()
+    const snapshot = createReturnSeed(commerce, 3)
+    const target = snapshot.rmas[0]
 
-    expect(Object.keys(CASE_ORDER_LINKS).every((id) => caseIds.has(id))).toBe(
-      true
-    )
     expect(
-      Object.values(CASE_ORDER_LINKS).every((id) => orderIds.has(id))
-    ).toBe(true)
-    expect(
-      relatedCasesFor("VM-25065", operationsCases).map(({ id }) => id)
-    ).toEqual(["CASE-2002", "CASE-2003"])
+      relatedReturnsFor(target.orderId, snapshot.rmas).map(({ id }) => id)
+    ).toEqual([target.id])
+    expect(relatedReturnsFor("VM-99999", snapshot.rmas)).toEqual([])
   })
 })

@@ -14,7 +14,7 @@ export type OrderListRow = {
   order: Order
   customer: Customer | null
   lines: readonly OrderLine[]
-  relatedCaseIds: readonly string[]
+  relatedReturnIds: readonly string[]
 }
 
 export type OrderListFilters = {

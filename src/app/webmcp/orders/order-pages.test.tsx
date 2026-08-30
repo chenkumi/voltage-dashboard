@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import App from "../../../App"
 import i18n from "../../../i18n"
 import { createCommerceSeed } from "../commerce-data/commerce-seed"
+import { createReturnSeed } from "../returns/return-seed"
 
 vi.mock("../reporting/reporting-tools", async (importOriginal) => {
   const actual =
@@ -115,7 +116,7 @@ describe("order pages", () => {
     expect(await screen.findByText("Historical items")).toBeTruthy()
     expect(screen.getByText("Amount breakdown")).toBeTruthy()
     expect(screen.getByText("Exception signals")).toBeTruthy()
-    expect(screen.getByRole("button", { name: "CASE-2002" })).toBeTruthy()
+    expect(screen.getByText("No related return.")).toBeTruthy()
     await user.click(
       within(orderRow as HTMLElement).getByRole("button", { name: "Details" })
     )
@@ -160,13 +161,21 @@ describe("order pages", () => {
     expect(screen.getByText("Customer orders")).toBeTruthy()
     expect(screen.getByText(selectedCustomer.contact.fullName)).toBeTruthy()
 
-    await router.navigate("/orders/VM-25065")
-
-    await user.click(await screen.findByRole("button", { name: /CASE-2002/ }))
-    await waitFor(() =>
-      expect(router.state.location.pathname).toBe("/operations-cases")
+    const returnSeed = createReturnSeed(seed, 3)
+    const relatedReturn = returnSeed.rmas[0]
+    await router.navigate(`/orders/${relatedReturn.orderId}`)
+    expect(
+      await screen.findByRole("button", { name: "Create return" })
+    ).toBeTruthy()
+    await user.click(
+      await screen.findByRole("button", { name: new RegExp(relatedReturn.id) })
     )
-    expect(router.state.location.search).toBe("?caseId=CASE-2002")
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe(
+        `/returns/${relatedReturn.id}`
+      )
+    )
+    expect(await screen.findByText("Safe customer statement")).toBeTruthy()
   })
 
   it("applies primary filters and keeps advanced drafts until Apply", async () => {

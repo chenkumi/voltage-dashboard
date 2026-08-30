@@ -1,12 +1,12 @@
 // @vitest-environment jsdom
 
 import { cleanup, render, screen } from "@testing-library/react"
+import userEvent from "@testing-library/user-event"
 import { MemoryRouter, Route, Routes } from "react-router-dom"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "../../../i18n"
 import { createCommerceSeed } from "../commerce-data/commerce-seed"
 import type { CommerceDataSnapshot } from "../commerce-data/types"
-import type { OpsCase } from "../operations/types"
 import { createDummyJsonProductSeed } from "../products/product-seed"
 import type { Product } from "../products/types"
 import { OrderDetailPage, OrdersPage } from "./order-pages"
@@ -18,7 +18,10 @@ type TestContext = {
     error: string | null
   }
   products: { products: Product[] }
-  workflow: { cases: OpsCase[] }
+  returns: {
+    rmas: []
+    state: "idle" | "loading" | "ready" | "error"
+  }
 }
 
 const createContext = (): TestContext => ({
@@ -33,7 +36,7 @@ const createContext = (): TestContext => ({
     error: null as string | null,
   },
   products: { products: [] },
-  workflow: { cases: [] },
+  returns: { rmas: [], state: "loading" },
 })
 
 let context = createContext()
@@ -107,7 +110,7 @@ describe("order data states", () => {
         orderLines: selectedLines,
       },
       products: { products: [] },
-      workflow: { cases: [] },
+      returns: { rmas: [], state: "ready" },
     }
 
     render(
@@ -122,7 +125,7 @@ describe("order data states", () => {
     expect(
       screen.getByText("Current product unavailable; snapshot retained.")
     ).toBeTruthy()
-    expect(screen.getByText("No related operations case.")).toBeTruthy()
+    expect(screen.getByText("No related return.")).toBeTruthy()
     expect(screen.getByText(selectedLines[0].title)).toBeTruthy()
   })
 
@@ -161,7 +164,7 @@ describe("order data states", () => {
           },
         ],
       },
-      workflow: { cases: [] },
+      returns: { rmas: [], state: "ready" },
     }
 
     render(
@@ -185,4 +188,68 @@ describe("order data states", () => {
     expect(screen.queryByText(changedTitle)).toBeNull()
     expect(screen.queryByText("CURRENT-SKU")).toBeNull()
   })
+
+  it("shows return relationship errors without reporting zero related RMAs", () => {
+    const seed = createCommerceSeed()
+    const selectedOrder = seed.orders[0]
+    context = {
+      commerce: {
+        ...seed,
+        state: "ready",
+        version: 1,
+        error: null,
+      },
+      products: { products: [] },
+      returns: { rmas: [], state: "error" },
+    }
+
+    render(
+      <MemoryRouter initialEntries={[`/orders/${selectedOrder.id}`]}>
+        <Routes>
+          <Route path="/orders/:orderId" element={<OrderDetailPage />} />
+        </Routes>
+      </MemoryRouter>
+    )
+
+    const relatedCard = screen
+      .getAllByText("Related returns")[0]
+      .closest("[data-slot='card']")
+    expect(relatedCard?.querySelector("strong")?.textContent).toBe("—")
+    expect(
+      screen.getAllByText("Returns data is unavailable.").length
+    ).toBeGreaterThanOrEqual(2)
+    expect(screen.queryByText("No related return.")).toBeNull()
+  })
+
+  it.each([
+    ["loading", "Loading returns…"],
+    ["error", "Returns data is unavailable."],
+  ] as const)(
+    "shows %s ReturnStore state in an expanded order row",
+    async (state, expected) => {
+      const seed = createCommerceSeed()
+      context = {
+        commerce: {
+          ...seed,
+          state: "ready",
+          version: 1,
+          error: null,
+        },
+        products: { products: [] },
+        returns: { rmas: [], state },
+      }
+      const user = userEvent.setup()
+      render(
+        <MemoryRouter>
+          <OrdersPage />
+        </MemoryRouter>
+      )
+
+      await user.click(
+        (await screen.findAllByRole("button", { name: "Quick view" }))[0]
+      )
+      expect(screen.getByText(expected)).toBeTruthy()
+      expect(screen.queryByText("No related return.")).toBeNull()
+    }
+  )
 })

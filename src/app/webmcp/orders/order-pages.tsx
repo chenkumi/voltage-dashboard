@@ -41,7 +41,7 @@ import {
   type OrderListFilters,
   type OrderListRow,
 } from "./order-list-model"
-import { relatedCasesFor } from "./order-relations"
+import { relatedReturnsFor } from "./order-relations"
 
 const PAGE_SIZE = 15
 
@@ -143,7 +143,8 @@ const OrderQuickRow = ({
   language,
   onToggle,
   onDetail,
-  onCase,
+  onReturn,
+  returnsState,
   t,
 }: {
   row: OrderListRow
@@ -151,7 +152,8 @@ const OrderQuickRow = ({
   language: string
   onToggle: () => void
   onDetail: () => void
-  onCase: (caseId: string) => void
+  onReturn: (returnId: string) => void
+  returnsState: "idle" | "loading" | "ready" | "error"
   t: (key: string, options?: Record<string, unknown>) => string
 }) => (
   <>
@@ -262,24 +264,32 @@ const OrderQuickRow = ({
             </div>
             <div>
               <p className="mb-2 text-xs font-semibold text-muted-foreground">
-                {t("Related cases")}
+                {t("Related returns")}
               </p>
-              {row.relatedCaseIds.length ? (
+              {returnsState === "error" ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("Returns data is unavailable.")}
+                </p>
+              ) : returnsState !== "ready" ? (
+                <p className="text-sm text-muted-foreground">
+                  {t("Loading returns…")}
+                </p>
+              ) : row.relatedReturnIds.length ? (
                 <div className="flex flex-wrap gap-2">
-                  {row.relatedCaseIds.map((caseId) => (
+                  {row.relatedReturnIds.map((returnId) => (
                     <Button
-                      key={caseId}
+                      key={returnId}
                       size="sm"
                       variant="outline"
-                      onClick={() => onCase(caseId)}
+                      onClick={() => onReturn(returnId)}
                     >
-                      {caseId}
+                      {returnId}
                     </Button>
                   ))}
                 </div>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  {t("No related operations case.")}
+                  {t("No related return.")}
                 </p>
               )}
             </div>
@@ -354,7 +364,7 @@ const OrderFilterField = ({
 export const OrdersPage = () => {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { commerce, workflow } = useVoltageAdmin()
+  const { commerce, returns } = useVoltageAdmin()
   const [filters, setFilters] = useState(initialFilters)
   const { page, setPage, applyAndReset } = useOperationalPagination()
   const [expandedId, setExpandedId] = useState<string | null>(null)
@@ -371,11 +381,11 @@ export const OrdersPage = () => {
       order,
       customer: customers.get(order.customerId) ?? null,
       lines: lines.get(order.id) ?? [],
-      relatedCaseIds: relatedCasesFor(order.id, workflow.cases).map(
+      relatedReturnIds: relatedReturnsFor(order.id, returns.rmas).map(
         (item) => item.id
       ),
     }))
-  }, [commerce, workflow.cases])
+  }, [commerce, returns.rmas])
   const model = useMemo(
     () => createOrderListModel(rows, filters, page, PAGE_SIZE),
     [filters, page, rows]
@@ -1004,9 +1014,10 @@ export const OrdersPage = () => {
                           )
                         }
                         onDetail={() => navigate(`/orders/${row.order.id}`)}
-                        onCase={(caseId) =>
-                          navigate(`/operations-cases?caseId=${caseId}`)
+                        onReturn={(returnId) =>
+                          navigate(`/returns/${returnId}`)
                         }
+                        returnsState={returns.state}
                         t={t}
                       />
                     ))}
@@ -1025,7 +1036,7 @@ export const OrderDetailPage = () => {
   const { orderId } = useParams()
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { commerce, products, workflow } = useVoltageAdmin()
+  const { commerce, products, returns } = useVoltageAdmin()
   const language = i18n.resolvedLanguage ?? "en"
   if (commerce.state === "error")
     return (
@@ -1057,7 +1068,8 @@ export const OrderDetailPage = () => {
   const customer = commerce.customers.find(
     (item) => item.id === order.customerId
   )
-  const cases = relatedCasesFor(order.id, workflow.cases)
+  const relatedReturns =
+    returns.state === "ready" ? relatedReturnsFor(order.id, returns.rmas) : []
   const currentProductIds = new Set(
     products.products.map((product) => product.id)
   )
@@ -1076,10 +1088,21 @@ export const OrderDetailPage = () => {
         </Badge>
       }
       actions={
-        <Button variant="outline" onClick={() => navigate(-1)}>
-          <ChevronLeft />
-          {t("Back")}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            <ChevronLeft />
+            {t("Back")}
+          </Button>
+          {order.status === "delivered" && order.paymentStatus === "paid" ? (
+            <Button
+              onClick={() =>
+                navigate(`/returns/add?orderId=${encodeURIComponent(order.id)}`)
+              }
+            >
+              {t("Create return")}
+            </Button>
+          ) : null}
+        </div>
       }
     >
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
@@ -1105,9 +1128,11 @@ export const OrderDetailPage = () => {
       </GridBlock>
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
-          label={t("Related cases")}
-          value={cases.length}
-          detail={t("Operations references")}
+          label={t("Related returns")}
+          value={returns.state === "ready" ? relatedReturns.length : undefined}
+          loading={["idle", "loading"].includes(returns.state)}
+          unavailableDetail={t("Returns data is unavailable.")}
+          detail={t("RMA records")}
         />
       </GridBlock>
       <GridBlock className="col-span-12 lg:col-span-8">
@@ -1234,27 +1259,29 @@ export const OrderDetailPage = () => {
       <GridBlock className="col-span-12 lg:col-span-4">
         <Card className="h-full">
           <CardHeader>
-            <CardTitle>{t("Related cases")}</CardTitle>
+            <CardTitle>{t("Related returns")}</CardTitle>
           </CardHeader>
           <CardContent>
-            {cases.length ? (
+            {returns.state === "error" ? (
+              <p className="text-muted-foreground">
+                {t("Returns data is unavailable.")}
+              </p>
+            ) : returns.state !== "ready" ? (
+              <p className="text-muted-foreground">{t("Loading returns…")}</p>
+            ) : relatedReturns.length ? (
               <div className="flex flex-wrap gap-2">
-                {cases.map((item) => (
+                {relatedReturns.map((item) => (
                   <Button
                     key={item.id}
                     variant="outline"
-                    onClick={() =>
-                      navigate(`/operations-cases?caseId=${item.id}`)
-                    }
+                    onClick={() => navigate(`/returns/${item.id}`)}
                   >
-                    {item.id} · {t(item.reasonCode)}
+                    {item.id} · {t(item.reason)}
                   </Button>
                 ))}
               </div>
             ) : (
-              <p className="text-muted-foreground">
-                {t("No related operations case.")}
-              </p>
+              <p className="text-muted-foreground">{t("No related return.")}</p>
             )}
           </CardContent>
         </Card>

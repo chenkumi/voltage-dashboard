@@ -45,7 +45,11 @@ import {
 import { OperationsController } from "./operations/operations-controller"
 import type { WorkflowSnapshot } from "./operations/types"
 import { ProductRepository } from "./products/product-repository"
-import { CommerceRepository } from "./commerce-data/commerce-repository"
+import {
+  COMMERCE_SEED_VERSION,
+  CommerceRepository,
+} from "./commerce-data/commerce-repository"
+import { createCommerceSeed } from "./commerce-data/commerce-seed"
 import {
   CommerceStore,
   useCommerceStore,
@@ -68,6 +72,12 @@ import {
   isOperationalTool,
   OPERATIONAL_TOOLS,
 } from "./operational-tools"
+import { ReturnRepository } from "./returns/return-repository"
+import {
+  ReturnStore,
+  useReturnStore,
+  type ReturnStoreSnapshot,
+} from "./returns/return-store"
 
 export type VoltageAdminView =
   | "dashboard"
@@ -75,6 +85,7 @@ export type VoltageAdminView =
   | "orders"
   | "customers"
   | "inventory"
+  | "returns"
   | "reports"
   | "operations-cases"
   | "approvals"
@@ -110,6 +121,7 @@ export const isVoltageAdminView = (value: unknown): value is VoltageAdminView =>
   value === "orders" ||
   value === "customers" ||
   value === "inventory" ||
+  value === "returns" ||
   value === "reports" ||
   value === "operations-cases" ||
   value === "approvals"
@@ -178,6 +190,7 @@ const VOLTAGE_ADMIN_COMMON_TOOLS: WebMcpRegisteredTool[] = [
             "orders",
             "customers",
             "inventory",
+            "returns",
             "reports",
             "operations-cases",
             "approvals",
@@ -253,6 +266,8 @@ type VoltageAdminContextValue = {
   productEditorController: ProductEditorController
   products: ProductStoreSnapshot
   reportingController: ReportingRuntimeController
+  returnRepository: ReturnRepository
+  returns: ReturnStoreSnapshot
   workflow: WorkflowSnapshot
 }
 
@@ -348,14 +363,26 @@ export const VoltageAdminProvider = () => {
   const [reportingController] = useState(() => new ReportingRuntimeController())
   const [operationsController] = useState(() => new OperationsController())
   const [productRepository] = useState(() => new ProductRepository())
-  const [commerceRepository] = useState(() => new CommerceRepository())
+  const [commerceSeed] = useState(() => createCommerceSeed())
+  const [commerceRepository] = useState(
+    () => new CommerceRepository({ seed: commerceSeed })
+  )
+  const [returnRepository] = useState(
+    () =>
+      new ReturnRepository({
+        commerceSnapshot: commerceSeed,
+        orderSnapshotVersion: COMMERCE_SEED_VERSION,
+      })
+  )
   const [productEditorController] = useState(
     () => new ProductEditorController()
   )
   const [productStore] = useState(() => new ProductStore(productRepository))
   const [commerceStore] = useState(() => new CommerceStore(commerceRepository))
+  const [returnStore] = useState(() => new ReturnStore(returnRepository))
   const products = useProductStore(productStore)
   const commerce = useCommerceStore(commerceStore)
+  const returns = useReturnStore(returnStore)
   const dashboard = useMemo(
     () => getVoltageAdminDashboard(products.products, commerce),
     [commerce, products.products]
@@ -408,21 +435,28 @@ export const VoltageAdminProvider = () => {
   useEffect(() => {
     void productStore.initialize()
     void commerceStore.initialize()
+    void returnStore.initialize()
     return () => {
       productStore.dispose()
       commerceStore.dispose()
+      returnStore.dispose()
     }
-  }, [commerceStore, productStore])
+  }, [commerceStore, productStore, returnStore])
 
   useEffect(() => {
     return () => {
       void reportingController.dispose()
       operationsController.dispose()
+      returnRepository.close()
     }
-  }, [operationsController, reportingController])
+  }, [operationsController, reportingController, returnRepository])
 
   const prepareProvider = useCallback(async () => {
-    await Promise.all([productStore.initialize(), commerceStore.initialize()])
+    await Promise.all([
+      productStore.initialize(),
+      commerceStore.initialize(),
+      returnStore.initialize(),
+    ])
     const productSnapshot = productStore.getSnapshot()
     const commerceSnapshot = commerceStore.getSnapshot()
     const movements = await productRepository.listInventoryMovements()
@@ -437,7 +471,13 @@ export const VoltageAdminProvider = () => {
         commerceSnapshot.version
       )
     )
-  }, [commerceStore, productRepository, productStore, reportingController])
+  }, [
+    commerceStore,
+    productRepository,
+    productStore,
+    reportingController,
+    returnStore,
+  ])
 
   const getNavigationState = useCallback(() => {
     const historyIndex = window.history.state?.idx
@@ -548,6 +588,8 @@ export const VoltageAdminProvider = () => {
       productEditorController,
       products,
       reportingController,
+      returnRepository,
+      returns,
       workflow,
     }),
     [
@@ -559,6 +601,8 @@ export const VoltageAdminProvider = () => {
       productEditorController,
       products,
       reportingController,
+      returnRepository,
+      returns,
       workflow,
     ]
   )

@@ -21,6 +21,12 @@ import {
 } from "@/app/webmcp/customers/customer-pages"
 import { CustomerEditorPage } from "@/app/webmcp/customers/customer-editor-page"
 import { Dashboard, Reports } from "@/app/webmcp/voltage-admin-pages"
+import {
+  ReturnAddPage,
+  ReturnDetailPage,
+  ReturnInspectionPage,
+  ReturnsPage,
+} from "@/app/webmcp/returns/return-pages"
 
 export function App() {
   return (
@@ -38,6 +44,13 @@ export function App() {
           />
           <Route path="orders" element={<OrdersPage />} />
           <Route path="orders/:orderId" element={<OrderDetailPage />} />
+          <Route path="returns" element={<ReturnsPage />} />
+          <Route path="returns/add" element={<ReturnAddPage />} />
+          <Route path="returns/:returnId" element={<ReturnDetailPage />} />
+          <Route
+            path="returns/:returnId/inspection"
+            element={<ReturnInspectionPage />}
+          />
           <Route path="customers" element={<CustomersPage />} />
           <Route
             path="customers/add"

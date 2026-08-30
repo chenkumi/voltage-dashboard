@@ -47,7 +47,7 @@ type CommerceRepositoryOptions = {
   createId?: () => string
 }
 
-const COMMERCE_SEED_VERSION = 3
+export const COMMERCE_SEED_VERSION = 3
 
 export class CommerceRepositoryError extends Error {
   readonly code:
@@ -182,12 +182,8 @@ export class CommerceRepository {
           if (metadata.version < COMMERCE_SEED_VERSION) {
             await Promise.all([
               this.database.orders.bulkPut(this.seed.orders.map(clone)),
-              this.database.orderLines.bulkPut(
-                this.seed.orderLines.map(clone)
-              ),
-              this.database.activities.bulkPut(
-                this.seed.activities.map(clone)
-              ),
+              this.database.orderLines.bulkPut(this.seed.orderLines.map(clone)),
+              this.database.activities.bulkPut(this.seed.activities.map(clone)),
             ])
             await this.database.metadata.put({
               ...metadata,

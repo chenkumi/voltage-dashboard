@@ -14,6 +14,7 @@ import {
   TriangleAlert,
   UserRound,
   Users,
+  Undo2,
   X,
 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
@@ -42,7 +43,7 @@ export const EnterpriseAdminShell = () => {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
-  const { dashboard, workflow } = useVoltageAdmin()
+  const { dashboard, returns, workflow } = useVoltageAdmin()
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
   const sidebarRef = useRef<HTMLElement>(null)
@@ -69,6 +70,13 @@ export const EnterpriseAdminShell = () => {
       label: "Orders and customers",
       items: [
         { label: "Orders", path: "/orders", icon: ClipboardList },
+        {
+          label: "Returns",
+          path: "/returns",
+          icon: Undo2,
+          badge: returns.rmas.filter(({ status }) => status === "active")
+            .length,
+        },
         { label: "Customers", path: "/customers", icon: Users },
       ],
     },
