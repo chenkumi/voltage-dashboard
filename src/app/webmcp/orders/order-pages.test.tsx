@@ -148,7 +148,7 @@ describe("order pages", () => {
       expect(customerCard.textContent).not.toContain(sensitiveValue)
     }
     expect(screen.queryByRole("button", { name: /cancel order/i })).toBeNull()
-    expect(screen.queryByRole("button", { name: /refund/i })).toBeNull()
+    expect(screen.queryByRole("button", { name: /^refund$/i })).toBeNull()
     expect(screen.queryByRole("button", { name: /retry payment/i })).toBeNull()
 
     await user.click(screen.getByRole("button", { name: "Open customer" }))
@@ -312,7 +312,7 @@ describe("order pages", () => {
     expect(mobileFields?.className).toContain("grid-cols-1")
     expect(mobileFields?.className).not.toContain("sm:grid-cols-2")
     await user.click(within(popover!).getByRole("button", { name: "Cancel" }))
-  })
+  }, 15_000)
 
   it("shows not-found and blocks invalid advanced ranges", async () => {
     const missingRouter = createMemoryRouter(

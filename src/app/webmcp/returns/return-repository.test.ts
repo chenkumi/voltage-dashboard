@@ -116,6 +116,17 @@ const completeToInspection = async (
 }
 
 describe("ReturnRepository", () => {
+  it("reopens the same repository after lifecycle cleanup", async () => {
+    const repository = createRepository()
+    await repository.initialize()
+    repository.close()
+
+    await expect(repository.initialize()).resolves.toBeUndefined()
+    await expect(repository.getSnapshot()).resolves.toMatchObject({
+      rmas: expect.any(Array),
+    })
+  })
+
   it("tracks pending, failed, and completed restock disposition idempotently", async () => {
     const commerce = createCommerceSeed()
     const repository = createRepository(undefined, commerce)

@@ -130,8 +130,9 @@ export class ReturnEditorController {
     expectedVersion: number,
     patch: Partial<Omit<ReturnFormDraft, "orderId">>
   ) {
-    const current = this.formSession?.state
-    if (!current) throw new Error("Return form is not open.")
+    const session = this.formSession
+    if (!session) throw new Error("Return form is not open.")
+    const current = session.state
     if (current.version !== expectedVersion)
       throw new Error("Return form version is stale.")
     const next = createReturnFormEditorState(
@@ -139,8 +140,8 @@ export class ReturnEditorController {
       current.version + 1,
       true
     )
-    this.formSession = { ...this.formSession, state: next }
-    this.formSession.apply(next)
+    this.formSession = { ...session, state: next }
+    session.apply(next)
     return next
   }
 
@@ -191,8 +192,9 @@ export class ReturnEditorController {
     },
     draft: ReturnReviewDraft
   ) {
-    const current = this.reviewSession?.state
-    if (!current) throw new Error("Return review is not open.")
+    const session = this.reviewSession
+    if (!session) throw new Error("Return review is not open.")
+    const current = session.state
     if (
       current.rmaId !== expected.rmaId ||
       current.rmaVersion !== expected.rmaVersion ||
@@ -206,9 +208,9 @@ export class ReturnEditorController {
       current.version + 1,
       true
     )
-    this.reviewSession = { ...this.reviewSession, state: next }
+    this.reviewSession = { ...session, state: next }
     this.reviewStates.set(next.rmaId, next)
-    this.reviewSession.apply(next)
+    session.apply(next)
     return next
   }
 }

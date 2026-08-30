@@ -451,9 +451,8 @@ export const VoltageAdminProvider = () => {
   useEffect(() => {
     return () => {
       void reportingController.dispose()
-      returnRepository.close()
     }
-  }, [reportingController, returnRepository])
+  }, [reportingController])
 
   const prepareProvider = useCallback(async () => {
     await Promise.all([

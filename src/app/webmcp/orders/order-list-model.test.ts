@@ -48,7 +48,7 @@ const row = (index: number): OrderListRow => ({
   order: order(index),
   customer: null,
   lines: [],
-  relatedCaseIds: [],
+  relatedReturnIds: [],
 })
 
 describe("order list model", () => {

@@ -15,7 +15,7 @@ Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報�
   為當前產品目標，定位為「電商營運自動化平台」。
 - 核心敘事不是「做一個可以讓 AI 操作的頁面」，而是「讓既有企業 Web 系統透過
   WebMCP 將商品、訂單、售後、庫存與報表等既有模組暴露給 Agent，使 Agent 能跨功能
-  蒐集資料、填寫內容、分類案件、建立草稿並推進原本需要大量人工操作的行政流程」。
+  蒐集資料、填寫內容、準備退貨審查、建立草稿並推進原本需要大量人工操作的行政流程」。
 - 外部 Agent 由內嵌瀏覽器開啟本系統，並可使用 Agent 自身的瀏覽、搜尋或網路讀取能力
   蒐集第三方資料；本系統的 WebMCP Provider 只負責暴露目前頁面的導覽、查詢、表單填寫
   與安全草稿操作。以外部商品頁建檔時，應由 Agent 先讀取來源，再將整理後的商品欄位
@@ -24,7 +24,8 @@ Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報�
 - 產品設計應優先形成可展示的端到端營運流程，而不是加入孤立的 AI 按鈕、聊天介面或
   與業務狀態分離的工具。
 - 代表性場景包含：商品資料蒐集、規格與描述填寫、分類及上架草稿；未出貨、付款失敗
-  與地址異常的訂單辨識及分類；退貨原因、訂單狀態與政策資格的交叉判斷及客服建議。
+  與地址異常的訂單安全查詢；RMA 建立、政策資格、收貨、逐商品驗貨、全額退款核准、
+  退款執行紀錄、重新入庫及匿名退貨報表。
 - Agent 負責低風險且可追蹤的資料搜尋、內容生成、資料填寫、分類、分析與草稿工作；
   使用者負責檢查結果，並在頁面中直接完成商品發布、訂單變更、退款、付款及其他
   高風險最終核准。
@@ -64,9 +65,12 @@ Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報�
   商品搜尋與庫存投影。
 - `src/app/webmcp/reporting/`：SQLite runtime、查詢限制、query cache、報表狀態與
   Report Canvas。
+- `src/app/webmcp/returns/`：RMA Repository、完整狀態機、Returns／Refund Approvals
+  頁面、route-aware WebMCP 草稿與安全查詢 tools。
 - `src/app/webmcp/voltage-admin-skills.ts`：Dashboard instructions 與 skills。
-- `src/app/webmcp/operations/`：Operations Cases、案件 Approval Inbox、同步 workflow
-  controller、內容安全、退貨政策與 WebMCP tools；不包含商品草稿或商品送審流程。
+- `src/app/webmcp/content-safety.ts`：商品與 RMA 草稿共用的不可信文字安全驗證。
+- `src/app/webmcp/operations-redirects.ts` 與 `src/app/webmcp/operations/`：
+  舊售後網址的相容 redirect 契約與 route regression；不再包含泛用案件 workflow。
 - `src/components/ui/`：共用 shadcn 元件與 Markdown renderer。
 
 ## 核心邊界
@@ -86,8 +90,10 @@ Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報�
 - Dashboard、Orders、Customers 與 reporting 必須使用同一 Commerce Repository
   snapshot；Reporting 只能接收 `createSafeOperationalProjection()` 產生的匿名投影，
   不得把 raw Customer、Order、note、聯絡資訊、付款方式或付款識別送入 SQLite。
-- Operational Reporting version 必須同時反映 Product、InventoryMovement 與 Commerce
-  安全資料變化；重建後舊 query ID、active report 與 saved evidence 一律失效。
+- Operational Reporting version 必須同時反映 Product、InventoryMovement、Commerce
+  與 Returns 安全資料變化；重建後舊 query ID、active report 與 saved evidence 一律
+  失效。Returns 只能經安全聚合投影進入 SQLite，不得包含 RMA／Order／Customer ID、
+  自由文字、Timeline 原文或退款／付款識別；退貨客群列至少包含 5 位不同顧客。
 - 個資與付款屬高風險資料：tools 不得接受或回傳姓名、Email、地址、電話、帳戶識別
   或付款資料。 <!-- user-specified -->
 - WebMCP 營運查詢可使用固定且不可識別個人的付款結果狀態碼
@@ -110,5 +116,5 @@ Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報�
 
 - [docs/SMART-DASHBOARD.md](docs/SMART-DASHBOARD.md)：修改 SQLite、skills、報表 tools
   或 Report Canvas 前閱讀其架構與安全限制。
-- [docs/COMMERCE-AUTOMATION.md](docs/COMMERCE-AUTOMATION.md)：修改商品 editor、營運案件、
-  退貨政策、Approval Inbox、operations tools 或人工核准邊界前閱讀。
+- [docs/COMMERCE-AUTOMATION.md](docs/COMMERCE-AUTOMATION.md)：修改商品 editor、RMA、
+  Refund Approvals、Returns tools 或人工核准／退款邊界前閱讀。

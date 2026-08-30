@@ -153,18 +153,20 @@ const ReturnFilterFields = ({
   includePrimary?: boolean
 }) => (
   <div className="grid gap-3 sm:grid-cols-2">
-    {[
-      ...(includePrimary
-        ? ([
-            ["stage", "Stage", stageOptions],
-            ["source", "Source", sourceOptions],
-            ["reason", "Reason", reasonOptions],
-          ] as const)
-        : []),
-      ["status", "Return status", statusOptions],
-      ["approvalStatus", "Approval status", approvalOptions],
-      ["sort", "Sort", sortOptions],
-    ].map(([key, label, options]) => (
+    {(
+      [
+        ...(includePrimary
+          ? ([
+              ["stage", "Stage", stageOptions],
+              ["source", "Source", sourceOptions],
+              ["reason", "Reason", reasonOptions],
+            ] as const)
+          : []),
+        ["status", "Return status", statusOptions],
+        ["approvalStatus", "Approval status", approvalOptions],
+        ["sort", "Sort", sortOptions],
+      ] as const
+    ).map(([key, label, options]) => (
       <label key={String(key)} className="grid gap-1 text-xs font-medium">
         {t(String(label))}
         <select
@@ -173,7 +175,7 @@ const ReturnFilterFields = ({
           onChange={(event) =>
             setValue((current) => ({
               ...current,
-              [key]: event.target.value,
+              [key as keyof ReturnListFilters]: event.target.value,
             }))
           }
         >

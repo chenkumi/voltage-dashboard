@@ -1,4 +1,5 @@
 import { ChevronLeft } from "lucide-react"
+import type { TFunction } from "i18next"
 import { useMemo, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { useNavigate, useParams } from "react-router-dom"
@@ -50,7 +51,7 @@ const formatMoney = (amount: number, currency: string, language: string) =>
 
 const formatWaitingTime = (
   hours: number,
-  t: (key: string, options?: object) => string
+  t: TFunction<"translation", undefined>
 ) =>
   hours < 24
     ? t("{{count}} hours", { count: Math.floor(hours) })

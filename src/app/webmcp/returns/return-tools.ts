@@ -16,6 +16,7 @@ import {
   RETURN_SOURCES,
   RMA_STATUSES,
   type ReturnReason,
+  type ReturnRepositorySnapshot,
   type ReturnSource,
 } from "./types"
 
@@ -340,7 +341,61 @@ const projectEligibility = (
   version: eligibility.version,
 })
 
-const projectFormState = (controller: ReturnEditorController) => {
+const getAvailableReturnLines = (
+  commerce: CommerceDataSnapshot,
+  snapshot: ReturnRepositorySnapshot,
+  orderId: string
+) => {
+  const activeRmaIds = new Set(
+    snapshot.rmas
+      .filter((rma) => ["draft", "active"].includes(rma.status))
+      .map((rma) => rma.id)
+  )
+  const approvalById = new Map(
+    snapshot.approvals.map((approval) => [approval.id, approval])
+  )
+  const calculationById = new Map(
+    snapshot.calculations.map((calculation) => [calculation.id, calculation])
+  )
+  return commerce.orderLines
+    .filter((line) => line.orderId === orderId)
+    .map((line) => {
+      const reserved = snapshot.items
+        .filter(
+          (item) => item.orderLineId === line.id && activeRmaIds.has(item.rmaId)
+        )
+        .reduce((sum, item) => sum + item.requestedQuantity, 0)
+      const refundedUnitIndexes = new Set<number>()
+      for (const attempt of snapshot.executionAttempts) {
+        if (attempt.result !== "succeeded") continue
+        const approval = approvalById.get(attempt.approvalId)
+        const calculation = approval
+          ? calculationById.get(approval.calculationId)
+          : undefined
+        calculation?.items
+          .find((item) => item.orderLineId === line.id)
+          ?.refundedUnitIndexes.forEach((index) =>
+            refundedUnitIndexes.add(index)
+          )
+      }
+      return {
+        orderLineId: line.id,
+        sku: line.sku,
+        title: line.title.slice(0, 100),
+        availableQuantity: Math.max(
+          0,
+          line.quantity - reserved - refundedUnitIndexes.size
+        ),
+      }
+    })
+    .filter(({ availableQuantity }) => availableQuantity > 0)
+}
+
+const projectFormState = (
+  controller: ReturnEditorController,
+  commerce: CommerceDataSnapshot,
+  snapshot: ReturnRepositorySnapshot
+) => {
   const state = controller.getFormState()
   return state
     ? bounded({
@@ -350,6 +405,11 @@ const projectFormState = (controller: ReturnEditorController) => {
         dirty: state.dirty,
         valid: state.valid,
         missingFields: state.missingFields,
+        availableItems: getAvailableReturnLines(
+          commerce,
+          snapshot,
+          state.draft.orderId
+        ).slice(0, 20),
         selectedItems: state.draft.items.slice(0, 5),
         selectedItemCount: state.draft.items.length,
         source: state.draft.source,
@@ -576,7 +636,7 @@ export const executeReturnTool = async ({
     }
     if (name === "get_return_form_state") {
       if (!hasOnlyKeys(args, [])) throw new Error("Arguments are invalid.")
-      return projectFormState(editor)
+      return projectFormState(editor, commerce, snapshot)
     }
     if (name === "apply_return_form_draft") {
       if (
@@ -629,9 +689,10 @@ export const executeReturnTool = async ({
         )
           throw new Error("items are invalid.")
         const allowedLines = new Map(
-          commerce.orderLines
-            .filter((line) => line.orderId === orderId)
-            .map((line) => [line.id, line])
+          getAvailableReturnLines(commerce, snapshot, orderId).map((line) => [
+            line.orderLineId,
+            line,
+          ])
         )
         patch.items = args.items.map((value) => {
           if (!hasOnlyKeys(value, ["orderLineId", "requestedQuantity"]))
@@ -643,7 +704,7 @@ export const executeReturnTool = async ({
             !line ||
             !Number.isInteger(item.requestedQuantity) ||
             Number(item.requestedQuantity) < 1 ||
-            Number(item.requestedQuantity) > line.quantity
+            Number(item.requestedQuantity) > line.availableQuantity
           )
             throw new Error("items are invalid.")
           return {
@@ -658,7 +719,7 @@ export const executeReturnTool = async ({
           throw new Error("items are invalid.")
       }
       editor.applyFormDraft(args.editorVersion as number, patch)
-      return projectFormState(editor)
+      return projectFormState(editor, commerce, snapshot)
     }
     if (name === "check_return_eligibility") {
       if (!hasOnlyKeys(args, ["rmaId", "rmaVersion", "facts"]))

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest"
+import type { ProductCurrency } from "../products/types"
 import {
   createRefundApprovalListModel,
   type RefundApprovalListRow,
@@ -9,7 +10,7 @@ const row = (
   status: RefundApprovalListRow["approval"]["status"],
   refundStatus: RefundApprovalListRow["rma"]["refundStatus"],
   amount: number,
-  currency: string,
+  currency: ProductCurrency,
   createdAt: string
 ): RefundApprovalListRow => ({
   approval: {

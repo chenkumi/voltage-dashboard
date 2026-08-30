@@ -42,10 +42,12 @@ Agent 探索資料、套用分析規則，並與人共同創造原本不存在�
 
 - Voltage Dashboard 內的 SQLite3 WASM module Worker 與 `:memory:`
   database；不使用 OPFS，也不跨 iframe/session 共用。
-- 八個 deterministic curated datasets：`agent_products`、
+- 十二個 deterministic curated datasets：`agent_products`、
   `agent_sales_daily`、`agent_inventory`、`agent_inventory_daily`、
   `agent_order_daily`、`agent_order_product_daily`、
-  `agent_customer_monthly`、`agent_dataset_status`。
+  `agent_customer_monthly`、`agent_return_product_daily`、
+  `agent_return_operational_daily`、`agent_refund_daily`、
+  `agent_return_cohort_monthly`、`agent_dataset_status`。
 - 單一 `execute_readonly_sql` WebMCP tool，支援 SELECT、CTE、join、aggregation
   與 positional parameters。
 - SQLite `query_only`、authorizer allowlist、單 statement policy、100-row、32-column、
@@ -55,8 +57,8 @@ Agent 探索資料、套用分析規則，並與人共同創造原本不存在�
 - 原生 `registerTool()` 與 same-origin fallback provider 共用相同 executor；
   `__webmcpReady` 會等待 database 初始化，StrictMode、初始化失敗及 unmount 均會
   dispose runtime。
-- `voltage-sales-data`、`voltage-inventory-data` 與
-  `voltage-report-authoring` 三個按需載入 skills。
+- `voltage-sales-data`、`voltage-inventory-data`、
+  `voltage-returns-data` 與 `voltage-report-authoring` 四個按需載入 skills。
 - iframe-local immutable query cache；成功 SQL 回傳 ULID `queryId`，上限 32 筆／
   8 MiB，超限時保留既有 evidence 並安全拒絕新結果。
 - 單一 memory-only active report，以及 create/get/add/update/move/remove 六個
@@ -116,10 +118,11 @@ agent_instructions   skill_list/load_skill
 
 ### 5.1 資料來源
 
-頁面初始化時，從 Product Repository、InventoryMovement 與 Commerce Repository 取得
-同版營運 snapshot，再先經 `createSafeOperationalProjection()` 移除識別資料與自由備註，
-最後才載入 SQLite3 WASM memory database。SQLite 只存在目前頁面 context，不跨頁面
-runtime 共享，也不屬於 IndexedDB 持久化資料。
+頁面初始化時，從 Product Repository、InventoryMovement、Commerce Repository 與
+Return Repository 取得同版營運 snapshot，再先經
+`createSafeOperationalProjection()` 移除識別資料與自由備註，最後才載入 SQLite3
+WASM memory database。SQLite 只存在目前頁面 context，不跨頁面 runtime 共享，也不
+屬於 IndexedDB 持久化資料。
 
 第一階段實際提供以下專為 Agent 設計的 curated tables：
 
@@ -131,6 +134,10 @@ agent_inventory_daily
 agent_order_daily
 agent_order_product_daily
 agent_customer_monthly
+agent_return_product_daily
+agent_return_operational_daily
+agent_refund_daily
+agent_return_cohort_monthly
 agent_dataset_status
 ```
 
@@ -147,8 +154,16 @@ TWD 為 NULL，不在沒有匯率資料時換算。`agent_inventory` 使用同�
 `agent_customer_monthly` 以月份、區域、客群、客戶狀態與幣別聚合，任何輸出列都必須
 包含至少 5 位不同客戶。過小群組只能安全合併為 `other`／`suppressed` 或完全抑制。
 
-不要將 customer/order ID、姓名、Email、電話、地址、任意備註、付款方式、卡號、token、
-授權碼或帳戶資料複製進 Agent database。唯一付款例外是固定且不可識別個人的
+`agent_return_product_daily` 提供商品、原因、Eligibility、驗貨、庫存處置及處置執行
+狀態；只有 `restock + completed` 可視為實際重新入庫。`agent_return_operational_daily`
+提供流程狀態、快照時間 SLA 與 cycle time；SLA 欄位以
+`agent_dataset_status.updated_at` 為 as-of，不宣稱即時。`agent_refund_daily` 依原
+幣別聚合核准、金額、執行嘗試與失敗；`agent_return_cohort_monthly` 的每列至少包含
+5 位不同顧客。
+
+不要將 customer/order/RMA/approval/execution ID、姓名、Email、電話、地址、任意
+顧客陳述、Timeline 原文、備註、付款方式、卡號、token、授權碼或帳戶資料複製進
+Agent database。唯一付款例外是固定且不可識別個人的
 `payment_status_code`：`paid`、`pending`、`failed`、`refunded`。
 
 ### 5.2 動態資料狀態
@@ -201,6 +216,7 @@ Skills 是使用指引，不是安全執行邊界。即使 Agent 未載入或誤
 ```text
 voltage-sales-data
 voltage-inventory-data
+voltage-returns-data
 voltage-report-authoring
 ```
 
@@ -444,8 +460,9 @@ JavaScript 或 SQL extension。
 - 建議必須能引用對應的 `queryId` 或 evidence query。
 - 資料不足、結果截斷或查詢失敗時不得宣稱分析完整。
 - 修改查詢後，所有引用舊 query result 的 widget 必須重新整理或標示過期。
-- Product、InventoryMovement、Order 或 Customer 安全維度變化會序列化重建 Operational
-  Reporting context；舊 query ID、active report 與 saved evidence 不得跨 context 使用。
+- Product、InventoryMovement、Order、Customer 或 Return 安全維度變化會序列化重建
+  Operational Reporting context；舊 query ID、active report 與 saved evidence 不得
+  跨 context 使用。
 
 ### 9.4 輸入安全分組
 
@@ -544,7 +561,7 @@ Demo 應讓 Dashboard 的 WebMCP capabilities 與共同編輯流程清楚可見�
 
 第一版已完成：
 
-- SQLite3 WASM memory database 與 8 個 curated datasets。
+- SQLite3 WASM memory database 與 12 個 curated datasets。
 - `agent_dataset_status`。
 - 一個安全的 `execute_readonly_sql`。
 - SQL 安全、資料隔離、runtime lifecycle、skill pairing 基線與 iframe executor 綁定測試。

@@ -117,10 +117,10 @@ describe("calculateRefund", () => {
 
   it("rejects cross-currency and order-overpayment attempts", () => {
     const crossCurrency = baseInput()
-    crossCurrency.orderLines[0].paidUnitAmounts[0] = {
-      amount: 8.02,
-      currency: "TWD",
-    }
+    crossCurrency.orderLines[0].paidUnitAmounts = [
+      { amount: 8.02, currency: "TWD" },
+      ...crossCurrency.orderLines[0].paidUnitAmounts.slice(1),
+    ]
     expect(() => calculateRefund(crossCurrency)).toThrowError(
       ReturnValidationError
     )

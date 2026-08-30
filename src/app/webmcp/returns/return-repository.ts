@@ -205,15 +205,18 @@ export class ReturnRepository {
   }
 
   async initialize() {
+    if (!this.database.isOpen()) await this.database.open()
     await this.database.transaction(
       "rw",
-      this.database.rmas,
-      this.database.items,
-      this.database.calculations,
-      this.database.approvals,
-      this.database.executionAttempts,
-      this.database.timeline,
-      this.database.metadata,
+      [
+        this.database.rmas,
+        this.database.items,
+        this.database.calculations,
+        this.database.approvals,
+        this.database.executionAttempts,
+        this.database.timeline,
+        this.database.metadata,
+      ],
       async () => {
         const metadata = await this.database.metadata.get("returns")
         if (metadata) {
@@ -301,15 +304,17 @@ export class ReturnRepository {
   }
 
   async getSnapshot(): Promise<ReturnRepositorySnapshot> {
-    return this.database.transaction(
+    return this.database.transaction<ReturnRepositorySnapshot>(
       "r",
-      this.database.rmas,
-      this.database.items,
-      this.database.calculations,
-      this.database.approvals,
-      this.database.executionAttempts,
-      this.database.timeline,
-      this.database.metadata,
+      [
+        this.database.rmas,
+        this.database.items,
+        this.database.calculations,
+        this.database.approvals,
+        this.database.executionAttempts,
+        this.database.timeline,
+        this.database.metadata,
+      ],
       async () => {
         const metadata = await this.requireMetadata()
         await this.assertRepositoryCurrent(metadata)
@@ -397,15 +402,17 @@ export class ReturnRepository {
       )
     )
 
-    const version = await this.database.transaction(
+    const version = await this.database.transaction<number>(
       "rw",
-      this.database.rmas,
-      this.database.items,
-      this.database.calculations,
-      this.database.approvals,
-      this.database.executionAttempts,
-      this.database.timeline,
-      this.database.metadata,
+      [
+        this.database.rmas,
+        this.database.items,
+        this.database.calculations,
+        this.database.approvals,
+        this.database.executionAttempts,
+        this.database.timeline,
+        this.database.metadata,
+      ],
       async () => {
         await this.assertRepositoryCurrent()
         await this.assertQuantitiesAvailable(items)
@@ -428,15 +435,17 @@ export class ReturnRepository {
     assertActor(actor, ["agent", "user"], "Update return draft")
     const normalized = this.normalizeDraft(input)
     const timestamp = this.timestamp()
-    const version = await this.database.transaction(
+    const version = await this.database.transaction<number>(
       "rw",
-      this.database.rmas,
-      this.database.items,
-      this.database.calculations,
-      this.database.approvals,
-      this.database.executionAttempts,
-      this.database.timeline,
-      this.database.metadata,
+      [
+        this.database.rmas,
+        this.database.items,
+        this.database.calculations,
+        this.database.approvals,
+        this.database.executionAttempts,
+        this.database.timeline,
+        this.database.metadata,
+      ],
       async () => {
         const rma = await this.requireRma(rmaId)
         assertRmaVersion(rma, expectedVersion)
@@ -896,15 +905,17 @@ export class ReturnRepository {
     assertActor(actor, ["system", "user"], "Generate refund calculation")
     const timestamp = this.timestamp()
     let calculation: RefundCalculation | null = null
-    const version = await this.database.transaction(
+    const version = await this.database.transaction<number>(
       "rw",
-      this.database.rmas,
-      this.database.items,
-      this.database.calculations,
-      this.database.approvals,
-      this.database.executionAttempts,
-      this.database.timeline,
-      this.database.metadata,
+      [
+        this.database.rmas,
+        this.database.items,
+        this.database.calculations,
+        this.database.approvals,
+        this.database.executionAttempts,
+        this.database.timeline,
+        this.database.metadata,
+      ],
       async () => {
         const rma = await this.requireRma(rmaId)
         if (
@@ -990,14 +1001,16 @@ export class ReturnRepository {
     assertUserActor(actor, "Submit refund approval")
     const timestamp = this.timestamp()
     let approval: RefundApproval | null = null
-    const version = await this.database.transaction(
+    const version = await this.database.transaction<number>(
       "rw",
-      this.database.rmas,
-      this.database.items,
-      this.database.calculations,
-      this.database.approvals,
-      this.database.timeline,
-      this.database.metadata,
+      [
+        this.database.rmas,
+        this.database.items,
+        this.database.calculations,
+        this.database.approvals,
+        this.database.timeline,
+        this.database.metadata,
+      ],
       async () => {
         const rma = await this.requireRma(rmaId)
         const calculation = await this.database.calculations.get(calculationId)
@@ -1208,15 +1221,17 @@ export class ReturnRepository {
     const timestamp = this.timestamp()
     let rmaId = ""
     let attempt: RefundExecutionAttempt | null = null
-    const version = await this.database.transaction(
+    const version = await this.database.transaction<number>(
       "rw",
-      this.database.rmas,
-      this.database.items,
-      this.database.calculations,
-      this.database.approvals,
-      this.database.executionAttempts,
-      this.database.timeline,
-      this.database.metadata,
+      [
+        this.database.rmas,
+        this.database.items,
+        this.database.calculations,
+        this.database.approvals,
+        this.database.executionAttempts,
+        this.database.timeline,
+        this.database.metadata,
+      ],
       async () => {
         const approval = await this.database.approvals.get(approvalId)
         if (!approval) {
@@ -1741,7 +1756,9 @@ export class ReturnRepository {
     table: EntityTable<T, "id">,
     records: readonly T[]
   ) {
-    const existingIds = new Set(await table.toCollection().primaryKeys())
+    const existingIds = new Set<string>(
+      (await table.toCollection().primaryKeys()).map(String)
+    )
     const missing = records.filter((record) => !existingIds.has(record.id))
     if (missing.length > 0) await table.bulkAdd(missing.map(clone))
     return missing.length
@@ -1765,9 +1782,7 @@ export class ReturnRepository {
     )
     const affectedRmas = (
       await this.database.rmas.bulkGet([...affectedRmaIds])
-    ).filter(
-      (rma): rma is Rma => Boolean(rma) && rma.refundStatus !== "succeeded"
-    )
+    ).filter((rma): rma is Rma => rma?.refundStatus !== "succeeded" && !!rma)
     const mutableRmaIds = new Set(affectedRmas.map((rma) => rma.id))
     const approvals = await this.database.approvals.toArray()
     const affectedApprovals = approvals.filter(

@@ -57,7 +57,11 @@ export class ReturnStore {
     try {
       const snapshot = await this.repository.getSnapshot()
       this.setSnapshot({ ...snapshot, state: "ready", error: null })
-    } catch {
+    } catch (error) {
+      console.error(
+        "Returns refresh failed.",
+        error instanceof Error ? `${error.name}: ${error.message}` : error
+      )
       this.setSnapshot({
         ...this.snapshot,
         state: "error",
@@ -82,7 +86,11 @@ export class ReturnStore {
     try {
       await this.repository.initialize()
       await this.refresh()
-    } catch {
+    } catch (error) {
+      console.error(
+        "Returns initialization failed.",
+        error instanceof Error ? `${error.name}: ${error.message}` : error
+      )
       this.setSnapshot({
         ...this.snapshot,
         state: "error",

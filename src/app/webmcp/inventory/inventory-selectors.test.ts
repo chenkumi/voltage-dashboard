@@ -20,6 +20,7 @@ describe("inventory selectors", () => {
         delta: 5,
         occurredAt: "2026-07-10T00:00:00.000Z",
         source: "seed" as const,
+        sourceReference: null,
         note: null,
       },
       {
@@ -32,6 +33,7 @@ describe("inventory selectors", () => {
         delta: -3,
         occurredAt: "2026-08-10T00:00:00.000Z",
         source: "seed" as const,
+        sourceReference: null,
         note: null,
       },
     ]
@@ -89,6 +91,7 @@ describe("inventory selectors", () => {
           delta: 6,
           occurredAt: "2026-06-15T00:00:00.000Z",
           source: "seed",
+          sourceReference: null,
           note: null,
         },
       ],

@@ -204,6 +204,13 @@ describe("return WebMCP tools", () => {
     expect(await execute("get_return_form_state", {})).toMatchObject({
       status: "OK",
       version: 2,
+      availableItems: [
+        {
+          orderLineId: line.id,
+          sku: line.sku,
+          availableQuantity: expect.any(Number),
+        },
+      ],
     })
     expect(
       await execute("apply_return_form_draft", {
