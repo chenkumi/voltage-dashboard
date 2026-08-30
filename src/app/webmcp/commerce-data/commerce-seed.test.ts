@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest"
 import { createDummyJsonProductSeed } from "../products/product-seed"
 import { createCommerceSeed } from "./commerce-seed"
+import { allocateOrderLinePaidAmounts } from "./order-paid-allocation"
 
 describe("createCommerceSeed", () => {
   it("creates deterministic, relational data spanning at least 13 months", () => {
@@ -46,12 +47,23 @@ describe("createCommerceSeed", () => {
 
       expect(order.amounts.subtotal.amount).toBeCloseTo(subtotal, 2)
       expect(order.amounts.total.amount).toBeCloseTo(expectedTotal, 2)
+      expect(
+        lines.reduce((total, line) => total + line.paidAmount.amount, 0) +
+          order.amounts.shipping.amount
+      ).toBeCloseTo(order.amounts.total.amount, 2)
       for (const line of lines) {
         expect(line.subtotal.amount).toBeCloseTo(
           line.unitPrice.amount * line.quantity - line.discount.amount,
           2
         )
         expect(line.subtotal.currency).toBe(order.amounts.total.currency)
+        expect(line.paidUnitAmounts).toHaveLength(line.quantity)
+        expect(
+          line.paidUnitAmounts.reduce(
+            (total, unitAmount) => total + unitAmount.amount,
+            0
+          )
+        ).toBeCloseTo(line.paidAmount.amount, 2)
       }
     }
   })
@@ -110,5 +122,64 @@ describe("createCommerceSeed", () => {
         segment: customer?.segment,
       })
     }
+  })
+
+  it("allocates discount and tax rounding deterministically by line and unit", () => {
+    const first = createCommerceSeed()
+    const second = createCommerceSeed()
+
+    expect(
+      first.orderLines.map(({ id, paidAmount, paidUnitAmounts }) => ({
+        id,
+        paidAmount,
+        paidUnitAmounts,
+      }))
+    ).toEqual(
+      second.orderLines.map(({ id, paidAmount, paidUnitAmounts }) => ({
+        id,
+        paidAmount,
+        paidUnitAmounts,
+      }))
+    )
+    expect(
+      first.orderLines.some(
+        (line) =>
+          line.quantity > 1 &&
+          new Set(line.paidUnitAmounts.map((amount) => amount.amount)).size > 1
+      )
+    ).toBe(true)
+  })
+
+  it("uses stable ID tie-breaking with bigint arithmetic for large weights", () => {
+    const allocation = allocateOrderLinePaidAmounts(
+      ["B", "A", "C"].map((id) => ({
+        id,
+        quantity: 1,
+        subtotal: { amount: 1_000_000_000.03, currency: "USD" as const },
+      })),
+      { amount: 0.01, currency: "USD" }
+    )
+
+    expect(allocation.get("A")?.paidAmount.amount).toBe(0.01)
+    expect(allocation.get("B")?.paidAmount.amount).toBe(0)
+    expect(allocation.get("C")?.paidAmount.amount).toBe(0)
+  })
+
+  it("rejects money beyond the safe minor-unit range", () => {
+    expect(() =>
+      allocateOrderLinePaidAmounts(
+        [
+          {
+            id: "A",
+            quantity: 1,
+            subtotal: {
+              amount: Number.MAX_SAFE_INTEGER,
+              currency: "USD" as const,
+            },
+          },
+        ],
+        { amount: 1, currency: "USD" }
+      )
+    ).toThrow(/safe minor-unit range/)
   })
 })

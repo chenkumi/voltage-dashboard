@@ -152,6 +152,8 @@ export type OrderLine = {
   quantity: number
   discount: Money
   subtotal: Money
+  paidAmount: Money
+  paidUnitAmounts: readonly Money[]
 }
 
 export type CommerceDataSnapshot = {

@@ -47,7 +47,7 @@ type CommerceRepositoryOptions = {
   createId?: () => string
 }
 
-const COMMERCE_SEED_VERSION = 2
+const COMMERCE_SEED_VERSION = 3
 
 export class CommerceRepositoryError extends Error {
   readonly code:
@@ -611,7 +611,9 @@ export class CommerceRepository {
     if (
       !isRecord(value) ||
       value.key !== "commerce-seed" ||
-      ![1, COMMERCE_SEED_VERSION].includes(value.version as number) ||
+      !Number.isInteger(value.version) ||
+      Number(value.version) < 1 ||
+      Number(value.version) > COMMERCE_SEED_VERSION ||
       typeof value.initializedAt !== "string" ||
       !Number.isFinite(Date.parse(value.initializedAt)) ||
       new Date(Date.parse(value.initializedAt)).toISOString() !==

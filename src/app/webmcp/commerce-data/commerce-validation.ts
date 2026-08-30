@@ -17,6 +17,7 @@ import {
   type Order,
   type OrderLine,
 } from "./types"
+import { allocateOrderLinePaidAmounts } from "./order-paid-allocation"
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const HTML_PATTERN = /<\/?[a-z][^>]*>/i
@@ -79,6 +80,8 @@ const ORDER_LINE_KEYS = [
   "quantity",
   "discount",
   "subtotal",
+  "paidAmount",
+  "paidUnitAmounts",
 ] as const
 const ORDER_KEYS = [
   "id",
@@ -137,7 +140,10 @@ const isOrderLine = (line: unknown): line is OrderLine =>
   isMoney(line.unitPrice) &&
   typeof line.quantity === "number" &&
   isMoney(line.discount) &&
-  isMoney(line.subtotal)
+  isMoney(line.subtotal) &&
+  isMoney(line.paidAmount) &&
+  Array.isArray(line.paidUnitAmounts) &&
+  line.paidUnitAmounts.every(isMoney)
 
 export function assertValidOrderLines(
   lines: readonly unknown[]
@@ -355,6 +361,22 @@ export const assertValidOrder = (
       order.amounts.shipping.amount +
       order.amounts.tax.amount
   )
+  const paidLineTotal = roundMoney(
+    orderLines.reduce((total, line) => total + line.paidAmount.amount, 0)
+  )
+  let expectedPaidAllocations:
+    | ReturnType<typeof allocateOrderLinePaidAmounts>
+    | null = null
+  try {
+    expectedPaidAllocations = allocateOrderLinePaidAmounts(orderLines, {
+      amount: roundMoney(
+        order.amounts.total.amount - order.amounts.shipping.amount
+      ),
+      currency,
+    })
+  } catch {
+    expectedPaidAllocations = null
+  }
   if (
     typeof order.id !== "string" ||
     order.customerId !== customer.id ||
@@ -368,6 +390,7 @@ export const assertValidOrder = (
     orderLines.length === 0 ||
     orderLines.some((line) => {
       const gross = line.unitPrice.amount * line.quantity
+      const expectedPaid = expectedPaidAllocations?.get(line.id)
       return (
         !Number.isInteger(line.quantity) ||
         line.quantity <= 0 ||
@@ -384,6 +407,37 @@ export const assertValidOrder = (
         line.unitPrice.currency !== currency ||
         line.discount.currency !== currency ||
         line.subtotal.currency !== currency ||
+        line.paidAmount.currency !== currency ||
+        line.paidAmount.amount < 0 ||
+        !isCentAmount(line.paidAmount.amount) ||
+        line.paidUnitAmounts.length !== line.quantity ||
+        line.paidUnitAmounts.some(
+          (amount) =>
+            amount.currency !== currency ||
+            amount.amount < 0 ||
+            !isCentAmount(amount.amount)
+        ) ||
+        !sameCentAmount(
+          line.paidAmount.amount,
+          roundMoney(
+            line.paidUnitAmounts.reduce(
+              (total, amount) => total + amount.amount,
+              0
+            )
+          )
+        ) ||
+        !expectedPaid ||
+        !sameCentAmount(
+          line.paidAmount.amount,
+          expectedPaid.paidAmount.amount
+        ) ||
+        line.paidUnitAmounts.some(
+          (amount, index) =>
+            !sameCentAmount(
+              amount.amount,
+              expectedPaid.paidUnitAmounts[index]?.amount ?? Number.NaN
+            )
+        ) ||
         !line.id.startsWith(`${order.id}-L`)
       )
     }) ||
@@ -395,6 +449,11 @@ export const assertValidOrder = (
     ) ||
     !sameCentAmount(order.amounts.subtotal.amount, subtotal) ||
     order.amounts.discount.amount > order.amounts.subtotal.amount ||
+    expectedPaidAllocations === null ||
+    !sameCentAmount(
+      roundMoney(paidLineTotal + order.amounts.shipping.amount),
+      order.amounts.total.amount
+    ) ||
     !sameCentAmount(order.amounts.total.amount, expectedTotal)
   ) {
     throw new CommerceValidationError(

@@ -92,7 +92,7 @@ describe("CommerceRepository", () => {
       customerSnapshot: { region: "east", segment: "vip" },
     })
     await legacyDatabase.table("metadata").update("commerce-seed", {
-      version: 1,
+      version: 2,
     })
     legacyDatabase.close()
 
@@ -110,13 +110,25 @@ describe("CommerceRepository", () => {
     expect(await migrated.getCustomer(baselineCustomer.id)).toMatchObject({
       segment: "returning",
     })
+    expect(
+      snapshot.orderLines.every(
+        (line) =>
+          line.paidUnitAmounts.length === line.quantity &&
+          Math.round(
+            line.paidUnitAmounts.reduce(
+              (total, amount) => total + amount.amount,
+              0
+            ) * 100
+          ) === Math.round(line.paidAmount.amount * 100)
+      )
+    ).toBe(true)
 
     migrated.close()
     const migratedDatabase = new Dexie(databaseName)
     migratedDatabase.version(1).stores(COMMERCE_DATABASE_SCHEMA)
     await expect(
       migratedDatabase.table("metadata").get("commerce-seed")
-    ).resolves.toMatchObject({ version: 2 })
+    ).resolves.toMatchObject({ version: 3 })
     migratedDatabase.close()
   })
 

@@ -11,6 +11,7 @@ import type {
   OrderStatus,
   PaymentStatus,
 } from "./types"
+import { allocateOrderLinePaidAmounts } from "./order-paid-allocation"
 
 const SEGMENTS: readonly CustomerSegment[] = ["new", "returning", "vip"]
 const REGIONS: readonly CustomerRegion[] = ["north", "central", "south", "east"]
@@ -98,6 +99,8 @@ const createOrderLine = (
     quantity,
     discount: money(discountAmount, currency),
     subtotal: money(gross - discountAmount, currency),
+    paidAmount: money(0, currency),
+    paidUnitAmounts: [],
   }
 }
 
@@ -173,6 +176,18 @@ export const createCommerceSeed = (
       subtotal >= shippingThreshold ? 0 : currency === "USD" ? 6 : 180
     const tax = roundMoney((subtotal - orderDiscount) * 0.05)
     const total = roundMoney(subtotal - orderDiscount + shipping + tax)
+    const paidAllocations = allocateOrderLinePaidAmounts(
+      lines,
+      money(total - shipping, currency)
+    )
+    for (const line of lines) {
+      const allocation = paidAllocations.get(line.id)
+      if (!allocation) {
+        throw new Error(`Missing paid allocation for ${line.id}.`)
+      }
+      line.paidAmount = allocation.paidAmount
+      line.paidUnitAmounts = allocation.paidUnitAmounts
+    }
     const status = ORDER_STATUSES[index % ORDER_STATUSES.length]
     const paymentStatus = PAYMENT_STATUSES[index % PAYMENT_STATUSES.length]
     const updatedAt = new Date(createdAt.getTime() + 86_400_000).toISOString()
