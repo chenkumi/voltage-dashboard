@@ -998,6 +998,17 @@ const zhTW = {
   "Inspection result": "驗貨結果",
   "Agent safe summary": "Agent 安全摘要",
   "No Agent summary has been prepared.": "尚未準備 Agent 摘要。",
+  "Agent review draft": "Agent 審查草稿",
+  "This draft is reversible. Eligibility decisions and submissions remain user-only.":
+    "此草稿可隨時修改；資格決定與提交仍只能由使用者操作。",
+  "Evidence codes": "證據代碼",
+  "Run the policy assessment before preparing evidence.":
+    "請先完成政策評估，再準備證據。",
+  "Operational summary": "營運摘要",
+  "Next step": "下一步",
+  "Support response draft": "客服回覆草稿",
+  "Review draft is complete": "審查草稿已完整",
+  "Missing: {{fields}}": "缺少：{{fields}}",
   "Policy version": "政策版本",
   "Order snapshot version": "訂單快照版本",
   "Open return": "開啟退貨單",

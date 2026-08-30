@@ -3,6 +3,7 @@ import {
   type Dispatch,
   type FormEvent,
   type SetStateAction,
+  useEffect,
   useMemo,
   useState,
 } from "react"
@@ -12,6 +13,12 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Order, OrderLine } from "../commerce-data/types"
+import {
+  createReturnFormEditorState,
+  createReturnReviewEditorState,
+  type ReturnFormDraft,
+  type ReturnReviewDraft,
+} from "./return-editor-controller"
 import {
   ActiveFilterSummary,
   OperationalFilterButton,
@@ -497,18 +504,34 @@ export const ReturnAddPage = () => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { commerce, returnRepository, returns } = useVoltageAdmin()
+  const { commerce, returnEditorController, returnRepository, returns } =
+    useVoltageAdmin()
   const orderId = searchParams.get("orderId") ?? ""
   const order = commerce.orders.find((candidate) => candidate.id === orderId)
   const lines = commerce.orderLines.filter((line) => line.orderId === orderId)
-  const [source, setSource] = useState<ReturnDraftInput["source"]>("internal")
-  const [reason, setReason] = useState<ReturnDraftInput["reason"]>("defective")
-  const [statement, setStatement] = useState(
-    "Item stopped working after delivery."
+  const [form, setForm] = useState(() =>
+    createReturnFormEditorState({
+      orderId,
+      source: "internal",
+      reason: "defective",
+      customerStatement: "Item stopped working after delivery.",
+      items: [],
+    })
   )
-  const [quantities, setQuantities] = useState<Record<string, number>>({})
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
+  useEffect(
+    () => returnEditorController.attachForm(form, setForm),
+    [form, returnEditorController]
+  )
+  const updateForm = (patch: Partial<Omit<ReturnFormDraft, "orderId">>) =>
+    setForm((current) =>
+      createReturnFormEditorState(
+        { ...current.draft, ...patch },
+        current.version + 1,
+        true
+      )
+    )
   if (commerce.state === "error" || returns.state === "error") {
     return (
       <PageLayout ariaLabel={t("Add return")} pageName="Returns">
@@ -574,13 +597,8 @@ export const ReturnAddPage = () => {
       </PageLayout>
     )
   }
-  const selected = lines
-    .map((line) => ({
-      orderLineId: line.id,
-      requestedQuantity: quantities[line.id] ?? 0,
-    }))
-    .filter(({ requestedQuantity }) => requestedQuantity > 0)
-  const complete = selected.length > 0 && statement.trim().length > 0
+  const selected = form.draft.items
+  const complete = form.valid
   const persist = async (submit: boolean) => {
     setBusy(true)
     setError("")
@@ -588,9 +606,9 @@ export const ReturnAddPage = () => {
       const created = await returnRepository.createDraft(
         {
           orderId: order.id,
-          source,
-          reason,
-          customerStatement: statement,
+          source: form.draft.source,
+          reason: form.draft.reason,
+          customerStatement: form.draft.customerStatement,
           items: selected,
         },
         "user"
@@ -656,13 +674,26 @@ export const ReturnAddPage = () => {
                     type="number"
                     min={0}
                     max={remaining}
-                    value={quantities[line.id] ?? 0}
-                    onChange={(event) =>
-                      setQuantities((current) => ({
-                        ...current,
-                        [line.id]: Number(event.target.value),
-                      }))
+                    value={
+                      selected.find((item) => item.orderLineId === line.id)
+                        ?.requestedQuantity ?? 0
                     }
+                    onChange={(event) => {
+                      const requestedQuantity = Number(event.target.value)
+                      updateForm({
+                        items:
+                          requestedQuantity > 0
+                            ? [
+                                ...selected.filter(
+                                  (item) => item.orderLineId !== line.id
+                                ),
+                                { orderLineId: line.id, requestedQuantity },
+                              ]
+                            : selected.filter(
+                                (item) => item.orderLineId !== line.id
+                              ),
+                      })
+                    }}
                   />
                 </label>
               )
@@ -680,9 +711,11 @@ export const ReturnAddPage = () => {
               {t("Source")}
               <select
                 className={fieldClass}
-                value={source}
+                value={form.draft.source}
                 onChange={(event) =>
-                  setSource(event.target.value as ReturnDraftInput["source"])
+                  updateForm({
+                    source: event.target.value as ReturnDraftInput["source"],
+                  })
                 }
               >
                 {RETURN_SOURCES.map((value) => (
@@ -696,9 +729,11 @@ export const ReturnAddPage = () => {
               {t("Reason")}
               <select
                 className={fieldClass}
-                value={reason}
+                value={form.draft.reason}
                 onChange={(event) =>
-                  setReason(event.target.value as ReturnDraftInput["reason"])
+                  updateForm({
+                    reason: event.target.value as ReturnDraftInput["reason"],
+                  })
                 }
               >
                 {RETURN_REASONS.map((value) => (
@@ -712,8 +747,10 @@ export const ReturnAddPage = () => {
               {t("Safe customer statement")}
               <textarea
                 className={textAreaClass}
-                value={statement}
-                onChange={(event) => setStatement(event.target.value)}
+                value={form.draft.customerStatement}
+                onChange={(event) =>
+                  updateForm({ customerStatement: event.target.value })
+                }
               />
               <small className="text-muted-foreground">
                 {t(
@@ -777,7 +814,12 @@ export const ReturnDetailPage = () => {
   const { returnId } = useParams()
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { productRepository, returnRepository, returns } = useVoltageAdmin()
+  const {
+    productRepository,
+    returnEditorController,
+    returnRepository,
+    returns,
+  } = useVoltageAdmin()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [packageCount, setPackageCount] = useState(1)
@@ -795,6 +837,43 @@ export const ReturnDetailPage = () => {
     condition: "damaged",
     finalSale: false,
   })
+  const currentRma = returns.rmas.find((candidate) => candidate.id === returnId)
+  const [review, setReview] = useState(
+    () =>
+      returnEditorController.getReviewState(returnId) ??
+      createReturnReviewEditorState({
+        rmaId: returnId ?? "",
+        rmaVersion: currentRma?.version ?? 1,
+        policyVersion: currentRma?.eligibility.policyVersion ?? "unknown",
+      })
+  )
+  if (
+    currentRma &&
+    (review.rmaId !== currentRma.id ||
+      review.rmaVersion !== currentRma.version ||
+      review.policyVersion !== currentRma.eligibility.policyVersion)
+  ) {
+    setReview(
+      createReturnReviewEditorState({
+        rmaId: currentRma.id,
+        rmaVersion: currentRma.version,
+        policyVersion: currentRma.eligibility.policyVersion,
+      })
+    )
+  }
+  useEffect(
+    () => returnEditorController.attachReview(review, setReview),
+    [returnEditorController, review]
+  )
+  const updateReview = (patch: Partial<ReturnReviewDraft>) =>
+    setReview((current) =>
+      createReturnReviewEditorState(
+        current,
+        { ...current.draft, ...patch },
+        current.version + 1,
+        true
+      )
+    )
   if (returns.state === "error")
     return (
       <PageLayout ariaLabel={t("Return details")} pageName="Returns">
@@ -807,7 +886,7 @@ export const ReturnDetailPage = () => {
         <PageState message={t("Loading returns…")} />
       </PageLayout>
     )
-  const rma = returns.rmas.find((candidate) => candidate.id === returnId)
+  const rma = currentRma
   if (!rma)
     return (
       <PageLayout ariaLabel={t("Return details")} pageName="Returns">
@@ -825,12 +904,14 @@ export const ReturnDetailPage = () => {
         item.calculationId === calculations[0]?.id &&
         item.status === rma.approvalStatus
     ) ??
-    [...rmaApprovals].sort((a, b) =>
-      b.createdAt.localeCompare(a.createdAt)
-    )[0]
+    [...rmaApprovals].sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
   const timeline = returns.timeline
     .filter((item) => item.rmaId === rma.id)
     .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))
+  const availableEvidence = [
+    ...(rma.eligibility.systemResult?.matchedRules ?? []),
+    ...(rma.eligibility.systemResult?.missingEvidence ?? []),
+  ]
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true)
     setError("")
@@ -1091,6 +1172,72 @@ export const ReturnDetailPage = () => {
               </strong>
             </div>
           ))}
+        </DetailCard>
+      </GridBlock>
+      <GridBlock>
+        <DetailCard title={t("Agent review draft")}>
+          <p className="text-muted-foreground">
+            {t(
+              "This draft is reversible. Eligibility decisions and submissions remain user-only."
+            )}
+          </p>
+          <fieldset className="grid gap-2">
+            <legend>{t("Evidence codes")}</legend>
+            {availableEvidence.length > 0 ? (
+              <div className="flex flex-wrap gap-3">
+                {availableEvidence.map((code) => (
+                  <label key={code} className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={review.draft.evidenceCodes.includes(code)}
+                      onChange={(event) =>
+                        updateReview({
+                          evidenceCodes: event.target.checked
+                            ? [...review.draft.evidenceCodes, code]
+                            : review.draft.evidenceCodes.filter(
+                                (item) => item !== code
+                              ),
+                        })
+                      }
+                    />
+                    {code}
+                  </label>
+                ))}
+              </div>
+            ) : (
+              <p>{t("Run the policy assessment before preparing evidence.")}</p>
+            )}
+          </fieldset>
+          <div className="grid gap-3 lg:grid-cols-3">
+            {(
+              [
+                ["operationalSummary", "Operational summary", 600],
+                ["nextStep", "Next step", 300],
+                ["supportDraft", "Support response draft", 600],
+              ] as const
+            ).map(([key, label, maxLength]) => (
+              <label key={key} className="grid gap-1">
+                {t(label)}
+                <textarea
+                  className={textAreaClass}
+                  maxLength={maxLength}
+                  value={review.draft[key]}
+                  onChange={(event) =>
+                    updateReview({ [key]: event.target.value })
+                  }
+                />
+              </label>
+            ))}
+          </div>
+          <p className="text-muted-foreground">
+            {review.valid
+              ? t("Review draft is complete")
+              : t("Missing: {{fields}}", {
+                  fields: review.missingFields.join(", "),
+                })}
+            {" · "}
+            {t("Version")}: {review.version}
+          </p>
         </DetailCard>
       </GridBlock>
       <GridBlock className="col-span-12 lg:col-span-6">

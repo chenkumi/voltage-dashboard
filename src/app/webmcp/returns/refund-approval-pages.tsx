@@ -461,7 +461,8 @@ export const RefundApprovalDetailPage = () => {
   const { approvalId } = useParams()
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { commerce, returnRepository, returns } = useVoltageAdmin()
+  const { commerce, returnEditorController, returnRepository, returns } =
+    useVoltageAdmin()
   const [reason, setReason] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
@@ -510,6 +511,7 @@ export const RefundApprovalDetailPage = () => {
   const attempts = returns.executionAttempts.filter(
     (item) => item.approvalId === approval.id
   )
+  const agentSummary = returnEditorController.getReviewState(rma.id)?.draft
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true)
     setError("")
@@ -825,9 +827,25 @@ export const RefundApprovalDetailPage = () => {
       </GridBlock>
       <GridBlock>
         <DetailCard title={t("Agent safe summary")}>
-          <p className="text-muted-foreground">
-            {t("No Agent summary has been prepared.")}
-          </p>
+          {agentSummary?.operationalSummary ? (
+            <>
+              <p>{agentSummary.operationalSummary}</p>
+              <p>
+                <span className="text-muted-foreground">{t("Next step")}:</span>{" "}
+                {agentSummary.nextStep}
+              </p>
+              <p>
+                <span className="text-muted-foreground">
+                  {t("Evidence codes")}:
+                </span>{" "}
+                {agentSummary.evidenceCodes.join(" · ")}
+              </p>
+            </>
+          ) : (
+            <p className="text-muted-foreground">
+              {t("No Agent summary has been prepared.")}
+            </p>
+          )}
         </DetailCard>
       </GridBlock>
       <GridBlock>

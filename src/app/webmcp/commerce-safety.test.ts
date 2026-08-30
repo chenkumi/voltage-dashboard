@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { VOLTAGE_ADMIN_TOOLS } from "./voltage-admin"
-import { OperationsController } from "./operations/operations-controller"
-import {
-  executeOperationsTool,
-  OPERATIONS_TOOLS,
-} from "./operations/operations-tools"
+import { RETURN_TOOLS } from "./returns/return-tools"
 
 describe("commerce privacy boundaries", () => {
   it("exposes nine operational readers and no inventory/order/customer mutations", () => {
@@ -116,21 +112,11 @@ describe("commerce privacy boundaries", () => {
     )
   })
 
-  it("never exposes high-risk commerce final actions as operations tools", () => {
+  it("never exposes high-risk commerce or RMA final actions", () => {
     const names = VOLTAGE_ADMIN_TOOLS.map(({ name }) => name)
 
     expect(names).toEqual(
-      expect.arrayContaining(
-        OPERATIONS_TOOLS.map(({ name }) => name).filter(
-          (name) =>
-            ![
-              "list_catalog_candidates",
-              "get_catalog_candidate",
-              "save_product_draft",
-              "open_product_review",
-            ].includes(name)
-        )
-      )
+      expect.arrayContaining(RETURN_TOOLS.slice(0, 6).map(({ name }) => name))
     )
     expect(names).not.toEqual(
       expect.arrayContaining([
@@ -140,13 +126,18 @@ describe("commerce privacy boundaries", () => {
         "save_product_draft",
         "open_product_review",
         "resolve_case",
+        "submit_return",
+        "receive_return",
+        "complete_inspection",
+        "approve_refund",
+        "record_refund_result",
         "refund_order",
         "submit_payment",
       ])
     )
   })
 
-  it("keeps operations schema property names free of personal data fields", () => {
+  it("keeps return schema property names free of personal data fields", () => {
     const propertyNames: string[] = []
     const visit = (value: unknown) => {
       if (!value || typeof value !== "object" || Array.isArray(value)) return
@@ -156,23 +147,22 @@ describe("commerce privacy boundaries", () => {
       }
       Object.values(record).forEach(visit)
     }
-    OPERATIONS_TOOLS.forEach(({ inputSchema }) => visit(inputSchema))
+    RETURN_TOOLS.forEach(({ inputSchema }) => visit(inputSchema))
 
     expect(propertyNames.join(" ")).not.toMatch(
       /customerName|email|address|phone|account|card|paymentId|token/i
     )
   })
 
-  it("returns only safe status facts from Agent-visible case readers", () => {
-    const controller = new OperationsController()
-    const result = executeOperationsTool(controller, "get_ops_case", {
-      caseId: "CASE-2003",
-    })
-    const serialized = JSON.stringify(result)
-
-    expect(serialized).toContain("address_unverified")
-    expect(serialized).not.toMatch(
-      /customerId|CUST-|@|phone|street|postal|cardNumber|paymentToken/i
-    )
+  it("marks Agent-visible return readers containing product text as untrusted", () => {
+    for (const name of [
+      "search_returns",
+      "get_return_detail",
+      "get_refund_approval",
+    ]) {
+      expect(
+        RETURN_TOOLS.find((tool) => tool.name === name)?.annotations
+      ).toMatchObject({ readOnlyHint: true, untrustedContentHint: true })
+    }
   })
 })

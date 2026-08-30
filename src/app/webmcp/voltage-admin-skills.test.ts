@@ -14,9 +14,9 @@ const smartDashboardSkillNames = [
 
 const operationsSkillNames = [
   "catalog-onboarding",
-  "order-exception-triage",
-  "return-policy",
-  "approval-boundaries",
+  "return-intake-assistant",
+  "return-policy-review",
+  "refund-review-preparation",
 ]
 
 describe("Voltage Admin skills", () => {
@@ -143,29 +143,27 @@ describe("Voltage Admin skills", () => {
     }
   )
 
-  it("provides route-aware case and approval boundaries", () => {
-    expect(getVoltageAdminAgentInstructions("operations-cases")).toMatch(
-      /Operations Cases[\s\S]*安全狀態碼[\s\S]*退款/
-    )
-    expect(getVoltageAdminAgentInstructions("approvals")).toMatch(
-      /Approval Inbox[\s\S]*不得核准[\s\S]*頁面按鈕/
+  it("provides route-aware return boundaries", () => {
+    expect(getVoltageAdminAgentInstructions("returns")).toMatch(
+      /Returns[\s\S]*可逆[\s\S]*使用者操作/
     )
   })
 
   it("documents verifier use, untrusted sources, and human final actions", () => {
     const catalog = loadVoltageAdminSkill("catalog-onboarding")
-    const triage = loadVoltageAdminSkill("order-exception-triage")
-    const returns = loadVoltageAdminSkill("return-policy")
-    const approvals = loadVoltageAdminSkill("approval-boundaries")
-    const text = [catalog, triage, returns, approvals]
+    const intake = loadVoltageAdminSkill("return-intake-assistant")
+    const returns = loadVoltageAdminSkill("return-policy-review")
+    const approvals = loadVoltageAdminSkill("refund-review-preparation")
+    const text = [catalog, intake, returns, approvals]
       .map((skill) => ("text" in skill ? skill.text : ""))
       .join("\n")
 
     expect(text).toMatch(
       /untrustedContentHint[\s\S]*get_product_editor_state[\s\S]*頁面按鈕/
     )
-    expect(text).toMatch(/immutable facts[\s\S]*get_workflow_state/)
-    expect(text).toMatch(/needs_human_review[\s\S]*不得退款[\s\S]*draftVersion/)
+    expect(text).toMatch(/get_return_form_state[\s\S]*使用者/)
+    expect(text).toMatch(/get_return_review_state[\s\S]*不得承諾退款/)
+    expect(text).toMatch(/get_refund_approval[\s\S]*不得修改退款金額/)
     expect(text).not.toMatch(/payment_token|card_number|shipping_address/i)
   })
 

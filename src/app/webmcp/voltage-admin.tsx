@@ -28,11 +28,6 @@ import {
   loadVoltageAdminSkill,
 } from "./voltage-admin-skills"
 import {
-  executeOperationsTool,
-  isOperationsTool,
-  OPERATIONS_TOOLS,
-} from "./operations/operations-tools"
-import {
   EXECUTE_READONLY_SQL_TOOL,
   EXECUTE_READONLY_SQL_TOOL_NAME,
   ReportingRuntimeController,
@@ -73,6 +68,15 @@ import {
   OPERATIONAL_TOOLS,
 } from "./operational-tools"
 import { ReturnRepository } from "./returns/return-repository"
+import { ReturnEditorController } from "./returns/return-editor-controller"
+import {
+  executeReturnTool,
+  isReturnTool,
+  REFUND_APPROVAL_DETAIL_TOOLS,
+  RETURN_DETAIL_TOOLS,
+  RETURN_FORM_TOOLS,
+  RETURN_GLOBAL_TOOLS,
+} from "./returns/return-tools"
 import {
   ReturnStore,
   useReturnStore,
@@ -147,7 +151,7 @@ const VOLTAGE_ADMIN_COMMON_TOOLS: WebMcpRegisteredTool[] = [
   },
   EXECUTE_READONLY_SQL_TOOL,
   ...REPORT_AUTHORING_TOOLS,
-  ...OPERATIONS_TOOLS,
+  ...RETURN_GLOBAL_TOOLS,
   ...OPERATIONAL_TOOLS,
   {
     name: "search_voltage_admin_products",
@@ -267,6 +271,7 @@ type VoltageAdminContextValue = {
   products: ProductStoreSnapshot
   reportingController: ReportingRuntimeController
   returnRepository: ReturnRepository
+  returnEditorController: ReturnEditorController
   returns: ReturnStoreSnapshot
   workflow: WorkflowSnapshot
 }
@@ -374,6 +379,7 @@ export const VoltageAdminProvider = () => {
         orderSnapshotVersion: COMMERCE_SEED_VERSION,
       })
   )
+  const [returnEditorController] = useState(() => new ReturnEditorController())
   const [productEditorController] = useState(
     () => new ProductEditorController()
   )
@@ -398,6 +404,14 @@ export const VoltageAdminProvider = () => {
       ...VOLTAGE_ADMIN_TOOLS,
       ...(/^\/products\/(?:add|edit\/\d+)$/.test(location.pathname)
         ? PRODUCT_EDITOR_TOOLS
+        : []),
+      ...(location.pathname === "/returns/add" ? RETURN_FORM_TOOLS : []),
+      ...(location.pathname !== "/returns/add" &&
+      /^\/returns\/[^/]+$/.test(location.pathname)
+        ? RETURN_DETAIL_TOOLS
+        : []),
+      ...(/^\/refund-approvals\/[^/]+$/.test(location.pathname)
+        ? REFUND_APPROVAL_DETAIL_TOOLS
         : []),
     ],
     [location.pathname]
@@ -510,10 +524,15 @@ export const VoltageAdminProvider = () => {
     if (isReportAuthoringTool(name)) {
       return reportingController.executeReportTool(name, args)
     }
-    if (isOperationsTool(name)) {
-      return executeOperationsTool(operationsController, name, args, (view) =>
-        navigate(voltageAdminPath(view))
-      )
+    if (isReturnTool(name)) {
+      return executeReturnTool({
+        name,
+        args,
+        repository: returnRepository,
+        commerce: await commerceRepository.getSnapshot(),
+        editor: returnEditorController,
+        navigate: (path) => navigate(path),
+      })
     }
     if (isOperationalTool(name)) {
       return executeOperationalTool({
@@ -589,6 +608,7 @@ export const VoltageAdminProvider = () => {
       products,
       reportingController,
       returnRepository,
+      returnEditorController,
       returns,
       workflow,
     }),
@@ -602,6 +622,7 @@ export const VoltageAdminProvider = () => {
       products,
       reportingController,
       returnRepository,
+      returnEditorController,
       returns,
       workflow,
     ]

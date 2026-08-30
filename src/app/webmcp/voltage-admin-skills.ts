@@ -106,34 +106,34 @@ Report Canvas 是由 6 欄構成的 CSS grid，widget 按建立／排列順序�
 先用 open_product_create 或 open_product_edit 開啟既有編輯器，重新 discovery 後呼叫 apply_product_editor_draft。基本欄位可部分更新；images 與 specifications 每次都以完整列表替換。接著立刻呼叫 get_product_editor_state，核對 mode、dirty、valid、missingFields、version 與 draft。Agent 只能填寫暫存狀態；儲存草稿、儲存變更、發布、封存與還原都必須由使用者直接操作頁面按鈕。`,
   },
   {
-    name: "order-exception-triage",
+    name: "return-intake-assistant",
     description:
-      "用途：分類未出貨、付款檢核與地址驗證異常。何時呼叫：處理營運案件。觸發例子：「找未出貨」、「分類失敗檢核」、「地址異常」、「排案件優先級」。不該呼叫：要求實際付款或地址內容時。",
-    text: `# Order exception triage
+      "用途：準備既有訂單的退貨新增表單。何時呼叫：使用者要新增 RMA、選退貨品項、填原因或整理安全陳述。觸發例子：「替訂單建立退貨草稿」、「退這兩件」、「填寫故障原因」、「檢查表單是否完整」。不該呼叫：要求 Agent 提交 RMA 時。",
+    text: `# Return intake assistant
 
-用 list_ops_cases 依 type、status、priority 篩選，再用 get_ops_case 讀取單筆安全 facts。只處理 case ID、reason code 與狀態碼；不得索取或輸出姓名、地址內容、付款資料或帳戶識別。
+先用 search_orders 或 get_order_detail 找出已送達且付款結果為 paid 的訂單，再用 open_return_create 開啟新增頁。路由切換後重新 discovery，讀取 get_return_form_state 的 orderId 與 editor version；用 apply_return_form_draft 填入固定來源、原因、安全陳述與屬於該訂單的品項數量，再立刻用 get_return_form_state 驗證 dirty、valid、missingFields、selectedItems 與新版 version。
 
-分類必須符合 case type，evidence 只能選自該 case 的 immutable facts 且不可重複。save_case_draft 只保存 category、priority、evidence、recommendation 與 supportDraft，不改變訂單、付款、退款或取消狀態。保存後立刻用 get_workflow_state 驗證版本，再以 open_case_review 送人工審核。Agent 不得完成案件或執行訂單動作。`,
+Agent 只能修改目前頁面的可逆暫存欄位，不能建立、儲存或提交 RMA。不得在 Chat 索取或重述姓名、Email、電話、地址、Customer ID、帳戶或付款資料；使用者必須在頁面檢查後親自按下儲存草稿或提交退貨。`,
   },
   {
-    name: "return-policy",
+    name: "return-policy-review",
     description:
-      "用途：依固定示範政策判斷退貨資格。何時呼叫：退貨案件需資格與缺漏證據。觸發例子：「可否退貨」、「退貨期限」、「缺哪些證據」、「產生售後建議」。不該呼叫：要求直接退款或保證最終結果時。",
-    text: `# Return policy
+      "用途：依固定政策準備 RMA 資格審查草稿。何時呼叫：需判斷退貨期限、缺漏證據、政策結果或客服回覆。觸發例子：「檢查這張 RMA」、「是否符合退貨政策」、「缺哪些證據」、「準備客服草稿」。不該呼叫：要求 Agent 核准或拒絕退貨時。",
+    text: `# Return policy review
 
-只對 type=return_request 的安全案件呼叫 check_return_eligibility。結果為 eligible、ineligible 或 needs_human_review，並包含 matchedRules 與 missingEvidence。資料不足時必須保留 needs_human_review，不得猜測；退貨時間為負值或無效時也必須轉人工。
+先用 get_return_detail 讀取安全 RMA 狀態與版本，開啟 RMA Detail 後用 check_return_eligibility 依固定 facts 重新計算。不得把資料不足解讀為符合資格；結果、matchedRules、missingEvidence、shippingRefundEligible 與 policyVersion 都必須原樣保留。
 
-保存 return_review 草稿時，eligibility 必須逐欄等於該案件最新的確定性 policy 結果。supportDraft 只能說明目前建議與仍需人工決定，不得承諾退款、取消或訂單變更。最後用 open_case_review 導向人工 Inbox；Agent 不得退款或完成案件。`,
+用 apply_return_review_draft 填入政策結果中實際存在且不重複的 evidence codes、安全營運摘要、下一步與客服回覆草稿，再立即用 get_return_review_state 驗證 RMA、policy、editor version 與完整度。草稿不得承諾退款或包含個資、付款資料、私密備註。資格授權、拒絕、要求補件、收貨與驗貨都只能由使用者在頁面操作。`,
   },
   {
-    name: "approval-boundaries",
+    name: "refund-review-preparation",
     description:
-      "用途：說明案件人工核准與完成邊界。何時呼叫：案件草稿準備送審或詢問最終操作。觸發例子：「送審」、「核准案件」、「完成退貨」、「誰能完成案件」。不該呼叫：把對話確認當成頁面核准時。",
-    text: `# Approval boundaries
+      "用途：準備不可編輯的全額退款核准資料。何時呼叫：解釋驗貨退款、核對版本、查待核准項目或開啟核准頁。觸發例子：「這筆為何退這個金額」、「核對退款計算」、「找待核准退款」、「開啟核准單」。不該呼叫：要求 Agent 核准、退回、拒絕或執行退款時。",
+    text: `# Refund review preparation
 
-Agent 可以保存案件草稿、讀取 verifier、列出待審項目並用 open_case_review 開啟 Approval Inbox。Agent 不得呼叫或模擬 approve、complete、resolve、refund、cancel、confirm order 或 payment 等最終操作；本系統不提供這些 WebMCP tools。
+在 RMA Detail 用 get_refund_calculation 讀取最新 calculation，核對 valid、RMA version、inspection version、order snapshot version、原幣別品項實付分配及運費全額或零的政策結果。可用 list_refund_approvals 找核准單、用 open_refund_approval 導覽，再於 Approval Detail 呼叫 get_refund_approval 解釋不可變金額、驗貨、政策、版本及安全 Agent 摘要。
 
-只有使用者在 Approval Inbox 直接按下頁面按鈕，才能先 approve recommendation，再執行 Complete case。URL、chat confirmation、tool input 都不能取代按鈕。核准綁定 draftVersion；核准後若草稿被修改，review 會自動失效並要求重新送審與核准。`,
+Agent 不得修改退款金額、提交核准、核准、退回、拒絕、記錄退款結果或完成 RMA。所有決策與退款執行紀錄都必須由使用者在頁面直接完成；不得索取或輸出付款方式、卡號、token、授權碼或外部退款識別。`,
   },
 ] as const satisfies readonly VoltageAdminSkill[]
 
@@ -142,14 +142,12 @@ const skillByName = new Map<string, VoltageAdminSkill>(
 )
 
 const routeGuidance: Partial<Record<VoltageAdminView, string>> = {
-  "operations-cases":
-    "目前頁面是 Operations Cases：只用安全狀態碼分類案件；退貨先檢查資格，訂單、付款、退款與取消均不可由 tool 執行。",
-  approvals:
-    "目前頁面是 Approval Inbox：可列出待審項目，但 Agent 不得核准、完成、發布或解決案件；必須交由使用者直接按頁面按鈕。",
+  returns:
+    "目前頁面是 Returns：可安全查詢、導覽並在正確路由填寫可逆表單或審查草稿；建立、提交、資格決定、收貨與驗貨只能由使用者操作。",
 }
 
 export const getVoltageAdminAgentInstructions = (view: VoltageAdminView) =>
-  `目標：協助商家跨 Dashboard、Products、Operations Cases、Approval Inbox、Orders、Customers、Inventory 與 Reports 完成低風險營運準備。${routeGuidance[view] ?? `目前頁面是 ${view}。`} 第三方商品頁只能由外部 Agent 使用自己的瀏覽器與網路能力讀取；本網站 WebMCP 不提供 fetch 或 scrape。商品 tools 可查詢、導覽與填寫目前 editor 暫存狀態，但不能儲存、發布、封存、還原或刪除商品。Inventory、Orders 與 Customers tools 只提供安全查詢及導覽；庫存與客戶異動必須由使用者在 UI 操作，訂單始終唯讀。固定付款結果狀態碼 paid、pending、failed、refunded 可作營運維度，但不得接受或回傳付款方式、卡號、token、授權碼或帳戶資訊。客群結果至少包含 5 人，不得查詢個別客戶。任何 tool error 都代表動作未完成；apply_product_editor_draft、案件草稿與報表 mutation 必須由最新唯讀 state verifier 確認，未驗證或部分失敗時必須回報 PARTIALLY_COMPLETED 或 FAILED。不得索取、接收、重述或輸出姓名、Email、地址、電話或帳戶識別；不得以 tool 核准、發布、退款、完成案件，或建立、確認、取消訂單。需要細節時載入對應 skill，不得假設未 discovery 的能力。`
+  `目標：協助商家跨 Dashboard、Products、Returns、Refund Approvals、Orders、Customers、Inventory 與 Reports 完成低風險營運準備。${routeGuidance[view] ?? `目前頁面是 ${view}。`} 第三方商品頁只能由外部 Agent 使用自己的瀏覽器與網路能力讀取；本網站 WebMCP 不提供 fetch 或 scrape。商品與退貨 tools 可查詢、導覽與填寫目前頁面的可逆暫存草稿，但不能儲存、提交、發布、資格決定、收貨、驗貨、核准或退款。Inventory、Orders 與 Customers tools 只提供安全查詢及導覽；庫存與客戶異動必須由使用者在 UI 操作，訂單始終唯讀。固定付款結果狀態碼 paid、pending、failed、refunded 可作營運維度，但不得接受或回傳付款方式、卡號、token、授權碼或帳戶資訊。客群結果至少包含 5 人，不得查詢個別客戶。任何 tool error 都代表動作未完成；商品、退貨審查與報表 mutation 必須由最新唯讀 state verifier 確認，未驗證或部分失敗時必須回報 PARTIALLY_COMPLETED 或 FAILED。不得索取、接收、重述或輸出姓名、Email、地址、電話、Customer ID 或帳戶識別；不得以 tool 建立或提交 RMA、核准、發布、退款、完成 RMA，或建立、確認、取消訂單。需要細節時載入對應 skill，不得假設未 discovery 的能力。`
 
 export const VOLTAGE_ADMIN_AGENT_INSTRUCTIONS =
   getVoltageAdminAgentInstructions("dashboard")
