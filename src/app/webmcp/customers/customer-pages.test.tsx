@@ -73,9 +73,7 @@ describe("customer management pages", () => {
     expect(document.body.textContent).not.toContain(target.contact.fullName)
     expect(document.body.textContent).not.toContain(target.contact.email)
     await user.click(screen.getByRole("button", { name: "Clear filters" }))
-    await user.click(
-      await screen.findByRole("button", { name: "Next page" })
-    )
+    await user.click(await screen.findByRole("button", { name: "Next page" }))
     expect(
       (
         screen.getByRole("button", {
@@ -135,7 +133,7 @@ describe("customer management pages", () => {
       .closest('[data-slot="card"]')
     if (!activeCard) throw new Error("Expected active customer KPI.")
     const activeBefore = Number(
-      within(activeCard).getByRole("strong").textContent
+      within(activeCard as HTMLElement).getByRole("strong").textContent
     )
 
     const search = screen.getByRole("searchbox", { name: "Search customers" })
@@ -216,7 +214,10 @@ describe("customer management pages", () => {
       .closest('[data-slot="card"]')
     if (!suspendedActiveCard) throw new Error("Expected active customer KPI.")
     expect(
-      Number(within(suspendedActiveCard).getByRole("strong").textContent)
+      Number(
+        within(suspendedActiveCard as HTMLElement).getByRole("strong")
+          .textContent
+      )
     ).toBe(activeBefore - 1)
     await router.navigate(`/customers/${target.id}`)
     await screen.findByText(updatedName)

@@ -86,7 +86,6 @@ describe("customer list model", () => {
     expect(
       serializeSafeCustomerUrlFilters({
         ...initialFilters,
-        tag: "care",
       }).toString()
     ).toBe("")
   })

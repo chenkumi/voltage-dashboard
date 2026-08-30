@@ -73,6 +73,25 @@ describe("fallback product authoring workflow", () => {
     })
     render(<RouterProvider router={router} />)
     const initial = await provider()
+    expect(initial.getTools().map(({ name }) => name)).toEqual(
+      expect.arrayContaining([
+        "get_inventory_overview",
+        "search_inventory",
+        "get_inventory_detail",
+        "open_inventory_detail",
+        "search_orders",
+        "get_order_detail",
+        "open_order_detail",
+        "get_customer_analytics",
+        "open_customer_analysis",
+      ])
+    )
+    expect(initial.getTools().map(({ name }) => name)).not.toContain(
+      "set_voltage_admin_inventory"
+    )
+    expect(await execute(initial, "search_orders", { limit: 1 })).toMatchObject(
+      { status: "OK" }
+    )
     const seeded = await execute(initial, "search_admin_products", {
       query: "Essence Mascara",
     })
@@ -210,6 +229,8 @@ describe("fallback product authoring workflow", () => {
       await waitFor(() =>
         expect(registered.has("open_product_create")).toBe(true)
       )
+      expect(registered.has("get_customer_analytics")).toBe(true)
+      expect(registered.has("set_voltage_admin_inventory")).toBe(false)
       expect(registered.has("apply_product_editor_draft")).toBe(false)
       const before = toolChanges
 
@@ -223,35 +244,6 @@ describe("fallback product authoring workflow", () => {
       expect(toolChanges).toBeGreaterThan(before)
     } finally {
       delete (document as Document & { modelContext?: unknown }).modelContext
-    }
-  })
-
-  it("awaits reporting invalidation before an inventory tool returns", async () => {
-    const router = createMemoryRouter([{ path: "*", element: <App /> }], {
-      initialEntries: ["/inventory"],
-    })
-    render(<RouterProvider router={router} />)
-    const current = await provider()
-    const before = await execute(current, "get_admin_product", {
-      productId: 1,
-    })
-    const originalStock = (before as { product: { stock: number } }).product
-      .stock
-
-    try {
-      await execute(current, "set_voltage_admin_inventory", {
-        productId: 1,
-        stock: 6,
-      })
-      const sql = await execute(current, "execute_readonly_sql", {
-        sql: "SELECT product_id, stock FROM agent_inventory WHERE product_id = 1",
-      })
-      expect(sql).toMatchObject({ rows: [{ product_id: 1, stock: 6 }] })
-    } finally {
-      await execute(current, "set_voltage_admin_inventory", {
-        productId: 1,
-        stock: originalStock,
-      })
     }
   })
 })

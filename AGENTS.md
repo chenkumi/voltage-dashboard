@@ -78,9 +78,13 @@ Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報�
   同一 Product Repository snapshot；商品 mutation 後舊 query ID 與 active report 失效。
 - 個資與付款屬高風險資料：tools 不得接受或回傳姓名、Email、地址、電話、帳戶識別
   或付款資料。 <!-- user-specified -->
+- WebMCP 營運查詢可使用固定且不可識別個人的付款結果狀態碼
+  (`paid`、`pending`、`failed`、`refunded`) 作為篩選或彙總維度；不得接受或回傳付款
+  方式、卡號、token、授權碼、帳戶資訊或其他付款識別資料。 <!-- user-specified -->
 - 訂單只能唯讀查看；不得新增可建立、確認、取消訂單或提交付款的 tool。高風險最終
   確認必須由使用者直接操作頁面。 <!-- user-specified -->
-- 存量修改只接受明確商品與非負整數，並保留 UI 端確認與 executor 驗證。
+- Inventory、Orders 與 Customers 的 WebMCP tools 僅提供安全查詢及導覽；庫存調整與
+  客戶新增、修改、停權及復權只能由使用者在 UI 中確認執行。 <!-- user-specified -->
 
 ## 開發與 Git
 

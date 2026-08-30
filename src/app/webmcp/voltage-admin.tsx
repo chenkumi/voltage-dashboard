@@ -19,8 +19,6 @@ import type {
 import { executeWebMcpToolWithDebugLog } from "./tool-debug"
 import {
   getVoltageAdminDashboard,
-  listSafeVoltageAdminOrders,
-  listVoltageAdminCustomerSegments,
   searchVoltageAdminProducts,
   toAdminProduct,
 } from "./voltage-admin-data"
@@ -65,6 +63,11 @@ import {
   useProductStore,
   type ProductStoreSnapshot,
 } from "./products/product-store"
+import {
+  executeOperationalTool,
+  isOperationalTool,
+  OPERATIONAL_TOOLS,
+} from "./operational-tools"
 
 export type VoltageAdminView =
   | "dashboard"
@@ -125,6 +128,7 @@ const VOLTAGE_ADMIN_COMMON_TOOLS: WebMcpRegisteredTool[] = [
   EXECUTE_READONLY_SQL_TOOL,
   ...REPORT_AUTHORING_TOOLS,
   ...OPERATIONS_TOOLS,
+  ...OPERATIONAL_TOOLS,
   {
     name: "search_voltage_admin_products",
     description:
@@ -151,55 +155,6 @@ const VOLTAGE_ADMIN_COMMON_TOOLS: WebMcpRegisteredTool[] = [
       ["productId"]
     ),
     annotations: { readOnlyHint: true, untrustedContentHint: true },
-  },
-  {
-    name: "list_voltage_admin_orders",
-    description:
-      "Purpose: list anonymized admin order summaries. Call when asked about order volume, processing orders, or orders needing attention. Examples: ‘List orders’, ‘Orders in progress’, ‘Problem orders’, ‘Recent orders’. Do not call to create, confirm, or cancel an order.",
-    inputSchema: schema({
-      status: {
-        type: "string",
-        enum: ["Processing", "Shipped", "Delivered", "Action needed"],
-      },
-    }),
-    annotations: { readOnlyHint: true },
-  },
-  {
-    name: "list_voltage_admin_customers",
-    description:
-      "Purpose: list anonymized customer segments and spending summaries. Call when asked about VIP, returning, or new-customer distribution. Examples: ‘List VIPs’, ‘Customer segments’, ‘How many returning customers?’, ‘New customer data’. Do not call to request names, contact details, locations, or other personal data.",
-    inputSchema: schema({
-      segment: { type: "string", enum: ["New", "Returning", "VIP"] },
-    }),
-    annotations: { readOnlyHint: true },
-  },
-  {
-    name: "list_voltage_admin_inventory",
-    description:
-      "Purpose: list current inventory, optionally limited to low-stock products. Call for stocktaking, restocking, or inventory-risk questions. Examples: ‘Low stock’, ‘Inventory list’, ‘What needs restocking?’, ‘Top 10 inventory items’. Do not call when the user wants orders or customers.",
-    inputSchema: schema({
-      lowStockOnly: {
-        type: "boolean",
-        description:
-          "When true, return only products with stock at most 12 and greater than 0.",
-      },
-    }),
-    annotations: { readOnlyHint: true, untrustedContentHint: true },
-  },
-  {
-    name: "set_voltage_admin_inventory",
-    description:
-      "Purpose: update the admin inventory quantity for one product. Call when an administrator explicitly requests restocking or a stock correction. Examples: ‘Set product 5 to 20’, ‘Restock to 48’, ‘Set inventory to 0’, ‘Correct product 18 stock’. Do not call without a product and a non-negative integer quantity.",
-    inputSchema: schema(
-      {
-        productId: { type: "number", description: "Product ID to update." },
-        stock: {
-          type: "number",
-          description: "The new non-negative integer stock quantity.",
-        },
-      },
-      ["productId", "stock"]
-    ),
   },
   {
     name: "open_voltage_admin_section",
@@ -490,6 +445,15 @@ export const VoltageAdminProvider = () => {
         navigate(voltageAdminPath(view))
       )
     }
+    if (isOperationalTool(name)) {
+      return executeOperationalTool({
+        name,
+        args,
+        productRepository,
+        commerce: await commerceRepository.getSnapshot(),
+        navigate: (path) => navigate(path),
+      })
+    }
     if (name === "agent_instructions") {
       return { text: getVoltageAdminAgentInstructions(sectionRef.current) }
     }
@@ -518,66 +482,6 @@ export const VoltageAdminProvider = () => {
       return product
         ? { status: "OK", product: toAdminProduct(product) }
         : { status: "ARGUMENT_ERROR", message: "Product not found." }
-    }
-    if (name === "list_voltage_admin_orders") {
-      const status =
-        typeof args.status === "string"
-          ? (args.status as Parameters<typeof listSafeVoltageAdminOrders>[0])
-          : undefined
-      return {
-        items: listSafeVoltageAdminOrders(status),
-      }
-    }
-    if (name === "list_voltage_admin_customers") {
-      const segment =
-        typeof args.segment === "string"
-          ? (args.segment as Parameters<
-              typeof listVoltageAdminCustomerSegments
-            >[0])
-          : undefined
-      return {
-        items: listVoltageAdminCustomerSegments(segment),
-      }
-    }
-    if (name === "list_voltage_admin_inventory") {
-      const lowStock = args.lowStockOnly === true
-      const items = searchVoltageAdminProducts(
-        "",
-        await productRepository.list({ includeArchived: true }),
-        194
-      ).filter(
-        (product) =>
-          product.status !== "archived" &&
-          (!lowStock || (product.stock > 0 && product.stock <= 12))
-      )
-      return { items: items.slice(0, 20), total: items.length }
-    }
-    if (name === "set_voltage_admin_inventory") {
-      const productId = args.productId
-      const stock = args.stock
-      if (typeof productId !== "number" || typeof stock !== "number") {
-        return {
-          status: "ARGUMENT_ERROR",
-          message: "productId and stock are required.",
-        }
-      }
-      if (!Number.isInteger(stock) || stock < 0) {
-        return {
-          status: "ARGUMENT_ERROR",
-          message:
-            "Use an existing product ID and a non-negative integer stock value.",
-        }
-      }
-      try {
-        const product = await productRepository.setStock(productId, stock)
-        return { status: "OK", product: toAdminProduct(product) }
-      } catch {
-        return {
-          status: "ARGUMENT_ERROR",
-          message:
-            "Use an existing product ID and a non-negative integer stock value.",
-        }
-      }
     }
     if (name === "open_voltage_admin_section") {
       if (!isVoltageAdminView(args.section)) {

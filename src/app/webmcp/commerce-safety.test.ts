@@ -7,23 +7,53 @@ import {
 } from "./operations/operations-tools"
 
 describe("commerce privacy boundaries", () => {
-  it("keeps admin order operations read-only while allowing inventory control", () => {
+  it("exposes nine operational readers and no inventory/order/customer mutations", () => {
     const names = VOLTAGE_ADMIN_TOOLS.map((tool) => tool.name)
 
     expect(names).toEqual(
       expect.arrayContaining([
         "get_voltage_admin_dashboard",
         "execute_readonly_sql",
-        "list_voltage_admin_orders",
-        "set_voltage_admin_inventory",
+        "get_inventory_overview",
+        "search_inventory",
+        "get_inventory_detail",
+        "open_inventory_detail",
+        "search_orders",
+        "get_order_detail",
+        "open_order_detail",
+        "get_customer_analytics",
+        "open_customer_analysis",
       ])
     )
     expect(names).not.toEqual(
       expect.arrayContaining([
+        "list_voltage_admin_orders",
+        "list_voltage_admin_customers",
+        "list_voltage_admin_inventory",
+        "set_voltage_admin_inventory",
         "create_voltage_admin_order",
         "confirm_voltage_admin_order",
         "cancel_voltage_admin_order",
+        "update_customer",
+        "suspend_customer",
       ])
+    )
+  })
+
+  it("allows only fixed payment result status codes in operational schemas", () => {
+    const orderSchema = VOLTAGE_ADMIN_TOOLS.find(
+      ({ name }) => name === "search_orders"
+    )?.inputSchema as {
+      properties: Record<string, { enum?: readonly string[] }>
+    }
+    expect(orderSchema.properties.paymentStatus.enum).toEqual([
+      "paid",
+      "pending",
+      "failed",
+      "refunded",
+    ])
+    expect(JSON.stringify(orderSchema)).not.toMatch(
+      /paymentMethod|card|token|authorization|account/i
     )
   })
 

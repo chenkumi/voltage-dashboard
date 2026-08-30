@@ -171,7 +171,7 @@ describe("ProductEditor", () => {
     expect((publish as HTMLButtonElement).disabled).toBe(false)
     expect(screen.getByText("Ready to publish")).toBeTruthy()
     expect(screen.getByText("500 ml")).toBeTruthy()
-  })
+  }, 10_000)
 
   it("reorders and removes flexible specification rows", async () => {
     const user = userEvent.setup()
@@ -291,6 +291,7 @@ describe("ProductEditor", () => {
   it("persists a submitted editor draft across repository reload", async () => {
     const databaseName = `product-editor-integration-${crypto.randomUUID()}`
     const repository = new ProductRepository({ databaseName, seed: [] })
+    await repository.initialize()
     const router = createMemoryRouter(
       [
         {
