@@ -5,6 +5,7 @@ import "katex/dist/katex.min.css"
 import "./index.css"
 
 import { ThemeProvider } from "@/app/theme"
+import { TooltipProvider } from "@/components/ui/tooltip"
 import App from "./App"
 
 const router = createBrowserRouter([{ path: "*", element: <App /> }])
@@ -12,7 +13,9 @@ const router = createBrowserRouter([{ path: "*", element: <App /> }])
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <ThemeProvider>
-      <RouterProvider router={router} />
+      <TooltipProvider>
+        <RouterProvider router={router} />
+      </TooltipProvider>
     </ThemeProvider>
   </StrictMode>
 )
