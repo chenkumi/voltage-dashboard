@@ -8,11 +8,11 @@ import { cn } from "@/lib/utils"
 export type OperationalMetricTone =
   "neutral" | "positive" | "warning" | "critical"
 
-const toneClasses: Record<OperationalMetricTone, string> = {
-  neutral: "before:bg-muted-foreground/45",
-  positive: "before:bg-emerald-500",
-  warning: "before:bg-amber-500",
-  critical: "before:bg-destructive",
+const toneTitleClasses: Record<OperationalMetricTone, string> = {
+  neutral: "text-muted-foreground",
+  positive: "text-emerald-700",
+  warning: "text-amber-700",
+  critical: "text-destructive",
 }
 
 export interface OperationalMetricCardProps {
@@ -20,6 +20,8 @@ export interface OperationalMetricCardProps {
   value?: ReactNode
   detail?: ReactNode
   badge?: ReactNode
+  headerAction?: ReactNode
+  children?: ReactNode
   tone?: OperationalMetricTone
   loading?: boolean
   unavailableLabel?: string
@@ -32,6 +34,8 @@ export function OperationalMetricCard({
   value,
   detail,
   badge,
+  headerAction,
+  children,
   tone = "neutral",
   loading = false,
   unavailableLabel = "—",
@@ -39,38 +43,38 @@ export function OperationalMetricCard({
   className,
 }: OperationalMetricCardProps) {
   return (
-    <Card
-      size="sm"
-      className={cn(
-        "relative gap-0 before:absolute before:inset-y-3 before:left-0 before:w-0.5 before:rounded-full",
-        toneClasses[tone],
-        className
-      )}
-    >
-      <CardContent className="grid gap-2 pl-4">
+    <Card size="sm" className={cn("gap-0 bg-[rgb(245,246,241)]", className)}>
+      <CardContent className="grid gap-2">
         <div className="flex min-w-0 items-center justify-between gap-2">
-          <span className="truncate text-xs font-medium text-muted-foreground">
+          <span
+            className={cn(
+              "truncate text-xs font-medium",
+              toneTitleClasses[tone]
+            )}
+          >
             {label}
           </span>
+          {headerAction}
           {badge ? <Badge variant="outline">{badge}</Badge> : null}
         </div>
-        {loading ? (
-          <>
-            <Skeleton className="h-7 w-24" aria-label={`${label} loading`} />
-            <Skeleton className="h-4 w-32" />
-          </>
-        ) : (
-          <>
-            <strong className="text-2xl leading-none font-semibold tracking-tight tabular-nums">
-              {value ?? unavailableLabel}
-            </strong>
-            {detail || value == null ? (
-              <span className="line-clamp-2 text-xs text-muted-foreground">
-                {value == null ? unavailableDetail : detail}
-              </span>
-            ) : null}
-          </>
-        )}
+        {children ??
+          (loading ? (
+            <>
+              <Skeleton className="h-7 w-24" aria-label={`${label} loading`} />
+              <Skeleton className="h-4 w-32" />
+            </>
+          ) : (
+            <>
+              <strong className="text-2xl leading-none font-semibold tracking-tight tabular-nums">
+                {value ?? unavailableLabel}
+              </strong>
+              {detail || value == null ? (
+                <span className="line-clamp-2 text-xs text-muted-foreground">
+                  {value == null ? unavailableDetail : detail}
+                </span>
+              ) : null}
+            </>
+          ))}
       </CardContent>
     </Card>
   )

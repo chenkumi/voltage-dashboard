@@ -47,6 +47,51 @@ describe("operational UI", () => {
     expect(screen.queryByText("0")).toBeNull()
   })
 
+  it("styles metric status through the title and allows card customization", () => {
+    const { rerender } = render(
+      <OperationalMetricCard label="Revenue" value="100" tone="positive" />
+    )
+
+    const defaultCard = screen
+      .getByText("Revenue")
+      .closest("[data-slot='card']")
+    expect(defaultCard?.className).toContain("bg-[rgb(245,246,241)]")
+    expect(defaultCard?.className).not.toContain("before:w-0.5")
+    expect(screen.getByText("Revenue").className).toContain("text-emerald-700")
+
+    rerender(
+      <OperationalMetricCard
+        label="Revenue"
+        value="100"
+        tone="critical"
+        className="bg-red-50"
+      />
+    )
+
+    const customCard = screen.getByText("Revenue").closest("[data-slot='card']")
+    expect(customCard?.className).toContain("bg-red-50")
+    expect(customCard?.className).not.toContain("bg-[rgb(245,246,241)]")
+    expect(screen.getByText("Revenue").className).toContain("text-destructive")
+  })
+
+  it("supports shared card content and a header action", () => {
+    render(
+      <OperationalMetricCard
+        label="Latest activity"
+        headerAction={<button type="button">All orders</button>}
+      >
+        <h2>Order queue</h2>
+      </OperationalMetricCard>
+    )
+
+    const card = screen
+      .getByText("Latest activity")
+      .closest("[data-slot='card']")
+    expect(card?.textContent).toContain("Order queue")
+    expect(card?.textContent).toContain("All orders")
+    expect(card?.querySelector("strong")).toBeNull()
+  })
+
   it("keeps list states inside a shared panel", () => {
     render(
       <OperationalListPanel

@@ -146,12 +146,10 @@ export const Dashboard = () => {
         </GridBlock>
       ))}
       <GridBlock className="col-span-12 xl:col-span-8">
-        <article className="voltage-admin-panel">
-          <div className="voltage-admin-panel-heading">
-            <div>
-              <p>{t("Latest activity")}</p>
-              <h2>{t("Order queue")}</h2>
-            </div>
+        <OperationalMetricCard
+          className="h-full"
+          label={t("Latest activity")}
+          headerAction={
             <Button
               variant="ghost"
               size="sm"
@@ -160,7 +158,11 @@ export const Dashboard = () => {
             >
               {t("All orders")} <ChevronRight className="size-4" />
             </Button>
-          </div>
+          }
+        >
+          <h2 className="font-heading text-xl leading-tight font-medium tracking-tight">
+            {t("Order queue")}
+          </h2>
           <div className="space-y-1">
             {dashboard.latestOrders.map((order) => (
               <div key={order.id} className="voltage-admin-list-row">
@@ -189,17 +191,18 @@ export const Dashboard = () => {
               </div>
             ))}
           </div>
-        </article>
+        </OperationalMetricCard>
       </GridBlock>
       <GridBlock className="col-span-12 xl:col-span-4">
-        <article className="voltage-admin-panel voltage-admin-alert">
-          <div className="voltage-admin-panel-heading">
-            <div>
-              <p>{t("Inventory signal")}</p>
-              <h2>{t("Low stock")}</h2>
-            </div>
-            <CircleAlert className="size-5" />
-          </div>
+        <OperationalMetricCard
+          className="h-full bg-[#edf0ea]"
+          label={t("Inventory signal")}
+          tone="warning"
+          headerAction={<CircleAlert className="size-5 text-amber-700" />}
+        >
+          <h2 className="font-heading text-xl leading-tight font-medium tracking-tight">
+            {t("Low stock")}
+          </h2>
           {dashboard.lowStockProducts.length > 0 ? (
             dashboard.lowStockProducts.slice(0, 4).map((product) => (
               <div key={product.id} className="voltage-admin-alert-row">
@@ -217,7 +220,7 @@ export const Dashboard = () => {
           >
             {t("Review inventory")}
           </Button>
-        </article>
+        </OperationalMetricCard>
       </GridBlock>
     </PageLayout>
   )

@@ -63,8 +63,18 @@ describe("Dashboard metrics", () => {
 
     expect(
       document.querySelectorAll<HTMLElement>("[data-slot='card']")
-    ).toHaveLength(7)
+    ).toHaveLength(9)
     expect(document.querySelector(".voltage-admin-metric")).toBeNull()
+    expect(document.querySelector(".voltage-admin-panel")).toBeNull()
+
+    const latestActivity = metricCard("Latest activity")
+    expect(latestActivity.textContent).toContain("Order queue")
+    expect(latestActivity.className).toContain("bg-[rgb(245,246,241)]")
+
+    const inventorySignal = metricCard("Inventory signal")
+    expect(inventorySignal.textContent).toContain("Low stock")
+    expect(inventorySignal.className).toContain("bg-[#edf0ea]")
+    expect(inventorySignal.className).not.toContain("bg-[rgb(245,246,241)]")
 
     const revenue = metricCard("Revenue")
     expect(revenue.parentElement?.className).toContain("md:col-span-6")

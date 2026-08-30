@@ -83,17 +83,17 @@ describe("inventory pages", () => {
         "Total units",
         "9779",
         "Across active products",
-        "before:bg-muted-foreground/45",
+        "text-muted-foreground",
       ],
-      ["Out of stock", "4", "Needs immediate review", "before:bg-destructive"],
-      ["Low stock", "29", "At or below 12 units", "before:bg-amber-500"],
-      ["Reorder risk", "0", "21 days of supply or less", "before:bg-amber-500"],
+      ["Out of stock", "4", "Needs immediate review", "text-destructive"],
+      ["Low stock", "29", "At or below 12 units", "text-amber-700"],
+      ["Reorder risk", "0", "21 days of supply or less", "text-amber-700"],
     ] as const) {
       const card = [
         ...document.querySelectorAll<HTMLElement>("[data-slot='card']"),
       ].find((item) => item.querySelector("span")?.textContent === label)
       expect(card).not.toBeNull()
-      expect(card?.className).toContain(tone)
+      expect(card?.querySelector("span")?.className).toContain(tone)
       expect(within(card as HTMLElement).getByText(detail)).toBeTruthy()
       expect(card?.querySelector("strong")?.textContent).toBe(value)
     }
