@@ -127,11 +127,9 @@ describe("order pages", () => {
         `/customers/${selectedCustomer.id}`
       )
     )
-    expect(await screen.findByText("Masked customer profile")).toBeTruthy()
+    expect(await screen.findByText("Customer information")).toBeTruthy()
     expect(screen.getByText("Customer orders")).toBeTruthy()
-    expect(document.body.textContent).not.toContain(
-      selectedCustomer.contact.fullName
-    )
+    expect(screen.getByText(selectedCustomer.contact.fullName)).toBeTruthy()
 
     await router.navigate("/orders/VM-25065")
 

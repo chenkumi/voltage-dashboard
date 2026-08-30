@@ -6,7 +6,6 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
   searchVoltageAdminProducts,
-  voltageAdminCustomers,
   voltageAdminOrders,
 } from "./voltage-admin-data"
 import { useVoltageAdmin, voltageAdminPath } from "./voltage-admin"
@@ -269,53 +268,6 @@ export const Products = () => {
           </table>
         </DataTable>
       </GridBlock>
-    </PageLayout>
-  )
-}
-
-export const Customers = () => {
-  const { t, i18n } = useTranslation()
-
-  return (
-    <PageLayout
-      ariaLabel={t("Voltage Dashboard Customers")}
-      pageName="Customers"
-      eyebrow={t("Customer intelligence")}
-      title={t("Segments without identities.")}
-      detail={t(
-        "Only non-identifying demo references are available to the agent."
-      )}
-    >
-      {voltageAdminCustomers.map((customer) => (
-        <GridBlock
-          key={customer.id}
-          className="col-span-12 sm:col-span-6 xl:col-span-4"
-        >
-          <article className="voltage-admin-customer">
-            <div>
-              <span>{customer.id}</span>
-              <Badge
-                className={
-                  customer.segment === "VIP"
-                    ? "bg-[#e4eaed] text-[#4f6975]"
-                    : "bg-[#e5eee7] text-[#48614c]"
-                }
-              >
-                {t(customer.segment)}
-              </Badge>
-            </div>
-            <strong>
-              {formatMoney(customer.lifetimeValue, i18n.resolvedLanguage)}
-            </strong>
-            <p>
-              {t("{{count}} orders · active {{time}}", {
-                count: customer.orders,
-                time: customer.lastActive,
-              })}
-            </p>
-          </article>
-        </GridBlock>
-      ))}
     </PageLayout>
   )
 }

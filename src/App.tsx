@@ -15,8 +15,12 @@ import {
   InventoryPage,
 } from "@/app/webmcp/inventory/inventory-pages"
 import { OrderDetailPage, OrdersPage } from "@/app/webmcp/orders/order-pages"
-import { CustomerReferencePage } from "@/app/webmcp/customers/customer-reference-page"
-import { Customers, Dashboard, Reports } from "@/app/webmcp/voltage-admin-pages"
+import {
+  CustomerDetailPage,
+  CustomersPage,
+} from "@/app/webmcp/customers/customer-pages"
+import { CustomerEditorPage } from "@/app/webmcp/customers/customer-editor-page"
+import { Dashboard, Reports } from "@/app/webmcp/voltage-admin-pages"
 
 export function App() {
   return (
@@ -34,10 +38,18 @@ export function App() {
           />
           <Route path="orders" element={<OrdersPage />} />
           <Route path="orders/:orderId" element={<OrderDetailPage />} />
-          <Route path="customers" element={<Customers />} />
+          <Route path="customers" element={<CustomersPage />} />
+          <Route
+            path="customers/add"
+            element={<CustomerEditorPage mode="add" />}
+          />
+          <Route
+            path="customers/edit/:customerId"
+            element={<CustomerEditorPage mode="edit" />}
+          />
           <Route
             path="customers/:customerId"
-            element={<CustomerReferencePage />}
+            element={<CustomerDetailPage />}
           />
           <Route path="inventory" element={<InventoryPage />} />
           <Route
