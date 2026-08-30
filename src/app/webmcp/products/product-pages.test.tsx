@@ -208,14 +208,100 @@ describe("product list page", () => {
     expect(
       screen.getByRole("button", { name: "Archive selected (1)" })
     ).toBeTruthy()
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Category" }),
-      "electronics"
-    )
+    await user.click(screen.getByRole("combobox", { name: "Category" }))
+    await user.click(screen.getByRole("option", { name: "electronics" }))
 
     expect(
       screen.queryByRole("button", { name: "Archive selected (1)" })
     ).toBeNull()
+  })
+
+  it("applies product sorting from More and resets pagination", async () => {
+    const user = userEvent.setup()
+    const products = Array.from({ length: 16 }, (_, index) =>
+      product(index + 1, {
+        price: { amount: index + 1, currency: "USD" },
+        updatedAt: new Date(Date.UTC(2026, 7, index + 1)).toISOString(),
+      })
+    )
+    renderList(products)
+
+    await user.click(screen.getByRole("button", { name: "Next page" }))
+    expect(screen.getByText("Showing 16–16 / 16")).toBeTruthy()
+
+    await user.click(screen.getByRole("button", { name: "More filters" }))
+    await user.click(screen.getByRole("combobox", { name: "Sort" }))
+    await user.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{Enter}")
+    await user.click(screen.getByRole("button", { name: "Apply" }))
+
+    expect(screen.getByText("Showing 1–15 / 16")).toBeTruthy()
+    expect(screen.getByRole("link", { name: "Product 16" })).toBeTruthy()
+    expect(
+      screen.getByRole("button", {
+        name: "Sort: Price high–low by currency remove",
+      })
+    ).toBeTruthy()
+  })
+
+  it("applies every mobile filter and clears the active set", async () => {
+    const user = userEvent.setup()
+    renderList([
+      product(1, { status: "draft", stock: 4 }),
+      product(2, { status: "published", stock: 20 }),
+    ])
+
+    await user.click(screen.getByRole("button", { name: "Filter products" }))
+    const popover = document.querySelector<HTMLElement>(
+      '[data-slot="popover-content"]'
+    )
+    expect(popover).toBeTruthy()
+
+    await user.click(
+      within(popover!).getByRole("combobox", { name: "Category" })
+    )
+    await user.keyboard("e{Enter}")
+    await user.click(within(popover!).getByRole("combobox", { name: "Status" }))
+    await user.keyboard("{ArrowDown}{Enter}")
+    await user.click(within(popover!).getByRole("combobox", { name: "Stock" }))
+    await user.keyboard("{ArrowDown}{Enter}")
+    await user.click(within(popover!).getByRole("combobox", { name: "Sort" }))
+    await user.keyboard("{ArrowDown}{Enter}")
+    await user.click(within(popover!).getByRole("button", { name: "Apply" }))
+
+    expect(screen.getByRole("link", { name: "Product 2" })).toBeTruthy()
+    expect(screen.queryByRole("link", { name: "Product 1" })).toBeNull()
+    for (const name of [
+      "Category: electronics remove",
+      "Status: Published remove",
+      "Stock: In stock remove",
+      "Sort: Name A–Z remove",
+    ]) {
+      expect(screen.getByRole("button", { name })).toBeTruthy()
+    }
+
+    await user.click(screen.getByRole("button", { name: "Clear all" }))
+    expect(screen.getByRole("link", { name: "Product 1" })).toBeTruthy()
+    expect(screen.getByRole("link", { name: "Product 2" })).toBeTruthy()
+    expect(
+      screen.queryByRole("button", { name: "Category: electronics remove" })
+    ).toBeNull()
+  })
+
+  it("removes active filter chips and restores the default result set", async () => {
+    const user = userEvent.setup()
+    renderList([product(1), product(2)])
+
+    await user.type(
+      screen.getByRole("searchbox", { name: "Search products" }),
+      "Product 1"
+    )
+    expect(screen.getByText("Search: Product 1")).toBeTruthy()
+    await user.click(
+      screen.getByRole("button", { name: "Search: Product 1 remove" })
+    )
+
+    expect(screen.getByRole("link", { name: "Product 2" })).toBeTruthy()
+    expect(screen.queryByText("Search: Product 1")).toBeNull()
   })
 
   it("announces archive failures inside the open confirmation dialog", async () => {

@@ -111,7 +111,7 @@ describe("operational UI", () => {
         value={{ query: "applied" }}
         emptyValue={{ query: "" }}
         onApply={onApply}
-        validate={(draft) =>
+        validate={(draft): Record<string, string> =>
           draft.query === "invalid" ? { query: "Invalid query" } : {}
         }
         trigger={<Button aria-label="Open filters">Filters</Button>}

@@ -230,7 +230,7 @@ export function OperationalFilterPopover<T>({
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
-        render={cloneElement(trigger, {
+        render={cloneElement(trigger as ReactElement<Record<string, unknown>>, {
           "aria-expanded": open,
           "aria-controls": `${errorId}-content`,
         })}
@@ -350,21 +350,20 @@ export function ActiveFilterSummary({
 export function OperationalPagination({
   page,
   pageCount,
+  ariaLabel = "Pagination",
   previousLabel,
   nextLabel,
   onPageChange,
 }: {
   page: number
   pageCount: number
+  ariaLabel?: string
   previousLabel: string
   nextLabel: string
   onPageChange: (page: number) => void
 }) {
   return (
-    <nav
-      aria-label="Pagination"
-      className="flex items-center justify-end gap-2"
-    >
+    <nav aria-label={ariaLabel} className="flex items-center justify-end gap-2">
       <Button
         type="button"
         variant="outline"

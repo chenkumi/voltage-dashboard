@@ -5,12 +5,14 @@ export const PRODUCT_LIST_PAGE_SIZE = 15
 export type ProductStockFilter =
   "all" | "in-stock" | "low-stock" | "out-of-stock"
 export type ProductStatusFilter = "active" | ProductStatus
+export type ProductSort = "recent" | "name" | "price" | "stock"
 
 export type ProductListFilters = {
   query: string
   category: string
   status: ProductStatusFilter
   stock: ProductStockFilter
+  sort: ProductSort
 }
 
 export type ProductListModel = {
@@ -43,15 +45,25 @@ export const createProductListModel = (
   requestedPage: number,
   pageSize = PRODUCT_LIST_PAGE_SIZE
 ): ProductListModel => {
-  const filtered = products.filter(
-    (product) =>
-      matchesQuery(product, filters.query) &&
-      (filters.category === "all" || product.category === filters.category) &&
-      (filters.status === "active"
-        ? product.status !== "archived"
-        : product.status === filters.status) &&
-      matchesStock(product, filters.stock)
-  )
+  const filtered = products
+    .filter(
+      (product) =>
+        matchesQuery(product, filters.query) &&
+        (filters.category === "all" || product.category === filters.category) &&
+        (filters.status === "active"
+          ? product.status !== "archived"
+          : product.status === filters.status) &&
+        matchesStock(product, filters.stock)
+    )
+    .sort((left, right) => {
+      if (filters.sort === "name") return left.title.localeCompare(right.title)
+      if (filters.sort === "price") {
+        const currency = left.price.currency.localeCompare(right.price.currency)
+        return currency || right.price.amount - left.price.amount
+      }
+      if (filters.sort === "stock") return left.stock - right.stock
+      return Date.parse(right.updatedAt) - Date.parse(left.updatedAt)
+    })
   const pageCount = Math.max(1, Math.ceil(filtered.length / pageSize))
   const page = Math.min(Math.max(1, requestedPage), pageCount)
   const start = (page - 1) * pageSize

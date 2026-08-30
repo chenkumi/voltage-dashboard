@@ -31,6 +31,7 @@ const filters = {
   category: "all",
   status: "active" as const,
   stock: "all" as const,
+  sort: "recent" as const,
 }
 
 describe("product list model", () => {
@@ -68,6 +69,7 @@ describe("product list model", () => {
         category: "groceries",
         status: "draft",
         stock: "low-stock",
+        sort: "recent",
       },
       1
     )
@@ -107,5 +109,70 @@ describe("product list model", () => {
     expect(listProductCategories([product(1), product(2), product(3)])).toEqual(
       ["electronics", "groceries"]
     )
+  })
+
+  it("groups price sorting by currency before comparing amounts", () => {
+    const products = [
+      product(1, { price: { amount: 100, currency: "USD" } }),
+      product(2, { price: { amount: 500, currency: "TWD" } }),
+      product(3, { price: { amount: 300, currency: "TWD" } }),
+    ]
+
+    expect(
+      createProductListModel(
+        products,
+        { ...filters, sort: "price" },
+        1
+      ).items.map(({ id }) => id)
+    ).toEqual([2, 3, 1])
+  })
+
+  it("sorts by recent update, name, price, and stock without mutating input", () => {
+    const products = [
+      product(1, {
+        title: "Zulu",
+        price: { amount: 20, currency: "USD" },
+        stock: 8,
+        updatedAt: "2026-08-01T00:00:00.000Z",
+      }),
+      product(2, {
+        title: "Alpha",
+        price: { amount: 40, currency: "USD" },
+        stock: 3,
+        updatedAt: "2026-08-03T00:00:00.000Z",
+      }),
+      product(3, {
+        title: "Mike",
+        price: { amount: 10, currency: "USD" },
+        stock: 12,
+        updatedAt: "2026-08-02T00:00:00.000Z",
+      }),
+    ]
+
+    expect(
+      createProductListModel(products, filters, 1).items.map(({ id }) => id)
+    ).toEqual([2, 3, 1])
+    expect(
+      createProductListModel(
+        products,
+        { ...filters, sort: "name" },
+        1
+      ).items.map(({ id }) => id)
+    ).toEqual([2, 3, 1])
+    expect(
+      createProductListModel(
+        products,
+        { ...filters, sort: "price" },
+        1
+      ).items.map(({ id }) => id)
+    ).toEqual([2, 1, 3])
+    expect(
+      createProductListModel(
+        products,
+        { ...filters, sort: "stock" },
+        1
+      ).items.map(({ id }) => id)
+    ).toEqual([2, 1, 3])
+    expect(products.map(({ id }) => id)).toEqual([1, 2, 3])
   })
 })
