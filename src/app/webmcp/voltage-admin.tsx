@@ -47,6 +47,12 @@ import {
 import { OperationsController } from "./operations/operations-controller"
 import type { WorkflowSnapshot } from "./operations/types"
 import { ProductRepository } from "./products/product-repository"
+import { CommerceRepository } from "./commerce-data/commerce-repository"
+import {
+  CommerceStore,
+  useCommerceStore,
+  type CommerceStoreSnapshot,
+} from "./commerce-data/commerce-store"
 import { ProductEditorController } from "./products/product-editor-controller"
 import {
   executeProductTool,
@@ -276,6 +282,8 @@ export const VOLTAGE_ADMIN_TOOLS: WebMcpRegisteredTool[] = [
 ]
 
 type VoltageAdminContextValue = {
+  commerce: CommerceStoreSnapshot
+  commerceRepository: CommerceRepository
   dashboard: ReturnType<typeof getVoltageAdminDashboard>
   operationsController: OperationsController
   productRepository: ProductRepository
@@ -377,11 +385,14 @@ export const VoltageAdminProvider = () => {
   const [reportingController] = useState(() => new ReportingRuntimeController())
   const [operationsController] = useState(() => new OperationsController())
   const [productRepository] = useState(() => new ProductRepository())
+  const [commerceRepository] = useState(() => new CommerceRepository())
   const [productEditorController] = useState(
     () => new ProductEditorController()
   )
   const [productStore] = useState(() => new ProductStore(productRepository))
+  const [commerceStore] = useState(() => new CommerceStore(commerceRepository))
   const products = useProductStore(productStore)
+  const commerce = useCommerceStore(commerceStore)
   const dashboard = useMemo(
     () => getVoltageAdminDashboard(products.products),
     [products.products]
@@ -420,8 +431,12 @@ export const VoltageAdminProvider = () => {
 
   useEffect(() => {
     void productStore.initialize()
-    return () => productStore.dispose()
-  }, [productStore])
+    void commerceStore.initialize()
+    return () => {
+      productStore.dispose()
+      commerceStore.dispose()
+    }
+  }, [commerceStore, productStore])
 
   useEffect(() => {
     return () => {
@@ -589,6 +604,8 @@ export const VoltageAdminProvider = () => {
 
   const value = useMemo<VoltageAdminContextValue>(
     () => ({
+      commerce,
+      commerceRepository,
       dashboard,
       operationsController,
       productRepository,
@@ -598,6 +615,8 @@ export const VoltageAdminProvider = () => {
       workflow,
     }),
     [
+      commerce,
+      commerceRepository,
       dashboard,
       operationsController,
       productRepository,
