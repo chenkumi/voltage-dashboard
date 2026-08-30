@@ -39,7 +39,8 @@ const returnableOrder = (commerce: CommerceDataSnapshot) => {
   const seededOrderIds = new Set(
     commerce.orders
       .filter(
-        (order) => order.status === "delivered" && order.paymentStatus === "paid"
+        (order) =>
+          order.status === "delivered" && order.paymentStatus === "paid"
       )
       .slice(0, 2)
       .map((order) => order.id)
@@ -68,11 +69,11 @@ const draftInput = (commerce: CommerceDataSnapshot): ReturnDraftInput => {
 }
 
 const eligibilityFacts = () => ({
-    daysSinceDelivery: 4,
-    packageOpened: true,
-    condition: "damaged" as const,
-    finalSale: false,
-  })
+  daysSinceDelivery: 4,
+  packageOpened: true,
+  condition: "damaged" as const,
+  finalSale: false,
+})
 
 const completeToInspection = async (
   repository: ReturnRepository,
@@ -115,6 +116,65 @@ const completeToInspection = async (
 }
 
 describe("ReturnRepository", () => {
+  it("tracks pending, failed, and completed restock disposition idempotently", async () => {
+    const commerce = createCommerceSeed()
+    const repository = createRepository(undefined, commerce)
+    await repository.initialize()
+    const rmaId = await completeToInspection(repository, commerce)
+    let snapshot = await repository.getSnapshot()
+    const item = snapshot.items.find((candidate) => candidate.rmaId === rmaId)!
+    expect(item.inventoryDispositionStatus).toBe("pending")
+
+    await repository.recordRestockFailure(item.id, "user")
+    snapshot = await repository.getSnapshot()
+    expect(
+      snapshot.items.find((candidate) => candidate.id === item.id)
+        ?.inventoryDispositionStatus
+    ).toBe("failed")
+
+    const movement = {
+      id: "INV-RETURN-TEST",
+      productId: item.productId,
+      type: "receipt" as const,
+      reasonCode: "customer_return" as const,
+      previousStock: 10,
+      nextStock: 11,
+      delta: 1,
+      occurredAt: "2026-08-31T08:00:01.000Z",
+      source: "customer_return" as const,
+      sourceReference: item.id,
+      note: null,
+    }
+    await expect(
+      repository.recordRestockCompletion(
+        item.id,
+        { ...movement, sourceReference: "RMA-OTHER-I1" },
+        "user"
+      )
+    ).rejects.toMatchObject({ code: "INVALID_RETURN" })
+    await repository.recordRestockCompletion(item.id, movement, "user")
+    await repository.recordRestockCompletion(item.id, movement, "user")
+    snapshot = await repository.getSnapshot()
+    expect(
+      snapshot.items.find((candidate) => candidate.id === item.id)
+    ).toMatchObject({
+      inventoryDispositionStatus: "completed",
+      inventoryMovementId: "INV-RETURN-TEST",
+    })
+    expect(
+      snapshot.timeline.filter(
+        (event) => event.action === "inventory_disposition_completed"
+      )
+    ).toHaveLength(1)
+    await expect(
+      repository.reopenInspection(rmaId, "user")
+    ).rejects.toMatchObject({ code: "INVALID_STATE" })
+
+    await expect(
+      repository.recordRestockFailure(item.id, "agent")
+    ).rejects.toMatchObject({ code: "INVALID_ACTOR" })
+  })
+
   it("persists a complete RMA, failed retry, success, and immutable timeline", async () => {
     const commerce = createCommerceSeed()
     const databaseName = `returns-${crypto.randomUUID()}`
@@ -277,7 +337,9 @@ describe("ReturnRepository", () => {
     expect(
       snapshot.approvals.find((candidate) => candidate.id === approval.id)
     ).toMatchObject({ status: "invalidated" })
-    expect(snapshot.rmas.find((candidate) => candidate.id === rmaId)).toMatchObject({
+    expect(
+      snapshot.rmas.find((candidate) => candidate.id === rmaId)
+    ).toMatchObject({
       inspection: { status: "in_progress" },
       approvalStatus: "invalidated",
       refundStatus: "not_started",
@@ -304,7 +366,9 @@ describe("ReturnRepository", () => {
     await repository.initialize()
     const second = await repository.getSnapshot()
 
-    expect(first.rmas.filter((rma) => rma.source === "external")).toHaveLength(2)
+    expect(first.rmas.filter((rma) => rma.source === "external")).toHaveLength(
+      2
+    )
     expect(new Set(first.items.map((item) => item.orderLineId)).size).toBe(
       first.items.length
     )
@@ -346,7 +410,9 @@ describe("ReturnRepository", () => {
     migrated.close()
     const inspected = new Dexie(databaseName)
     inspected.version(1).stores(RETURN_DATABASE_SCHEMA)
-    await expect(inspected.table("metadata").get("returns")).resolves.toMatchObject({
+    await expect(
+      inspected.table("metadata").get("returns")
+    ).resolves.toMatchObject({
       seedVersion: 2,
     })
     inspected.close()
@@ -431,7 +497,9 @@ describe("ReturnRepository", () => {
     expect(
       snapshot.approvals.find((candidate) => candidate.id === approval.id)
     ).toMatchObject({ status: "invalidated" })
-    expect(snapshot.rmas.find((candidate) => candidate.id === rmaId)).toMatchObject({
+    expect(
+      snapshot.rmas.find((candidate) => candidate.id === rmaId)
+    ).toMatchObject({
       approvalStatus: "invalidated",
       refundStatus: "not_started",
     })
@@ -602,11 +670,7 @@ describe("ReturnRepository", () => {
     }
 
     await expect(
-      repository.completeInspection(
-        created.rma.id,
-        [null] as never,
-        "user"
-      )
+      repository.completeInspection(created.rma.id, [null] as never, "user")
     ).rejects.toMatchObject({ code: "INVALID_RETURN" })
     await expect(
       repository.completeInspection(created.rma.id, [base], "user")
@@ -670,7 +734,9 @@ describe("ReturnRepository", () => {
     expect(
       snapshot.approvals.find((candidate) => candidate.id === approval.id)
     ).toMatchObject({ status: "approved" })
-    expect(snapshot.rmas.find((candidate) => candidate.id === rmaId)).toMatchObject({
+    expect(
+      snapshot.rmas.find((candidate) => candidate.id === rmaId)
+    ).toMatchObject({
       status: "completed",
       refundStatus: "succeeded",
     })
@@ -749,11 +815,7 @@ describe("ReturnRepository", () => {
       result: "complete",
     })
     await expect(
-      repository.recordReceipt(
-        created.rma.id,
-        classReceipt as never,
-        "user"
-      )
+      repository.recordReceipt(created.rma.id, classReceipt as never, "user")
     ).rejects.toMatchObject({ code: "INVALID_RETURN" })
     await expect(
       repository.recordReceipt(

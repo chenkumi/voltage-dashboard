@@ -1,5 +1,7 @@
 import { Dexie, type EntityTable } from "dexie"
 import type { CommerceDataSnapshot, OrderLine } from "../commerce-data/types"
+import { assertValidInventoryMovement } from "../inventory/inventory-validation"
+import type { InventoryMovement } from "../inventory/types"
 import { calculateRefund, type SuccessfulRefund } from "./refund-calculation"
 import {
   checkReturnEligibility,
@@ -154,6 +156,21 @@ export type ReturnMutation = {
 const createDatabase = (name: string) => {
   const database = new Dexie(name) as ReturnDatabase
   database.version(1).stores(RETURN_DATABASE_SCHEMA)
+  database
+    .version(2)
+    .stores(RETURN_DATABASE_SCHEMA)
+    .upgrade((transaction) =>
+      transaction
+        .table<ReturnItem, string>("items")
+        .toCollection()
+        .modify((item) => {
+          item.inventoryDispositionStatus =
+            item.inventoryDisposition === "restock"
+              ? "pending"
+              : "not_applicable"
+          item.inventoryMovementId = null
+        })
+    )
   return database
 }
 
@@ -264,9 +281,7 @@ export class ReturnRepository {
         await Promise.all([
           this.database.rmas.bulkAdd(this.seed.rmas.map(clone)),
           this.database.items.bulkAdd(this.seed.items.map(clone)),
-          this.database.calculations.bulkAdd(
-            this.seed.calculations.map(clone)
-          ),
+          this.database.calculations.bulkAdd(this.seed.calculations.map(clone)),
           this.database.approvals.bulkAdd(this.seed.approvals.map(clone)),
           this.database.executionAttempts.bulkAdd(
             this.seed.executionAttempts.map(clone)
@@ -451,12 +466,7 @@ export class ReturnRepository {
           updatedAt: timestamp,
         }
         await this.database.rmas.put(next)
-        await this.addTimeline(
-          next,
-          actor,
-          "return_draft_updated",
-          "saved"
-        )
+        await this.addTimeline(next, actor, "return_draft_updated", "saved")
         return this.bumpVersion()
       }
     )
@@ -477,7 +487,9 @@ export class ReturnRepository {
             "Only a draft return can be submitted."
           )
         }
-        if ((await this.database.items.where("rmaId").equals(rmaId).count()) < 1) {
+        if (
+          (await this.database.items.where("rmaId").equals(rmaId).count()) < 1
+        ) {
           throw new ReturnWorkflowError(
             "INVALID_STATE",
             "A return requires at least one item."
@@ -510,9 +522,7 @@ export class ReturnRepository {
         assertRmaVersion(rma, expectedVersion)
         if (
           rma.status !== "active" ||
-          !["pending", "needs_information"].includes(
-            rma.eligibility.status
-          ) ||
+          !["pending", "needs_information"].includes(rma.eligibility.status) ||
           rma.logistics.status !== "not_started" ||
           rma.inspection.status !== "not_started"
         ) {
@@ -586,35 +596,30 @@ export class ReturnRepository {
         "Received package count and result must be valid."
       )
     }
-    await this.mutateRma(
-      rmaId,
-      "return_received",
-      actor,
-      (rma, timestamp) => {
-        if (
-          rma.status !== "active" ||
-          rma.eligibility.status !== "authorized" ||
-          rma.logistics.status !== "awaiting_return"
-        ) {
-          throw new ReturnWorkflowError(
-            "INVALID_STATE",
-            "Only an authorized return awaiting shipment can be received."
-          )
-        }
-        return {
-          ...rma,
-          logistics: {
-            ...rma.logistics,
-            status: "received" as const,
-            receivedAt: timestamp,
-            receivedPackageCount: input.packageCount,
-            receiptResult: input.result,
-            version: rma.logistics.version + 1,
-          },
-          updatedAt: timestamp,
-        }
+    await this.mutateRma(rmaId, "return_received", actor, (rma, timestamp) => {
+      if (
+        rma.status !== "active" ||
+        rma.eligibility.status !== "authorized" ||
+        rma.logistics.status !== "awaiting_return"
+      ) {
+        throw new ReturnWorkflowError(
+          "INVALID_STATE",
+          "Only an authorized return awaiting shipment can be received."
+        )
       }
-    )
+      return {
+        ...rma,
+        logistics: {
+          ...rma.logistics,
+          status: "received" as const,
+          receivedAt: timestamp,
+          receivedPackageCount: input.packageCount,
+          receiptResult: input.result,
+          version: rma.logistics.version + 1,
+        },
+        updatedAt: timestamp,
+      }
+    })
   }
 
   async startInspection(rmaId: string, actor: WorkflowActor) {
@@ -669,13 +674,19 @@ export class ReturnRepository {
       this.database.metadata,
       async () => {
         const rma = await this.requireRma(rmaId)
-        if (rma.status !== "active" || rma.inspection.status !== "in_progress") {
+        if (
+          rma.status !== "active" ||
+          rma.inspection.status !== "in_progress"
+        ) {
           throw new ReturnWorkflowError(
             "INVALID_STATE",
             "Only an in-progress inspection can be completed."
           )
         }
-        const items = await this.database.items.where("rmaId").equals(rmaId).toArray()
+        const items = await this.database.items
+          .where("rmaId")
+          .equals(rmaId)
+          .toArray()
         if (
           input.length !== items.length ||
           new Set(input.map((item) => item.returnItemId)).size !== items.length
@@ -719,9 +730,7 @@ export class ReturnRepository {
             )
           }
           const inspectedBy = this.requireReason(result.inspectedBy)
-          const inspectionNote = normalizeReturnStatement(
-            result.inspectionNote
-          )
+          const inspectionNote = normalizeReturnStatement(result.inspectionNote)
           if (
             result.acceptedQuantity < item.requestedQuantity &&
             !result.rejectionReason
@@ -764,6 +773,11 @@ export class ReturnRepository {
             missingContents: result.missingContents,
             rejectionReason: result.rejectionReason,
             inventoryDisposition: result.inventoryDisposition,
+            inventoryDispositionStatus:
+              result.inventoryDisposition === "restock"
+                ? ("pending" as const)
+                : ("not_applicable" as const),
+            inventoryMovementId: null,
             inspectionResult,
             inspectionNote,
             inspectedBy,
@@ -808,6 +822,7 @@ export class ReturnRepository {
     const version = await this.database.transaction(
       "rw",
       this.database.rmas,
+      this.database.items,
       this.database.approvals,
       this.database.timeline,
       this.database.metadata,
@@ -821,6 +836,18 @@ export class ReturnRepository {
           throw new ReturnWorkflowError(
             "INVALID_STATE",
             "Completed refundable inspection is required before reopening."
+          )
+        }
+        const items = await this.database.items
+          .where("rmaId")
+          .equals(rmaId)
+          .toArray()
+        if (
+          items.some((item) => item.inventoryDispositionStatus === "completed")
+        ) {
+          throw new ReturnWorkflowError(
+            "INVALID_STATE",
+            "Inspection cannot be reopened after inventory disposition."
           )
         }
         const approvals = await this.database.approvals
@@ -897,14 +924,20 @@ export class ReturnRepository {
           (candidate) => candidate.id === rma.orderId
         )
         if (!order) {
-          throw new ReturnWorkflowError("NOT_FOUND", "Return order was not found.")
+          throw new ReturnWorkflowError(
+            "NOT_FOUND",
+            "Return order was not found."
+          )
         }
         const [items, previousCalculations, approvals, attempts] =
           await Promise.all([
             this.database.items.where("rmaId").equals(rmaId).toArray(),
             this.database.calculations.where("rmaId").equals(rmaId).toArray(),
             this.database.approvals.toArray(),
-            this.database.executionAttempts.where("result").equals("succeeded").toArray(),
+            this.database.executionAttempts
+              .where("result")
+              .equals("succeeded")
+              .toArray(),
           ])
         const successfulRefunds = this.buildSuccessfulRefunds(
           attempts,
@@ -920,7 +953,8 @@ export class ReturnRepository {
           inspectionVersion: rma.inspection.version,
           orderSnapshotVersion: this.orderSnapshotVersion,
           calculationVersion:
-            Math.max(0, ...previousCalculations.map((entry) => entry.version)) + 1,
+            Math.max(0, ...previousCalculations.map((entry) => entry.version)) +
+            1,
           orderTotal: order.amounts.total,
           orderShipping: order.amounts.shipping,
           orderLines: this.commerceSnapshot.orderLines.filter(
@@ -973,11 +1007,7 @@ export class ReturnRepository {
             "Refund calculation was not found."
           )
         }
-        assertCalculationIsCurrent(
-          rma,
-          calculation,
-          this.orderSnapshotVersion
-        )
+        assertCalculationIsCurrent(rma, calculation, this.orderSnapshotVersion)
         if (
           rma.status !== "active" ||
           rma.inspection.status !== "completed" ||
@@ -1056,7 +1086,9 @@ export class ReturnRepository {
       )
     }
     const normalizedReason =
-      decision === "approved" ? normalizeReturnStatement(reason) : this.requireReason(reason)
+      decision === "approved"
+        ? normalizeReturnStatement(reason)
+        : this.requireReason(reason)
     const timestamp = this.timestamp()
     let rmaId = ""
     const version = await this.database.transaction(
@@ -1069,7 +1101,10 @@ export class ReturnRepository {
       async () => {
         const approval = await this.database.approvals.get(approvalId)
         if (!approval) {
-          throw new ReturnWorkflowError("NOT_FOUND", "Refund approval was not found.")
+          throw new ReturnWorkflowError(
+            "NOT_FOUND",
+            "Refund approval was not found."
+          )
         }
         rmaId = approval.rmaId
         const rma = await this.requireRma(rmaId)
@@ -1077,7 +1112,10 @@ export class ReturnRepository {
           approval.calculationId
         )
         if (!calculation) {
-          throw new ReturnWorkflowError("NOT_FOUND", "Refund calculation was not found.")
+          throw new ReturnWorkflowError(
+            "NOT_FOUND",
+            "Refund calculation was not found."
+          )
         }
         if (approval.status !== "pending") {
           throw new ReturnWorkflowError(
@@ -1148,12 +1186,7 @@ export class ReturnRepository {
     assertUserActor(actor, "Record refund result")
     if (
       !isRecord(input) ||
-      !hasExactKeys(input, [
-        "result",
-        "resultCode",
-        "note",
-        "executedBy",
-      ]) ||
+      !hasExactKeys(input, ["result", "resultCode", "note", "executedBy"]) ||
       !REFUND_RESULTS.includes(input.result) ||
       !REFUND_RESULT_CODES.includes(input.resultCode)
     ) {
@@ -1187,7 +1220,10 @@ export class ReturnRepository {
       async () => {
         const approval = await this.database.approvals.get(approvalId)
         if (!approval) {
-          throw new ReturnWorkflowError("NOT_FOUND", "Refund approval was not found.")
+          throw new ReturnWorkflowError(
+            "NOT_FOUND",
+            "Refund approval was not found."
+          )
         }
         rmaId = approval.rmaId
         const rma = await this.requireRma(rmaId)
@@ -1195,7 +1231,10 @@ export class ReturnRepository {
           approval.calculationId
         )
         if (!calculation) {
-          throw new ReturnWorkflowError("NOT_FOUND", "Refund calculation was not found.")
+          throw new ReturnWorkflowError(
+            "NOT_FOUND",
+            "Refund calculation was not found."
+          )
         }
         assertApprovalIsCurrent(
           rma,
@@ -1245,12 +1284,150 @@ export class ReturnRepository {
           completedAt: input.result === "succeeded" ? timestamp : null,
           updatedAt: timestamp,
         })
-        await this.addTimeline(rma, actor, "refund_result_recorded", input.result)
+        await this.addTimeline(
+          rma,
+          actor,
+          "refund_result_recorded",
+          input.result
+        )
         return this.bumpVersion()
       }
     )
     await this.emit({ type: "refund_result", rmaId, version })
     return clone(attempt!)
+  }
+
+  async recordRestockCompletion(
+    returnItemId: string,
+    movement: InventoryMovement,
+    actor: WorkflowActor
+  ) {
+    assertUserActor(actor, "Confirm return inventory receipt")
+    assertValidInventoryMovement(movement)
+    if (
+      !/^RMA-[A-Za-z0-9-]+-I\d+$/.test(returnItemId) ||
+      movement.source !== "customer_return" ||
+      movement.reasonCode !== "customer_return" ||
+      movement.sourceReference !== returnItemId ||
+      movement.type !== "receipt"
+    ) {
+      throw new ReturnValidationError(
+        "INVALID_RETURN",
+        "Return inventory reference is invalid."
+      )
+    }
+    let rmaId = ""
+    let changed = false
+    const version = await this.database.transaction(
+      "rw",
+      this.database.rmas,
+      this.database.items,
+      this.database.timeline,
+      this.database.metadata,
+      async () => {
+        const item = await this.database.items.get(returnItemId)
+        if (!item) {
+          throw new ReturnWorkflowError(
+            "NOT_FOUND",
+            "Return item was not found."
+          )
+        }
+        rmaId = item.rmaId
+        const rma = await this.requireRma(rmaId)
+        if (
+          !item.acceptedQuantity ||
+          movement.productId !== item.productId ||
+          movement.delta !== item.acceptedQuantity
+        ) {
+          throw new ReturnValidationError(
+            "INVALID_RETURN",
+            "Inventory receipt does not match the return item."
+          )
+        }
+        if (
+          item.inventoryDispositionStatus === "completed" &&
+          item.inventoryMovementId === movement.id
+        ) {
+          return (await this.database.metadata.get("returns"))?.dataVersion ?? 0
+        }
+        if (
+          rma.inspection.status !== "completed" ||
+          item.inventoryDisposition !== "restock" ||
+          !["pending", "failed"].includes(item.inventoryDispositionStatus)
+        ) {
+          throw new ReturnWorkflowError(
+            "INVALID_STATE",
+            "Only a pending accepted return item can be restocked."
+          )
+        }
+        await this.database.items.put({
+          ...item,
+          inventoryDispositionStatus: "completed",
+          inventoryMovementId: movement.id,
+        })
+        await this.addTimeline(
+          rma,
+          actor,
+          "inventory_disposition_completed",
+          movement.id
+        )
+        changed = true
+        return this.bumpVersion()
+      }
+    )
+    if (changed) await this.emit({ type: "restock_complete", rmaId, version })
+  }
+
+  async recordRestockFailure(returnItemId: string, actor: WorkflowActor) {
+    assertUserActor(actor, "Record return inventory receipt failure")
+    if (!/^RMA-[A-Za-z0-9-]+-I\d+$/.test(returnItemId)) {
+      throw new ReturnValidationError(
+        "INVALID_RETURN",
+        "Return item reference is invalid."
+      )
+    }
+    let rmaId = ""
+    const version = await this.database.transaction(
+      "rw",
+      this.database.rmas,
+      this.database.items,
+      this.database.timeline,
+      this.database.metadata,
+      async () => {
+        const item = await this.database.items.get(returnItemId)
+        if (!item) {
+          throw new ReturnWorkflowError(
+            "NOT_FOUND",
+            "Return item was not found."
+          )
+        }
+        rmaId = item.rmaId
+        const rma = await this.requireRma(rmaId)
+        if (
+          rma.inspection.status !== "completed" ||
+          item.inventoryDisposition !== "restock" ||
+          !["pending", "failed"].includes(item.inventoryDispositionStatus)
+        ) {
+          throw new ReturnWorkflowError(
+            "INVALID_STATE",
+            "Only a pending return inventory receipt can fail."
+          )
+        }
+        await this.database.items.put({
+          ...item,
+          inventoryDispositionStatus: "failed",
+          inventoryMovementId: null,
+        })
+        await this.addTimeline(
+          rma,
+          actor,
+          "inventory_disposition_failed",
+          "inventory_receipt_failed"
+        )
+        return this.bumpVersion()
+      }
+    )
+    await this.emit({ type: "restock_failed", rmaId, version })
   }
 
   subscribe(listener: (mutation: ReturnMutation) => void | Promise<void>) {
@@ -1295,7 +1472,11 @@ export class ReturnRepository {
     const order = this.commerceSnapshot.orders.find(
       (candidate) => candidate.id === input.orderId
     )
-    if (!order || order.status !== "delivered" || order.paymentStatus !== "paid") {
+    if (
+      !order ||
+      order.status !== "delivered" ||
+      order.paymentStatus !== "paid"
+    ) {
       throw new ReturnValidationError(
         "INVALID_RETURN",
         "Returns require a delivered and paid order."
@@ -1371,6 +1552,8 @@ export class ReturnRepository {
       inspectionResult: null,
       rejectionReason: null,
       inventoryDisposition: null,
+      inventoryDispositionStatus: "not_applicable",
+      inventoryMovementId: null,
       inspectionNote: "",
       inspectedBy: null,
       inspectedAt: null,
@@ -1538,10 +1721,7 @@ export class ReturnRepository {
     }
   }
 
-  private async assertLatestCalculation(
-    rmaId: string,
-    calculationId: string
-  ) {
+  private async assertLatestCalculation(rmaId: string, calculationId: string) {
     const calculations = await this.database.calculations
       .where("rmaId")
       .equals(rmaId)
@@ -1659,7 +1839,9 @@ export class ReturnRepository {
     }
   }
 
-  private assertInspectionInputShape(value: unknown): asserts value is InspectionItemInput {
+  private assertInspectionInputShape(
+    value: unknown
+  ): asserts value is InspectionItemInput {
     if (
       !isRecord(value) ||
       !hasExactKeys(value, [
@@ -1795,16 +1977,16 @@ export class ReturnRepository {
   private requireReason(value: string) {
     const reason = normalizeReturnStatement(value)
     if (!reason) {
-      throw new ReturnValidationError(
-        "INVALID_RETURN",
-        "A reason is required."
-      )
+      throw new ReturnValidationError("INVALID_RETURN", "A reason is required.")
     }
     return reason
   }
 
-  private async emit(mutation: Omit<ReturnMutation, "version"> & { version?: number }) {
-    const version = mutation.version ?? (await this.requireMetadata()).dataVersion
+  private async emit(
+    mutation: Omit<ReturnMutation, "version"> & { version?: number }
+  ) {
+    const version =
+      mutation.version ?? (await this.requireMetadata()).dataVersion
     for (const listener of this.listeners) {
       try {
         await listener({ ...mutation, version })

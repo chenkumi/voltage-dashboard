@@ -9,6 +9,7 @@ export const INVENTORY_REASON_CODES = [
   "customer_order",
   "damaged_goods",
   "cycle_count",
+  "customer_return",
   "initial_stock",
   "legacy_stock_set",
 ] as const
@@ -29,8 +30,14 @@ export type InventoryMovement = {
   nextStock: number
   delta: number
   occurredAt: string
-  source: "seed" | "manual"
+  source: "seed" | "manual" | "customer_return"
+  sourceReference: string | null
   note: string | null
+}
+
+export type CustomerReturnReceiptInput = {
+  quantity: number
+  returnItemId: string
 }
 
 export type InventoryAdjustmentInput =

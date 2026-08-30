@@ -83,11 +83,10 @@ export type ReturnItem = {
     | "serial_mismatch"
     | null
   inventoryDisposition:
-    | "restock"
-    | "defective"
-    | "discard"
-    | "return_to_customer"
-    | null
+    "restock" | "defective" | "discard" | "return_to_customer" | null
+  inventoryDispositionStatus:
+    "not_applicable" | "pending" | "failed" | "completed"
+  inventoryMovementId: string | null
   inspectionNote: string
   inspectedBy: string | null
   inspectedAt: string | null

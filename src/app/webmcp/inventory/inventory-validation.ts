@@ -15,6 +15,7 @@ const MOVEMENT_KEYS = [
   "delta",
   "occurredAt",
   "source",
+  "sourceReference",
   "note",
 ] as const
 
@@ -97,7 +98,9 @@ export function assertValidInventoryMovement(
   const timestamp = Date.parse(movement.occurredAt)
   const reasonMatchesType =
     (movement.type === "receipt" &&
-      ["purchase_receipt", "initial_stock"].includes(movement.reasonCode)) ||
+      ["purchase_receipt", "customer_return", "initial_stock"].includes(
+        movement.reasonCode
+      )) ||
     (movement.type === "issue" &&
       ["customer_order", "damaged_goods"].includes(movement.reasonCode)) ||
     (movement.type === "reconciliation" &&
@@ -123,7 +126,16 @@ export function assertValidInventoryMovement(
     !deltaMatchesType ||
     !Number.isFinite(timestamp) ||
     new Date(timestamp).toISOString() !== movement.occurredAt ||
-    !["seed", "manual"].includes(movement.source) ||
+    !["seed", "manual", "customer_return"].includes(movement.source) ||
+    !(
+      (movement.source === "customer_return" &&
+        movement.reasonCode === "customer_return" &&
+        typeof movement.sourceReference === "string" &&
+        /^RMA-[A-Za-z0-9-]+-I\d+$/.test(movement.sourceReference)) ||
+      (movement.source !== "customer_return" &&
+        movement.reasonCode !== "customer_return" &&
+        movement.sourceReference === null)
+    ) ||
     !validNote(movement.note)
   ) {
     throw new InventoryValidationError("INVALID_MOVEMENT", "Invalid movement.")

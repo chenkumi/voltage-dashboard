@@ -777,13 +777,18 @@ export const ReturnDetailPage = () => {
   const { returnId } = useParams()
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { returnRepository, returns } = useVoltageAdmin()
+  const { productRepository, returnRepository, returns } = useVoltageAdmin()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [packageCount, setPackageCount] = useState(1)
   const [receiptResult, setReceiptResult] = useState<
     "complete" | "partial" | "damaged"
   >("complete")
+  const [executionResult, setExecutionResult] = useState<
+    "succeeded" | "failed"
+  >("succeeded")
+  const [resultCode, setResultCode] = useState("recorded_success")
+  const [executionNote, setExecutionNote] = useState("")
   const [facts, setFacts] = useState<EligibilityDecisionInput["facts"]>({
     daysSinceDelivery: 4,
     packageOpened: true,
@@ -813,6 +818,16 @@ export const ReturnDetailPage = () => {
   const calculations = returns.calculations
     .filter((item) => item.rmaId === rma.id)
     .sort((a, b) => b.version - a.version)
+  const rmaApprovals = returns.approvals.filter((item) => item.rmaId === rma.id)
+  const latestApproval =
+    rmaApprovals.find(
+      (item) =>
+        item.calculationId === calculations[0]?.id &&
+        item.status === rma.approvalStatus
+    ) ??
+    [...rmaApprovals].sort((a, b) =>
+      b.createdAt.localeCompare(a.createdAt)
+    )[0]
   const timeline = returns.timeline
     .filter((item) => item.rmaId === rma.id)
     .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))
@@ -893,7 +908,76 @@ export const ReturnDetailPage = () => {
       >
         {t("Generate refund calculation")}
       </Button>
+    ) : rma.status === "active" &&
+      rma.inspection.status === "completed" &&
+      ["not_ready", "returned", "invalidated"].includes(rma.approvalStatus) &&
+      calculations[0]?.rmaVersion === rma.version ? (
+      <Button
+        disabled={busy}
+        onClick={() =>
+          void run(async () => {
+            const approval = await returnRepository.submitForApproval(
+              rma.id,
+              calculations[0].id,
+              "user"
+            )
+            navigate(`/refund-approvals/${approval.id}`)
+          })
+        }
+      >
+        {t("Submit for refund approval")}
+      </Button>
     ) : null
+  const restock = async (item: ReturnItem) => {
+    setBusy(true)
+    setError("")
+    try {
+      const result = await productRepository.receiveCustomerReturn(
+        item.productId,
+        {
+          quantity: item.acceptedQuantity ?? 0,
+          returnItemId: item.id,
+        }
+      )
+      await returnRepository.recordRestockCompletion(
+        item.id,
+        result.movement,
+        "user"
+      )
+    } catch (cause) {
+      try {
+        await returnRepository.recordRestockFailure(item.id, "user")
+      } catch {
+        // Preserve the original operational error when failure recording is unavailable.
+      }
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : t("Inventory receipt could not be completed.")
+      )
+    } finally {
+      setBusy(false)
+    }
+  }
+  const recordRefundResult = () => {
+    if (!latestApproval) return Promise.resolve()
+    return run(() =>
+      returnRepository.recordRefundResult(
+        latestApproval.id,
+        {
+          result: executionResult,
+          resultCode: resultCode as
+            | "recorded_success"
+            | "provider_declined"
+            | "provider_unavailable"
+            | "manual_reconciliation_required",
+          note: executionNote,
+          executedBy: "finance-user",
+        },
+        "user"
+      )
+    )
+  }
   return (
     <PageLayout
       ariaLabel={t("Return details")}
@@ -1190,7 +1274,10 @@ export const ReturnDetailPage = () => {
           </p>
           {rma.status === "active" &&
           rma.inspection.status === "completed" &&
-          rma.refundStatus !== "succeeded" ? (
+          rma.refundStatus !== "succeeded" &&
+          !items.some(
+            (item) => item.inventoryDispositionStatus === "completed"
+          ) ? (
             <Button
               variant="outline"
               onClick={() =>
@@ -1228,12 +1315,146 @@ export const ReturnDetailPage = () => {
                 {t("Total")}: {calculations[0].total.amount.toFixed(2)}{" "}
                 {calculations[0].total.currency}
               </p>
+              {latestApproval ? (
+                <Button
+                  variant="outline"
+                  onClick={() =>
+                    navigate(`/refund-approvals/${latestApproval.id}`)
+                  }
+                >
+                  {t("Open refund approval")}
+                </Button>
+              ) : null}
             </>
           ) : (
             <p className="text-muted-foreground">
               {t("No refund calculation yet.")}
             </p>
           )}
+        </DetailCard>
+      </GridBlock>
+      <GridBlock className="col-span-12 lg:col-span-6">
+        <DetailCard title={t("Inventory disposition")}>
+          {items.map((item) => (
+            <div
+              key={item.id}
+              className="grid gap-2 border-b pb-2 sm:grid-cols-[1fr_auto] sm:items-center"
+            >
+              <span>
+                <strong>{item.title}</strong>
+                <small className="block text-muted-foreground">
+                  {item.inventoryDisposition
+                    ? t(item.inventoryDisposition)
+                    : t("Not inspected")}{" "}
+                  · {t(item.inventoryDispositionStatus)}
+                </small>
+              </span>
+              {item.inventoryDisposition === "restock" &&
+              ["pending", "failed"].includes(
+                item.inventoryDispositionStatus
+              ) ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void restock(item)}
+                >
+                  {item.inventoryDispositionStatus === "failed"
+                    ? t("Retry restock")
+                    : t("Confirm restock")}
+                </Button>
+              ) : item.inventoryMovementId ? (
+                <span className="text-xs text-muted-foreground">
+                  {item.inventoryMovementId}
+                </span>
+              ) : null}
+            </div>
+          ))}
+        </DetailCard>
+      </GridBlock>
+      <GridBlock className="col-span-12 lg:col-span-6">
+        <DetailCard title={t("Refund execution")}>
+          {latestApproval?.status === "approved" &&
+          ["pending_execution", "failed"].includes(rma.refundStatus) ? (
+            <>
+              <label>
+                {t("Execution result")}
+                <select
+                  className={fieldClass}
+                  value={executionResult}
+                  onChange={(event) => {
+                    const result = event.target.value as "succeeded" | "failed"
+                    setExecutionResult(result)
+                    setResultCode(
+                      result === "succeeded"
+                        ? "recorded_success"
+                        : "provider_declined"
+                    )
+                  }}
+                >
+                  <option value="succeeded">{t("succeeded")}</option>
+                  <option value="failed">{t("failed")}</option>
+                </select>
+              </label>
+              <label>
+                {t("Result code")}
+                <select
+                  className={fieldClass}
+                  value={resultCode}
+                  onChange={(event) => setResultCode(event.target.value)}
+                >
+                  {executionResult === "succeeded" ? (
+                    <option value="recorded_success">
+                      {t("recorded_success")}
+                    </option>
+                  ) : (
+                    <>
+                      <option value="provider_declined">
+                        {t("provider_declined")}
+                      </option>
+                      <option value="provider_unavailable">
+                        {t("provider_unavailable")}
+                      </option>
+                      <option value="manual_reconciliation_required">
+                        {t("manual_reconciliation_required")}
+                      </option>
+                    </>
+                  )}
+                </select>
+              </label>
+              <label>
+                {t("Operational note")}
+                <textarea
+                  className={textAreaClass}
+                  value={executionNote}
+                  onChange={(event) => setExecutionNote(event.target.value)}
+                />
+              </label>
+              <Button disabled={busy} onClick={() => void recordRefundResult()}>
+                {rma.refundStatus === "failed"
+                  ? t("Record retry result")
+                  : t("Record refund result")}
+              </Button>
+            </>
+          ) : (
+            <p className="text-muted-foreground">
+              {t("Refund execution is available only after approval.")}
+            </p>
+          )}
+          {latestApproval
+            ? returns.executionAttempts
+                .filter((attempt) => attempt.approvalId === latestApproval.id)
+                .map((attempt) => (
+                  <div key={attempt.id} className="border-t pt-2">
+                    <strong>
+                      {t("Attempt")} {attempt.sequence}: {t(attempt.result)}
+                    </strong>
+                    <p>
+                      {t(attempt.resultCode)} · {attempt.executedAt}
+                    </p>
+                  </div>
+                ))
+            : null}
         </DetailCard>
       </GridBlock>
       <GridBlock>

@@ -1,9 +1,5 @@
 import type { CommerceDataSnapshot, OrderLine } from "../commerce-data/types"
-import type {
-  ReturnItem,
-  ReturnRepositorySnapshot,
-  Rma,
-} from "./types"
+import type { ReturnItem, ReturnRepositorySnapshot, Rma } from "./types"
 
 const itemFromLine = (
   rmaId: string,
@@ -29,6 +25,8 @@ const itemFromLine = (
   inspectionResult: null,
   rejectionReason: null,
   inventoryDisposition: null,
+  inventoryDispositionStatus: "not_applicable",
+  inventoryMovementId: null,
   inspectionNote: "",
   inspectedBy: null,
   inspectedAt: null,
@@ -57,12 +55,9 @@ const createSeedRma = (
   logistics: {
     status:
       eligibility.status === "authorized" ? "awaiting_return" : "not_started",
-    authorizedAt:
-      eligibility.status === "authorized" ? createdAt : null,
+    authorizedAt: eligibility.status === "authorized" ? createdAt : null,
     returnDueAt:
-      eligibility.status === "authorized"
-        ? "2026-09-27T08:00:00.000Z"
-        : null,
+      eligibility.status === "authorized" ? "2026-09-27T08:00:00.000Z" : null,
     receivedAt: null,
     receivedPackageCount: null,
     receiptResult: null,

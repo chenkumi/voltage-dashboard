@@ -27,6 +27,7 @@ export const createInventoryMovementSeed = (
         delta,
         occurredAt: monthTimestamp(month, product.id),
         source: "seed",
+        sourceReference: null,
         note: null,
       })
       stock = nextStock
@@ -41,6 +42,7 @@ export const createInventoryMovementSeed = (
       delta: product.stock - stock,
       occurredAt: monthTimestamp(12, product.id),
       source: "seed",
+      sourceReference: null,
       note: null,
     })
     return movements

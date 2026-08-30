@@ -7,6 +7,7 @@ import {
 } from "../inventory/inventory-validation"
 import type {
   InventoryAdjustmentInput,
+  CustomerReturnReceiptInput,
   InventoryMovement,
 } from "../inventory/types"
 import { createDummyJsonProductSeed } from "./product-seed"
@@ -79,6 +80,20 @@ const createDatabase = (name: string) => {
     inventoryMovements:
       "id, productId, type, reasonCode, occurredAt, [productId+occurredAt]",
   })
+  database
+    .version(3)
+    .stores({
+      products: "id, &sku, status, category, updatedAt",
+      metadata: "key",
+      inventoryMovements:
+        "id, productId, type, reasonCode, occurredAt, &sourceReference, [productId+occurredAt]",
+    })
+    .upgrade((transaction) =>
+      transaction
+        .table<InventoryMovement, string>("inventoryMovements")
+        .toCollection()
+        .modify({ sourceReference: null })
+    )
   return database
 }
 
@@ -289,9 +304,80 @@ export class ProductRepository {
     return this.commitInventoryAdjustment(productId, adjustment)
   }
 
+  async receiveCustomerReturn(
+    productId: number,
+    input: CustomerReturnReceiptInput
+  ) {
+    if (
+      !isRecord(input) ||
+      Object.keys(input).length !== 2 ||
+      !Object.hasOwn(input, "quantity") ||
+      !Object.hasOwn(input, "returnItemId") ||
+      !Number.isInteger(input.quantity) ||
+      input.quantity <= 0 ||
+      typeof input.returnItemId !== "string" ||
+      !/^RMA-[A-Za-z0-9-]+-I\d+$/.test(input.returnItemId)
+    ) {
+      throw new InventoryValidationError(
+        "INVALID_ADJUSTMENT",
+        "Customer return receipt is invalid."
+      )
+    }
+    const existing = await this.database.inventoryMovements
+      .where("sourceReference")
+      .equals(input.returnItemId)
+      .first()
+    if (existing) {
+      if (
+        existing.productId !== productId ||
+        existing.delta !== input.quantity ||
+        existing.source !== "customer_return"
+      ) {
+        throw new InventoryValidationError(
+          "INVALID_ADJUSTMENT",
+          "Customer return reference conflicts with an existing receipt."
+        )
+      }
+      return { movement: structuredClone(existing), created: false }
+    }
+    try {
+      const result = await this.commitInventoryAdjustment(
+        productId,
+        {
+          type: "receipt",
+          quantity: input.quantity,
+          reasonCode: "customer_return",
+        },
+        "customer_return",
+        input.returnItemId
+      )
+      return { movement: result.movement, created: true }
+    } catch (cause) {
+      if (!(cause instanceof Dexie.ConstraintError)) throw cause
+      const concurrent = await this.database.inventoryMovements
+        .where("sourceReference")
+        .equals(input.returnItemId)
+        .first()
+      if (
+        !concurrent ||
+        concurrent.productId !== productId ||
+        concurrent.delta !== input.quantity ||
+        concurrent.source !== "customer_return"
+      ) {
+        throw new InventoryValidationError(
+          "INVALID_ADJUSTMENT",
+          "Customer return reference conflicts with an existing receipt."
+        )
+      }
+      return { movement: structuredClone(concurrent), created: false }
+    }
+  }
+
   private async commitInventoryAdjustment(
     productId: number,
-    adjustment: InventoryCommitAdjustment
+    adjustment: InventoryCommitAdjustment,
+    source: InventoryMovement["source"] = "manual",
+    sourceReference: string | null = null
   ) {
     const result = await this.database.transaction(
       "rw",
@@ -330,7 +416,9 @@ export class ProductRepository {
           adjustment.type,
           adjustment.reasonCode,
           adjustment.note ?? null,
-          timestamp
+          timestamp,
+          source,
+          sourceReference
         )
         const product = { ...existing, stock: nextStock, updatedAt: timestamp }
         await this.database.products.put(product)
@@ -646,7 +734,9 @@ export class ProductRepository {
     type: InventoryMovement["type"],
     reasonCode: InventoryMovement["reasonCode"],
     note: string | null,
-    occurredAt: string
+    occurredAt: string,
+    source: InventoryMovement["source"] = "manual",
+    sourceReference: string | null = null
   ) {
     const movement: InventoryMovement = {
       id: `INV-${this.createId()}`,
@@ -657,7 +747,8 @@ export class ProductRepository {
       nextStock,
       delta: nextStock - previousStock,
       occurredAt,
-      source: "manual",
+      source,
+      sourceReference,
       note,
     }
     assertValidInventoryMovement(movement)

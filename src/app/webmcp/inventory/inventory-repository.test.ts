@@ -120,6 +120,46 @@ describe("inventory repository", () => {
     expect(await repo.listInventoryMovements(1)).toHaveLength(before.length + 1)
   })
 
+  it("records a customer return receipt exactly once by return item", async () => {
+    let id = 0
+    const repo = repository({ createId: () => `return-${++id}` })
+    await repo.initialize()
+
+    const first = await repo.receiveCustomerReturn(1, {
+      quantity: 2,
+      returnItemId: "RMA-TEST-1-I1",
+    })
+    const retry = await repo.receiveCustomerReturn(1, {
+      quantity: 2,
+      returnItemId: "RMA-TEST-1-I1",
+    })
+
+    expect(first.created).toBe(true)
+    expect(retry.created).toBe(false)
+    expect(retry.movement.id).toBe(first.movement.id)
+    expect(first.movement).toMatchObject({
+      type: "receipt",
+      reasonCode: "customer_return",
+      source: "customer_return",
+      sourceReference: "RMA-TEST-1-I1",
+      delta: 2,
+    })
+    expect(await repo.get(1)).toMatchObject({ stock: 22 })
+    expect(
+      (await repo.listInventoryMovements(1)).filter(
+        ({ sourceReference }) => sourceReference === "RMA-TEST-1-I1"
+      )
+    ).toHaveLength(1)
+
+    await expect(
+      repo.receiveCustomerReturn(1, {
+        quantity: 1,
+        returnItemId: "RMA-TEST-1-I1",
+      })
+    ).rejects.toBeInstanceOf(InventoryValidationError)
+    expect(await repo.get(1)).toMatchObject({ stock: 22 })
+  })
+
   it("rolls back the product update when movement persistence fails", async () => {
     const repo = repository({ createId: () => "collision" })
     await repo.initialize()
@@ -227,11 +267,11 @@ describe("inventory repository", () => {
     await repo.initialize()
     const movement = (await repo.listInventoryMovements(1))[5]
     const raw = new Dexie(databaseName)
-    raw.version(2).stores({
+    raw.version(3).stores({
       products: "id, &sku, status, category, updatedAt",
       metadata: "key",
       inventoryMovements:
-        "id, productId, type, reasonCode, occurredAt, [productId+occurredAt]",
+        "id, productId, type, reasonCode, occurredAt, &sourceReference, [productId+occurredAt]",
     })
     await raw.table("inventoryMovements").update(movement.id, {
       previousStock: movement.previousStock + 1,
@@ -256,11 +296,11 @@ describe("inventory repository", () => {
     await repo.initialize()
     const movement = (await repo.listInventoryMovements(1))[5]
     const raw = new Dexie(databaseName)
-    raw.version(2).stores({
+    raw.version(3).stores({
       products: "id, &sku, status, category, updatedAt",
       metadata: "key",
       inventoryMovements:
-        "id, productId, type, reasonCode, occurredAt, [productId+occurredAt]",
+        "id, productId, type, reasonCode, occurredAt, &sourceReference, [productId+occurredAt]",
     })
     await raw.table("inventoryMovements").update(movement.id, {
       previousStock: movement.previousStock + 1,
@@ -290,11 +330,11 @@ describe("inventory repository", () => {
     })
     await repo.initialize()
     const raw = new Dexie(databaseName)
-    raw.version(2).stores({
+    raw.version(3).stores({
       products: "id, &sku, status, category, updatedAt",
       metadata: "key",
       inventoryMovements:
-        "id, productId, type, reasonCode, occurredAt, [productId+occurredAt]",
+        "id, productId, type, reasonCode, occurredAt, &sourceReference, [productId+occurredAt]",
     })
     await raw.table("products").update(1, {
       updatedAt: "2026-09-20T00:00:00.000Z",

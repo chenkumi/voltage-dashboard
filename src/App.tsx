@@ -5,6 +5,10 @@ import { VoltageAdminProvider } from "@/app/webmcp/voltage-admin"
 import { ApprovalInboxPage } from "@/app/webmcp/operations/approval-inbox-page"
 import { OperationsCasesPage } from "@/app/webmcp/operations/operations-cases-page"
 import {
+  RefundApprovalDetailPage,
+  RefundApprovalsPage,
+} from "@/app/webmcp/returns/refund-approval-pages"
+import {
   ProductAddRoute,
   ProductEditRoute,
 } from "@/app/webmcp/products/product-route-pages"
@@ -50,6 +54,11 @@ export function App() {
           <Route
             path="returns/:returnId/inspection"
             element={<ReturnInspectionPage />}
+          />
+          <Route path="refund-approvals" element={<RefundApprovalsPage />} />
+          <Route
+            path="refund-approvals/:approvalId"
+            element={<RefundApprovalDetailPage />}
           />
           <Route path="customers" element={<CustomersPage />} />
           <Route
