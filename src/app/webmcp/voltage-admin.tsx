@@ -25,6 +25,7 @@ import {
   createToolsetKey,
   ToolsetReadinessCoordinator,
 } from "./toolset-readiness"
+import type { ToolsetReadinessResult } from "./toolset-readiness"
 import {
   getVoltageAdminDashboard,
   searchVoltageAdminProducts,
@@ -142,14 +143,40 @@ const NAVIGATION_TOOL_NAMES = new Set([
 const isToolResult = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value)
 
-const withRediscoveryInstruction = (name: string, result: unknown) => {
+const completeNavigationTool = async (
+  name: string,
+  result: unknown,
+  readiness: Promise<ToolsetReadinessResult> | undefined
+) => {
   if (
     !NAVIGATION_TOOL_NAMES.has(name) ||
     !isToolResult(result) ||
     result.status !== "OK"
   )
     return result
-  return { ...result, nextToolset: rediscoveryRequired() }
+
+  if (!readiness) {
+    return {
+      status: "TOOLSET_NOT_READY",
+      ready: false,
+      reasonCode: "NAVIGATION_NOT_STARTED",
+      retryable: false,
+      message: "The navigation tool did not start a route transition.",
+    }
+  }
+
+  const nextToolset = await readiness
+  if (!nextToolset.ready) return nextToolset
+
+  return {
+    ...result,
+    nextToolset: {
+      status: nextToolset.status,
+      route: nextToolset.route,
+      revision: nextToolset.revision,
+      ready: true,
+    },
+  }
 }
 
 const AGENT_INSTRUCTIONS_TOOL: WebMcpRegisteredTool = {
@@ -522,6 +549,7 @@ export const VoltageAdminProvider = () => {
     {
       key: location.key,
       page: voltageAdminViewFromPath(location.pathname),
+      route: `${location.pathname}${location.search}`,
     },
   ])
   const navigationIndexRef = useRef(0)
@@ -552,21 +580,22 @@ export const VoltageAdminProvider = () => {
 
   useLayoutEffect(() => {
     const page = voltageAdminViewFromPath(location.pathname)
+    const route = `${location.pathname}${location.search}`
     const history = navigationHistoryRef.current
     const knownIndex = history.findIndex(({ key }) => key === location.key)
 
     if (knownIndex >= 0) {
       navigationIndexRef.current = knownIndex
-      history[knownIndex] = { key: location.key, page }
+      history[knownIndex] = { key: location.key, page, route }
     } else if (navigationType === "REPLACE") {
-      history[navigationIndexRef.current] = { key: location.key, page }
+      history[navigationIndexRef.current] = { key: location.key, page, route }
     } else {
       history.splice(navigationIndexRef.current + 1)
-      history.push({ key: location.key, page })
+      history.push({ key: location.key, page, route })
       navigationIndexRef.current = history.length - 1
     }
     sectionRef.current = page
-  }, [location.key, location.pathname, navigationType])
+  }, [location.key, location.pathname, location.search, navigationType])
 
   useEffect(() => {
     if (
@@ -666,11 +695,12 @@ export const VoltageAdminProvider = () => {
       const entry = history[index]
       return {
         page: entry?.page ?? sectionRef.current,
+        route: entry?.route ?? `${location.pathname}${location.search}`,
         canGoBack: index > 0,
         canGoForward: index < history.length - 1,
       }
     },
-    []
+    [location.pathname, location.search]
   )
 
   const executeTool = async (name: string, args: Record<string, unknown>) => {
@@ -689,15 +719,22 @@ export const VoltageAdminProvider = () => {
           "This tool is not available on the current route. Fetch the current page tools once before choosing the next tool.",
       }
     }
+    let navigationReadiness: Promise<ToolsetReadinessResult> | undefined
+    const navigateForTool = (path: string) => {
+      navigationReadiness = toolsetReadiness.waitFor(path)
+      navigate(path, { flushSync: true })
+    }
+    const completeNavigation = (result: unknown) =>
+      completeNavigationTool(name, result, navigationReadiness)
+
     if (isProductTool(name)) {
-      return withRediscoveryInstruction(
-        name,
+      return completeNavigation(
         await executeProductTool({
           name,
           args,
           repository: productRepository,
           editor: productEditorController,
-          navigate: (path) => navigate(path),
+          navigate: navigateForTool,
         })
       )
     }
@@ -708,27 +745,25 @@ export const VoltageAdminProvider = () => {
       return reportingController.executeReportTool(name, args)
     }
     if (isReturnTool(name)) {
-      return withRediscoveryInstruction(
-        name,
+      return completeNavigation(
         await executeReturnTool({
           name,
           args,
           repository: returnRepository,
           commerce: await commerceRepository.getSnapshot(),
           editor: returnEditorController,
-          navigate: (path) => navigate(path),
+          navigate: navigateForTool,
         })
       )
     }
     if (isOperationalTool(name)) {
-      return withRediscoveryInstruction(
-        name,
+      return completeNavigation(
         await executeOperationalTool({
           name,
           args,
           productRepository,
           commerce: await commerceRepository.getSnapshot(),
-          navigate: (path) => navigate(path),
+          navigate: navigateForTool,
         })
       )
     }
@@ -767,8 +802,8 @@ export const VoltageAdminProvider = () => {
       if (!isVoltageAdminView(args.section)) {
         return { status: "ARGUMENT_ERROR", message: "Unknown admin section." }
       }
-      navigate(voltageAdminPath(args.section))
-      return withRediscoveryInstruction(name, {
+      navigateForTool(voltageAdminPath(args.section))
+      return completeNavigation({
         status: "OK",
         section: args.section,
       })
@@ -781,8 +816,9 @@ export const VoltageAdminProvider = () => {
       if (!current.canGoBack)
         return { status: "ARGUMENT_ERROR", message: "Cannot navigate back." }
       const target = getNavigationState(navigationIndexRef.current - 1)
+      navigationReadiness = toolsetReadiness.waitFor(target.route)
       navigate(-1)
-      return withRediscoveryInstruction(name, { status: "OK", ...target })
+      return completeNavigation({ status: "OK", ...target })
     }
     if (name === "navigate_forward") {
       const current = getNavigationState()
@@ -792,8 +828,9 @@ export const VoltageAdminProvider = () => {
           message: "Cannot navigate forward.",
         }
       const target = getNavigationState(navigationIndexRef.current + 1)
+      navigationReadiness = toolsetReadiness.waitFor(target.route)
       navigate(1)
-      return withRediscoveryInstruction(name, { status: "OK", ...target })
+      return completeNavigation({ status: "OK", ...target })
     }
     return { status: "NOT_FOUND", message: "Unknown tool." }
   }

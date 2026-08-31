@@ -5,6 +5,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import App from "../../../App"
 import i18n from "../../../i18n"
+import { demoAuthDb, DEMO_AUTH_SESSION_ID } from "../../auth/demo-auth-db"
 
 vi.mock("../reporting/reporting-tools", async (importOriginal) => {
   const actual =
@@ -65,6 +66,11 @@ const execute = async (
 }
 
 beforeEach(async () => {
+  await demoAuthDb.sessions.put({
+    id: DEMO_AUTH_SESSION_ID,
+    username: "guest",
+    signedInAt: "2026-08-31T00:00:00.000Z",
+  })
   await i18n.changeLanguage("en")
 })
 afterEach(() => cleanup())
@@ -103,7 +109,15 @@ describe("fallback product authoring workflow", () => {
       "apply_product_editor_draft"
     )
 
-    await execute(initial, "open_product_create")
+    expect(await execute(initial, "open_product_create")).toMatchObject({
+      status: "OK",
+      nextToolset: {
+        status: "READY",
+        route: "/products/add",
+        ready: true,
+        revision: expect.any(Number),
+      },
+    })
     await waitFor(() =>
       expect(router.state.location.pathname).toBe("/products/add")
     )
@@ -165,7 +179,17 @@ describe("fallback product authoring workflow", () => {
       expect(state).toMatchObject({ status: "OK", productId: 1 })
     })
 
-    await execute(firstProvider, "open_product_edit", { productId: 2 })
+    expect(
+      await execute(firstProvider, "open_product_edit", { productId: 2 })
+    ).toMatchObject({
+      status: "OK",
+      nextToolset: {
+        status: "READY",
+        route: "/products/edit/2",
+        ready: true,
+        revision: expect.any(Number),
+      },
+    })
     await waitFor(() =>
       expect(router.state.location.pathname).toBe("/products/edit/2")
     )
@@ -175,6 +199,89 @@ describe("fallback product authoring workflow", () => {
       expect(state).toMatchObject({ status: "OK", productId: 2 })
       expect(JSON.stringify(state)).not.toContain("Essence Mascara")
     })
+  })
+
+  it("publishes product editor tools before navigation returns ready", async () => {
+    const router = createMemoryRouter([{ path: "*", element: <App /> }], {
+      initialEntries: ["/products"],
+    })
+    render(<RouterProvider router={router} />)
+    const initial = await provider()
+
+    expect(
+      await execute(initial, "open_product_edit", { productId: 1 })
+    ).toMatchObject({
+      status: "OK",
+      nextToolset: {
+        status: "READY",
+        route: "/products/edit/1",
+        ready: true,
+        revision: expect.any(Number),
+      },
+    })
+
+    const freshSnapshot = await provider()
+    expect(
+      await execute(freshSnapshot, "get_product_editor_state")
+    ).toMatchObject({ status: "OK", productId: 1 })
+  })
+
+  it("reports app-local back and forward state consistently", async () => {
+    const router = createMemoryRouter([{ path: "*", element: <App /> }], {
+      initialEntries: ["/dashboard"],
+    })
+    render(<RouterProvider router={router} />)
+    let current = await provider()
+
+    expect(await execute(current, "navigate_state")).toMatchObject({
+      status: "OK",
+      page: "dashboard",
+      canGoBack: false,
+      canGoForward: false,
+    })
+    await execute(current, "open_voltage_admin_section", {
+      section: "products",
+    })
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/products")
+    )
+    await waitFor(async () => {
+      current = await provider()
+      expect(await execute(current, "navigate_state")).toMatchObject({
+        status: "OK",
+        page: "products",
+        canGoBack: true,
+        canGoForward: false,
+      })
+    })
+
+    expect(await execute(current, "navigate_back")).toMatchObject({
+      status: "OK",
+      page: "dashboard",
+      canGoBack: false,
+      canGoForward: true,
+    })
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/dashboard")
+    )
+    await waitFor(async () => {
+      current = await provider()
+      expect(await execute(current, "navigate_state")).toMatchObject({
+        page: "dashboard",
+        canGoBack: false,
+        canGoForward: true,
+      })
+    })
+
+    expect(await execute(current, "navigate_forward")).toMatchObject({
+      status: "OK",
+      page: "products",
+      canGoBack: true,
+      canGoForward: false,
+    })
+    await waitFor(() =>
+      expect(router.state.location.pathname).toBe("/products")
+    )
   })
 
   it("changes native discovery when the route tool set changes", async () => {
@@ -235,7 +342,14 @@ describe("fallback product authoring workflow", () => {
       expect(registered.has("get_customer_analytics")).toBe(true)
       expect(registered.has("set_voltage_admin_inventory")).toBe(false)
       expect(registered.has("apply_product_editor_draft")).toBe(false)
+      const stableNavigateStateTool = registered.get("navigate_state")
+      const stableCustomerAnalyticsTool = registered.get(
+        "get_customer_analytics"
+      )
       const before = toolChanges
+      const sectionNavigation = await registered
+        .get("open_voltage_admin_section")!
+        .execute?.({ section: "products" })
 
       await registered.get("open_product_create")!.execute?.({})
       await waitFor(() =>
@@ -245,6 +359,19 @@ describe("fallback product authoring workflow", () => {
         expect(registered.has("apply_product_editor_draft")).toBe(true)
       )
       expect(toolChanges).toBeGreaterThan(before)
+      expect(registered.get("navigate_state")).toBe(stableNavigateStateTool)
+      expect(registered.get("get_customer_analytics")).toBe(
+        stableCustomerAnalyticsTool
+      )
+      expect(sectionNavigation).toMatchObject({
+        status: "OK",
+        nextToolset: {
+          status: "READY",
+          route: "/products",
+          ready: true,
+          revision: expect.any(Number),
+        },
+      })
     } finally {
       delete (document as Document & { modelContext?: unknown }).modelContext
     }

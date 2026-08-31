@@ -5,6 +5,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import App from "../../../App"
 import i18n from "../../../i18n"
+import { demoAuthDb, DEMO_AUTH_SESSION_ID } from "../../auth/demo-auth-db"
 import { createCommerceSeed } from "../commerce-data/commerce-seed"
 
 vi.mock("../reporting/reporting-tools", async (importOriginal) => {
@@ -65,6 +66,11 @@ const deleteDatabase = (name: string) =>
   })
 
 beforeEach(async () => {
+  await demoAuthDb.sessions.put({
+    id: DEMO_AUTH_SESSION_ID,
+    username: "guest",
+    signedInAt: "2026-08-31T00:00:00.000Z",
+  })
   await i18n.changeLanguage("en")
 })
 
@@ -77,6 +83,44 @@ afterEach(async () => {
 })
 
 describe("fallback return workflow", () => {
+  it("invalidates the old form while switching eligible orders", async () => {
+    const commerce = createCommerceSeed()
+    const eligibleOrders = commerce.orders.filter(
+      (item) => item.status === "delivered" && item.paymentStatus === "paid"
+    )
+    const firstOrder = eligibleOrders[0]
+    const secondOrder = eligibleOrders[1]
+    const router = createMemoryRouter([{ path: "*", element: <App /> }], {
+      initialEntries: [`/returns/add?orderId=${firstOrder.id}`],
+    })
+    render(<RouterProvider router={router} />)
+
+    let current = await provider()
+    await waitFor(async () =>
+      expect(await execute(current, "get_return_form_state")).toMatchObject({
+        status: "OK",
+        orderId: firstOrder.id,
+      })
+    )
+
+    await execute(current, "open_return_create", {
+      orderId: secondOrder.id,
+    })
+    await waitFor(() =>
+      expect(router.state.location.search).toBe(
+        `?orderId=${encodeURIComponent(secondOrder.id)}`
+      )
+    )
+    current = await provider()
+    await waitFor(async () =>
+      expect(await execute(current, "get_return_form_state")).toMatchObject({
+        status: "OK",
+        orderId: secondOrder.id,
+        selectedItems: [],
+      })
+    )
+  })
+
   it("rediscovers route tools and stops every workflow before user-only actions", async () => {
     const commerce = createCommerceSeed()
     const order = commerce.orders.find(
@@ -118,11 +162,22 @@ describe("fallback return workflow", () => {
 
     const search = (await execute(current, "search_returns", {
       status: "active",
-    })) as { items: Array<{ id: string; version: number }> }
+    })) as { items: Array<{ id: string; rmaId: string; version: number }> }
     const rma = search.items[0]
-    await execute(current, "open_return_detail", { rmaId: rma.id })
+    expect(rma).toMatchObject({ rmaId: rma.id })
+    expect(
+      await execute(current, "open_return_detail", { rmaId: rma.rmaId })
+    ).toMatchObject({
+      status: "OK",
+      nextToolset: {
+        status: "READY",
+        route: `/returns/${rma.rmaId}`,
+        ready: true,
+        revision: expect.any(Number),
+      },
+    })
     await waitFor(() =>
-      expect(router.state.location.pathname).toBe(`/returns/${rma.id}`)
+      expect(router.state.location.pathname).toBe(`/returns/${rma.rmaId}`)
     )
     await waitFor(() =>
       expect(
@@ -144,11 +199,11 @@ describe("fallback return workflow", () => {
     expect(detailNames).not.toContain("apply_return_form_draft")
     const reviewState = (await waitFor(async () => {
       const value = await execute(current, "get_return_review_state")
-      expect(value).toMatchObject({ status: "OK", rmaId: rma.id })
+      expect(value).toMatchObject({ status: "OK", rmaId: rma.rmaId })
       return value
     })) as { rmaVersion: number; policyVersion: string; version: number }
     const policy = (await execute(current, "check_return_eligibility", {
-      rmaId: rma.id,
+      rmaId: rma.rmaId,
       rmaVersion: reviewState.rmaVersion,
       facts: {
         daysSinceDelivery: 4,
@@ -159,7 +214,7 @@ describe("fallback return workflow", () => {
     })) as { eligibility: { matchedRules: string[] } }
     expect(
       await execute(current, "apply_return_review_draft", {
-        rmaId: rma.id,
+      rmaId: rma.rmaId,
         rmaVersion: reviewState.rmaVersion,
         policyVersion: reviewState.policyVersion,
         editorVersion: reviewState.version,
@@ -170,23 +225,37 @@ describe("fallback return workflow", () => {
       })
     ).toMatchObject({ status: "OK", valid: true })
 
-    const approvalId = "APR-route-check"
-    await router.navigate(`/refund-approvals/${approvalId}`)
+    const approvalId = "APR-2006"
+    expect(
+      await execute(current, "open_refund_approval", { approvalId })
+    ).toMatchObject({
+      status: "OK",
+      nextToolset: {
+        status: "READY",
+        route: `/refund-approvals/${approvalId}`,
+        ready: true,
+        revision: expect.any(Number),
+      },
+    })
     await waitFor(() =>
       expect(router.state.location.pathname).toBe(
         `/refund-approvals/${approvalId}`
       )
     )
-    await waitFor(() =>
-      expect(
-        fallback()
-          .__webmcpTestProvider?.getTools()
-          .map(({ name }) => name)
-      ).toContain("get_refund_approval")
-    )
     current = await provider()
-    const approvalNames = current.getTools().map(({ name }) => name)
+    const approvalSnapshot = current.getTools()
+    const approvalNames = approvalSnapshot.map(({ name }) => name)
     expect(approvalNames).toContain("get_refund_approval")
+    const getApproval = approvalSnapshot.find(
+      ({ name }) => name === "get_refund_approval"
+    )
+    expect(getApproval).toBeDefined()
+    expect(
+      await current.executeTool(getApproval!, { approvalId })
+    ).toMatchObject({
+      status: "OK",
+      approval: { id: approvalId },
+    })
     expect(approvalNames).not.toEqual(
       expect.arrayContaining([
         "apply_return_form_draft",

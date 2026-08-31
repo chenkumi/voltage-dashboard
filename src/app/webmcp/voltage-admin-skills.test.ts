@@ -155,6 +155,12 @@ describe("Voltage Admin skills", () => {
     expect(VOLTAGE_ADMIN_AGENT_INSTRUCTIONS).toMatch(
       /tool error[\s\S]*未完成[\s\S]*state verifier[\s\S]*(?:PARTIALLY_COMPLETED|FAILED)/
     )
+    expect(VOLTAGE_ADMIN_AGENT_INSTRUCTIONS).toMatch(
+      /nextToolset\.ready: true[\s\S]*重新 discovery 一次[\s\S]*不可沿用上一頁/
+    )
+    expect(VOLTAGE_ADMIN_AGENT_INSTRUCTIONS).toMatch(
+      /TOOLSET_NOT_READY[\s\S]*停止下一步[\s\S]*不得重試舊 handle/
+    )
   })
 
   it.each(operationsSkillNames)(
