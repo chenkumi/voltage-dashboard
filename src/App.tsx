@@ -1,5 +1,8 @@
 import { Navigate, Route, Routes } from "react-router-dom"
 import "./i18n"
+import { DemoAuthProvider } from "@/app/auth/demo-auth"
+import { LoginPage } from "@/app/auth/login-page"
+import { ProtectedRoute } from "@/app/auth/protected-route"
 import { EnterpriseAdminShell } from "@/app/webmcp/voltage-admin-shell"
 import { VoltageAdminProvider } from "@/app/webmcp/voltage-admin"
 import { LEGACY_OPERATIONS_REDIRECTS } from "@/app/webmcp/operations-redirects"
@@ -33,62 +36,73 @@ import {
 
 export function App() {
   return (
-    <Routes>
-      <Route element={<VoltageAdminProvider />}>
-        <Route element={<EnterpriseAdminShell />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
-          <Route path="dashboard" element={<Dashboard />} />
-          <Route path="products" element={<ProductListPage />} />
-          <Route path="products/add" element={<ProductAddRoute />} />
-          <Route path="products/:productId" element={<ProductDetailPage />} />
-          <Route
-            path="products/edit/:productId"
-            element={<ProductEditRoute />}
-          />
-          <Route path="orders" element={<OrdersPage />} />
-          <Route path="orders/:orderId" element={<OrderDetailPage />} />
-          <Route path="returns" element={<ReturnsPage />} />
-          <Route path="returns/add" element={<ReturnAddPage />} />
-          <Route path="returns/:returnId" element={<ReturnDetailPage />} />
-          <Route
-            path="returns/:returnId/inspection"
-            element={<ReturnInspectionPage />}
-          />
-          <Route path="refund-approvals" element={<RefundApprovalsPage />} />
-          <Route
-            path="refund-approvals/:approvalId"
-            element={<RefundApprovalDetailPage />}
-          />
-          <Route path="customers" element={<CustomersPage />} />
-          <Route
-            path="customers/add"
-            element={<CustomerEditorPage mode="add" />}
-          />
-          <Route
-            path="customers/edit/:customerId"
-            element={<CustomerEditorPage mode="edit" />}
-          />
-          <Route
-            path="customers/:customerId"
-            element={<CustomerDetailPage />}
-          />
-          <Route path="inventory" element={<InventoryPage />} />
-          <Route
-            path="inventory/:productId"
-            element={<InventoryDetailPage />}
-          />
-          <Route path="reports" element={<Reports />} />
-          {LEGACY_OPERATIONS_REDIRECTS.map(({ path, to }) => (
-            <Route
-              key={path}
-              path={path}
-              element={<Navigate to={to} replace />}
-            />
-          ))}
+    <DemoAuthProvider>
+      <Routes>
+        <Route path="/login" element={<LoginPage />} />
+        <Route element={<ProtectedRoute />}>
+          <Route element={<VoltageAdminProvider />}>
+            <Route element={<EnterpriseAdminShell />}>
+              <Route index element={<Navigate to="/dashboard" replace />} />
+              <Route path="dashboard" element={<Dashboard />} />
+              <Route path="products" element={<ProductListPage />} />
+              <Route path="products/add" element={<ProductAddRoute />} />
+              <Route
+                path="products/:productId"
+                element={<ProductDetailPage />}
+              />
+              <Route
+                path="products/edit/:productId"
+                element={<ProductEditRoute />}
+              />
+              <Route path="orders" element={<OrdersPage />} />
+              <Route path="orders/:orderId" element={<OrderDetailPage />} />
+              <Route path="returns" element={<ReturnsPage />} />
+              <Route path="returns/add" element={<ReturnAddPage />} />
+              <Route path="returns/:returnId" element={<ReturnDetailPage />} />
+              <Route
+                path="returns/:returnId/inspection"
+                element={<ReturnInspectionPage />}
+              />
+              <Route
+                path="refund-approvals"
+                element={<RefundApprovalsPage />}
+              />
+              <Route
+                path="refund-approvals/:approvalId"
+                element={<RefundApprovalDetailPage />}
+              />
+              <Route path="customers" element={<CustomersPage />} />
+              <Route
+                path="customers/add"
+                element={<CustomerEditorPage mode="add" />}
+              />
+              <Route
+                path="customers/edit/:customerId"
+                element={<CustomerEditorPage mode="edit" />}
+              />
+              <Route
+                path="customers/:customerId"
+                element={<CustomerDetailPage />}
+              />
+              <Route path="inventory" element={<InventoryPage />} />
+              <Route
+                path="inventory/:productId"
+                element={<InventoryDetailPage />}
+              />
+              <Route path="reports" element={<Reports />} />
+              {LEGACY_OPERATIONS_REDIRECTS.map(({ path, to }) => (
+                <Route
+                  key={path}
+                  path={path}
+                  element={<Navigate to={to} replace />}
+                />
+              ))}
+            </Route>
+          </Route>
         </Route>
-      </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </DemoAuthProvider>
   )
 }
 

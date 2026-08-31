@@ -7,11 +7,11 @@ import {
   FileChartColumn,
   Languages,
   LayoutDashboard,
+  LogOut,
   Menu,
   PackageSearch,
   Search,
   ShieldCheck,
-  UserRound,
   Users,
   Undo2,
   X,
@@ -20,6 +20,7 @@ import { useEffect, useRef, useState } from "react"
 import { useTranslation } from "react-i18next"
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import { useVoltageAdmin } from "./voltage-admin"
+import { useDemoAuth } from "@/app/auth/demo-auth"
 import { DUMMYJSON_PRODUCTS_SOURCE } from "./products/product-seed"
 import "./voltage-admin.css"
 
@@ -42,6 +43,7 @@ export const EnterpriseAdminShell = () => {
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
   const location = useLocation()
+  const { signOut } = useDemoAuth()
   const { dashboard, returns } = useVoltageAdmin()
   const [mobileNavigationOpen, setMobileNavigationOpen] = useState(false)
   const menuButtonRef = useRef<HTMLButtonElement>(null)
@@ -197,10 +199,11 @@ export const EnterpriseAdminShell = () => {
           <button
             className="enterprise-account-button"
             type="button"
-            aria-label={t("Account menu")}
-            title={t("Account menu")}
+            aria-label={t("Sign out")}
+            title={t("Sign out")}
+            onClick={() => void signOut()}
           >
-            <UserRound />
+            <LogOut />
           </button>
         </div>
       </header>
