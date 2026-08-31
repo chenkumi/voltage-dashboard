@@ -193,3 +193,38 @@
 - FIND-008 已關閉：可預期 SQL 失敗是安全結構化結果，不再被 host 壓成例外。
 - FIND-009 已關閉：`ALL_GROUPS_SUPPRESSED` 與 `NO_MATCHING_DATA` 可明確區分。
 - 本輪未發現新的阻塞式 alert、高風險寫入或 route-specific tool 同步問題。
+
+## 2026-09-01：退貨七階段與人工備註重構實機驗收
+
+- 環境：使用者執行中的 Vite 開發伺服器與已登入 Codex 內置瀏覽器；程式修改透過 HMR 套用，必要時重新載入頁面以驗證 IndexedDB migration。
+- 測試方式：主 Agent 直接呼叫頁面 WebMCP；每次導覽成功後只重新 discovery 一次，再以畫面 DOM、唯讀 verifier 與工具 registry 交叉驗證。
+- 安全邊界：只建立目前帳號可恢復的備註草稿；未發布或捨棄備註，未做資格決定、收貨、驗貨、核准、退款或重新入庫。
+
+| 案例 | 實際操作與觀測 | 結果 |
+| --- | --- | --- |
+| 退貨申請階段 | 以 `open_return_create({orderId:"VM-25052"})` 開啟申請頁，單次重新 discovery 後以 `apply_return_form_draft` 填入 1 件商品，再由 `get_return_form_state` 驗證 version 2、`valid: true`、`dirty: true`。 | 通過；UI 顯示「新增退貨」、儲存草稿與提交退貨均為人工按鈕，Agent 沒有建立或提交工具，也沒有 dialog。 |
+| RMA 資格階段 | 讀取 `RMA-2005`，以 `apply_my_return_note_draft` 建立 eligibility 備註，再由 `get_my_return_note_draft` 驗證版本與內容；重新載入後 UI 恢復同一份草稿。 | 通過；修正外部 WebMCP 寫入後備註元件未同步更新的問題。 |
+| 草稿版本衝突 | 對既有 version 1 草稿再次使用 `expectedVersion: 0`。 | 回傳結構化 `VERSION_CONFLICT` 與只重讀一次 verifier 的 `nextStep`；原草稿未被覆寫。 |
+| 單次重新 discovery | 從 RMA 導覽至 `APR-2006`；舊 handle 被 host 拒絕，fresh discovery 一次後即可讀取核准資料。 | 通過；導覽回傳 `rediscoveryRequired: true` 與 ready revision。 |
+| 待核准 | `APR-2006` 顯示第 6 階段目前待辦、單一人工決策區及固定退款計算；WebMCP 可填寫目前帳號備註但不能做決策。 | 通過；UI 與安全工具投影一致。 |
+| 收件、驗貨、計算、執行 | 分別檢查 `RMA-2004`、`RMA-2011`、`RMA-2007`、`RMA-2008`。 | 通過；目前階段依序為 receipt、inspection、refund_calculation、refund_execution；驗貨頁顯示逐商品「完成驗貨」人工操作與平行庫存處置，`RMA-2004` 的摘要名稱已修正為「退貨收件」。 |
+| 已核准與已退回 | 檢查 `APR-2008` 與 `APR-2007`。 | 通過；已核准案件落在第 7 階段且只有人工「記錄退款結果」入口，已退回案件回到第 5 階段；兩者均無可用決策 radio。 |
+| 已拒絕 | 新增 `APR-2009`／`RMA-2009` fixture，透過清單、導覽、詳情與 UI 驗證。 | 通過；第 6 階段為終止狀態，第 7 階段不適用，沒有決策操作。 |
+| 已失效 | 新增 `APR-2010`／`RMA-2010` fixture，透過清單、導覽、詳情與 UI 驗證。 | 通過；流程回到第 5 階段，Agent 指示明確區分「第 6 階段核准記錄」與 RMA 實際 `refund_calculation` 階段。 |
+| 阻塞式提示 | 草稿建立、HMR、重新載入及跨 route 導覽期間檢查 DOM。 | 通過；未出現 `alert`、`confirm`、`beforeunload` 或 dialog，草稿可於重新進入後繼續或由使用者捨棄。 |
+| 高風險能力邊界 | 檢查 route-specific tool 描述與 registry。 | 通過；只有備註草稿讀寫與安全查詢／導覽，沒有發布、捨棄、資格決定、收貨、驗貨、核准、退款結果或重新入庫工具。 |
+
+### 本輪修正與資料遷移
+
+- 補齊七階段、核准摘要與決策結果的繁中翻譯，並消除 `receipt` 翻譯鍵碰撞。
+- 備註元件以目前帳號草稿版本作為同步依據；WebMCP 自動儲存後 UI 立即呈現，重新載入仍可恢復。
+- 新增 rejected、invalidated 退款核准 fixture，讓五種核准狀態均可實機驗收。
+- 新增停在 `inspection` 的 `RMA-2011` fixture，讓七個 RMA 階段不必越過人工收貨操作即可逐階段驗收。
+- 開發中曾短暫產生錯誤的 `APR/RMA-20010` ID；seed version 5 migration 只在完整 fixture 特徵吻合且沒有任何使用者備註時移除相關列。若已有草稿或發布備註則保留整個案件，避免內容遺失；正確 `APR/RMA-2010` 與其他使用者資料不受影響。實機 migration 後 rejected、invalidated 各只回傳一筆。
+- `RMA-2011` 初版曾指向錯誤測試訂單；seed version 7 同樣只在完整舊 fixture 特徵吻合且無備註時替換。實機 migration 後 WebMCP 與 UI 均顯示 `RMA-2011`／`VM-25016`、received logistics 與 in-progress inspection。
+- `agent_instructions` 在 Approval 詳情頁同時描述核准記錄所屬第 6 階段與 RMA 實際目前流程階段，避免 returned／invalidated／approved 案例誤導 Agent。
+
+### 留存狀態
+
+- 本機瀏覽器保留 `RMA-2005` eligibility 與 `RMA-2006` refund_approval 的目前帳號測試草稿，供使用者檢查恢復／捨棄／發布流程；Agent 未自行刪除或發布。
+- 第 1 階段目前另保留 `VM-25052` 的頁面內可逆表單內容；尚未按下人工「儲存草稿」或「提交退貨」。

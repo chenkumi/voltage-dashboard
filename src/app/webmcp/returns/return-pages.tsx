@@ -406,7 +406,9 @@ export const ReturnsPage = () => {
                       <td className="p-3 font-semibold">{rma.id}</td>
                       <td>{rma.orderId}</td>
                       <td>
-                        <Badge className={toneFor(stage)}>{t(stage)}</Badge>
+                        <Badge className={toneFor(stage)}>
+                          {t(stage === "receipt" ? "Return receipt" : stage)}
+                        </Badge>
                       </td>
                       <td>{t(rma.reason)}</td>
                       <td>{t(rma.source)}</td>
@@ -1331,7 +1333,11 @@ export const ReturnDetailPage = () => {
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
           label={t("Stage")}
-          value={t(currentWorkflowStage.id)}
+          value={t(
+            currentWorkflowStage.id === "receipt"
+              ? "Return receipt"
+              : currentWorkflowStage.id
+          )}
           detail={t(rma.source)}
         />
       </GridBlock>

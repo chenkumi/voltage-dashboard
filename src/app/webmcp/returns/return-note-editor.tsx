@@ -77,6 +77,13 @@ export const ReturnNoteEditor = ({
       ),
     [notes, rmaId]
   )
+  const currentDraftVersion =
+    notes.find(
+      (note) =>
+        note.rmaId === rmaId &&
+        note.stage === stage &&
+        note.status === "draft"
+    )?.version ?? 0
   const editableStages = useMemo(
     () =>
       Array.from(
@@ -113,7 +120,7 @@ export const ReturnNoteEditor = ({
     return () => {
       active = false
     }
-  }, [rmaId, session, stage, t])
+  }, [currentDraftVersion, rmaId, session, stage, t])
 
   useEffect(() => {
     if (!dirty || !draft.content.trim()) return

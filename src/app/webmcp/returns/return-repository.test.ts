@@ -121,6 +121,75 @@ const completeToInspection = async (
   return created.rma.id
 }
 
+const injectMalformedV4Fixture = async (
+  databaseName: string,
+  snapshot: Awaited<ReturnType<ReturnRepository["getSnapshot"]>>,
+  withNote = false
+) => {
+  const sourceRma = snapshot.rmas.find((item) => item.id === "RMA-2009")!
+  const sourceItem = snapshot.items.find((item) => item.rmaId === sourceRma.id)!
+  const sourceCalculation = snapshot.calculations.find(
+    (item) => item.rmaId === sourceRma.id
+  )!
+  const sourceApproval = snapshot.approvals.find(
+    (item) => item.rmaId === sourceRma.id
+  )!
+  const database = new Dexie(databaseName)
+  database.version(1).stores(RETURN_DATABASE_SCHEMA)
+  await Promise.all([
+    database.table("rmas").add({
+      ...sourceRma,
+      id: "RMA-20010",
+      orderId: "VM-25016",
+      approvalStatus: "invalidated",
+      createdAt: "2026-08-29T09:04:00.000Z",
+    }),
+    database.table("items").add({
+      ...sourceItem,
+      id: "RMA-20010-I1",
+      rmaId: "RMA-20010",
+      orderLineId: "VM-25016-L1",
+    }),
+    database.table("calculations").add({
+      ...sourceCalculation,
+      id: "CAL-20010",
+      rmaId: "RMA-20010",
+      orderId: "VM-25016",
+      rmaVersion: 5,
+    }),
+    database.table("approvals").add({
+      ...sourceApproval,
+      id: "APR-20010",
+      rmaId: "RMA-20010",
+      calculationId: "CAL-20010",
+      status: "invalidated",
+    }),
+    ...(withNote
+      ? [
+          database.table("notes").add({
+            id: "NOTE-20010",
+            rmaId: "RMA-20010",
+            stage: "refund_approval",
+            category: "internal_note",
+            content: "Preserve this user-authored draft.",
+            recommendation: null,
+            evidenceCodes: [],
+            authorUserId: "test-user",
+            status: "draft",
+            createdAt: "2026-08-31T08:00:00.000Z",
+            updatedAt: "2026-08-31T08:00:00.000Z",
+            publishedAt: null,
+            version: 1,
+            inputSource: "ui",
+            supersedesNoteId: null,
+          }),
+        ]
+      : []),
+    database.table("metadata").update("returns", { seedVersion: 4 }),
+  ])
+  database.close()
+}
+
 describe("ReturnRepository", () => {
   it("exposes an allowlisted operational facade without private notes or lifecycle capabilities", async () => {
     const repository = createRepository()
@@ -668,7 +737,7 @@ describe("ReturnRepository", () => {
     const second = await repository.getSnapshot()
 
     expect(first.rmas.filter((rma) => rma.source === "external")).toHaveLength(
-      5
+      8
     )
     expect(first.approvals.map((approval) => approval.status)).toEqual(
       expect.arrayContaining(["pending", "returned", "approved"])
@@ -746,7 +815,7 @@ describe("ReturnRepository", () => {
       legacy.table("rmas").delete("RMA-2005"),
       legacy.table("items").delete("RMA-2005-I1"),
       legacy.table("timeline").delete("RMA-2005-T1"),
-      ...["2006", "2007", "2008"].flatMap((suffix) => [
+      ...["2006", "2007", "2008", "2009", "2010", "2011"].flatMap((suffix) => [
         legacy.table("rmas").delete(`RMA-${suffix}`),
         legacy.table("items").delete(`RMA-${suffix}-I1`),
         legacy.table("calculations").delete(`CAL-${suffix}`),
@@ -781,7 +850,7 @@ describe("ReturnRepository", () => {
     await expect(
       inspected.table("metadata").get("returns")
     ).resolves.toMatchObject({
-      seedVersion: 3,
+      seedVersion: 7,
     })
     inspected.close()
   })
@@ -810,6 +879,118 @@ describe("ReturnRepository", () => {
     expect(snapshot.rmas.some((item) => item.id === "RMA-2006")).toBe(true)
     expect(snapshot.calculations.some((item) => item.id === "CAL-2006")).toBe(true)
     expect(snapshot.approvals.some((item) => item.id === "APR-2006")).toBe(true)
+  })
+
+  it("removes the malformed version 4 fixture without touching the corrected fixture", async () => {
+    const commerce = createCommerceSeed()
+    const databaseName = `returns-${crypto.randomUUID()}`
+    const first = createRepository(databaseName, commerce)
+    await first.initialize()
+    const snapshot = await first.getSnapshot()
+    first.close()
+
+    const malformedRmaId = "RMA-20010"
+    await injectMalformedV4Fixture(databaseName, snapshot)
+
+    const migrated = createRepository(databaseName, commerce)
+    await migrated.initialize()
+    const migratedSnapshot = await migrated.getSnapshot()
+    expect(
+      migratedSnapshot.rmas.some((item) => item.id === malformedRmaId)
+    ).toBe(false)
+    expect(
+      migratedSnapshot.approvals.some((item) => item.id === "APR-20010")
+    ).toBe(false)
+    expect(migratedSnapshot.rmas.some((item) => item.id === "RMA-2010")).toBe(
+      true
+    )
+  })
+
+  it("preserves a similarly named external RMA that is not the malformed fixture", async () => {
+    const commerce = createCommerceSeed()
+    const databaseName = `returns-${crypto.randomUUID()}`
+    const first = createRepository(databaseName, commerce)
+    await first.initialize()
+    const source = (await first.getSnapshot()).rmas.find(
+      (item) => item.id === "RMA-2010"
+    )!
+    first.close()
+
+    const database = new Dexie(databaseName)
+    database.version(1).stores(RETURN_DATABASE_SCHEMA)
+    await Promise.all([
+      database.table("rmas").add({
+        ...source,
+        id: "RMA-20010",
+        createdAt: "2026-08-29T09:04:00.000Z",
+      }),
+      database.table("metadata").update("returns", { seedVersion: 4 }),
+    ])
+    database.close()
+
+    const migrated = createRepository(databaseName, commerce)
+    await migrated.initialize()
+    expect(
+      (await migrated.getSnapshot()).rmas.some(
+        (item) => item.id === "RMA-20010"
+      )
+    ).toBe(true)
+  })
+
+  it("preserves the malformed fixture when it contains a user-authored note", async () => {
+    const commerce = createCommerceSeed()
+    const databaseName = `returns-${crypto.randomUUID()}`
+    const first = createRepository(databaseName, commerce)
+    await first.initialize()
+    const snapshot = await first.getSnapshot()
+    first.close()
+    await injectMalformedV4Fixture(databaseName, snapshot, true)
+
+    const migrated = createRepository(databaseName, commerce)
+    await migrated.initialize()
+    const migratedSnapshot = await migrated.getSnapshot()
+    expect(migratedSnapshot.rmas.some((item) => item.id === "RMA-20010")).toBe(
+      true
+    )
+    expect(
+      migratedSnapshot.notes.some((item) => item.id === "NOTE-20010")
+    ).toBe(true)
+  })
+
+  it("replaces the malformed version 6 inspection fixture", async () => {
+    const commerce = createCommerceSeed()
+    const databaseName = `returns-${crypto.randomUUID()}`
+    const first = createRepository(databaseName, commerce)
+    await first.initialize()
+    const snapshot = await first.getSnapshot()
+    const currentRma = snapshot.rmas.find((item) => item.id === "RMA-2011")!
+    const currentItem = snapshot.items.find((item) => item.rmaId === currentRma.id)!
+    first.close()
+
+    const database = new Dexie(databaseName)
+    database.version(1).stores(RETURN_DATABASE_SCHEMA)
+    await Promise.all([
+      database.table("rmas").put({
+        ...currentRma,
+        orderId: "VM-25012",
+      }),
+      database.table("items").put({
+        ...currentItem,
+        orderLineId: "VM-25012-L1",
+      }),
+      database.table("metadata").update("returns", { seedVersion: 6 }),
+    ])
+    database.close()
+
+    const migrated = createRepository(databaseName, commerce)
+    await migrated.initialize()
+    const migratedSnapshot = await migrated.getSnapshot()
+    expect(
+      migratedSnapshot.rmas.find((item) => item.id === "RMA-2011")
+    ).toMatchObject({ orderId: "VM-25016", inspection: { status: "in_progress" } })
+    expect(
+      migratedSnapshot.items.find((item) => item.rmaId === "RMA-2011")
+    ).toMatchObject({ orderLineId: "VM-25016-L1" })
   })
 
   it("rejects inconsistent refund execution result codes", async () => {
@@ -1029,7 +1210,7 @@ describe("ReturnRepository", () => {
         "agent"
       )
     ).rejects.toMatchObject({ code: "INVALID_RETURN" })
-    expect((await repository.getSnapshot()).rmas).toHaveLength(5)
+    expect((await repository.getSnapshot()).rmas).toHaveLength(8)
   })
 
   it("runtime-validates structured inspection fields and rejection reasons", async () => {

@@ -568,7 +568,7 @@ export const executeReturnTool = async ({
       )
       return bounded({
         status: "OK",
-        items: matches.slice(0, 10).map((rma) => ({
+        items: matches.slice(0, 5).map((rma) => ({
           rmaId: rma.id,
           id: rma.id,
           orderId: rma.orderId,
@@ -582,7 +582,7 @@ export const executeReturnTool = async ({
           version: rma.version,
         })),
         total: matches.length,
-        truncated: matches.length > 10,
+        truncated: matches.length > 5,
       })
     }
     if (name === "get_return_detail") {

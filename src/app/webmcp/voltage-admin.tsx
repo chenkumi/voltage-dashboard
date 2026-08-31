@@ -827,7 +827,30 @@ export const VoltageAdminProvider = () => {
         }
       } else if (approvalMatch) {
         const approvalId = decodeURIComponent(approvalMatch[1]!)
-        routeContext = `目前頁面：退款核准 ${approvalId}，第 6 階段 refund_approval。可讀取安全核准資料，並讀取或更新目前帳號、第 6 階段的可逆備註草稿；核准、退回、拒絕、修改退款金額與執行退款只能由使用者在頁面完成。`
+        const approval = visibleReturns.approvals.find(
+          (item) => item.id === approvalId
+        )
+        const rma = approval
+          ? visibleReturns.rmas.find((item) => item.id === approval.rmaId)
+          : undefined
+        const currentStage =
+          approval && rma
+            ? currentReturnWorkflowStage(
+                createReturnWorkflow({
+                  rma,
+                  items: visibleReturns.items.filter(
+                    (item) => item.rmaId === rma.id
+                  ),
+                  calculations: visibleReturns.calculations.filter(
+                    (item) => item.rmaId === rma.id
+                  ),
+                  approvals: visibleReturns.approvals.filter(
+                    (item) => item.rmaId === rma.id
+                  ),
+                })
+              ).id
+            : "unknown"
+        routeContext = `目前頁面：退款核准 ${approvalId}，這是第 6 階段 refund_approval 的核准記錄；RMA 流程目前階段為 ${currentStage}。可讀取安全核准資料，並讀取或更新目前帳號、第 6 階段的可逆備註草稿；核准、退回、拒絕、修改退款金額與執行退款只能由使用者在頁面完成。`
       }
       return {
         text: getVoltageAdminAgentInstructions(

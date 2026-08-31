@@ -48,6 +48,38 @@ afterEach(() => {
 })
 
 describe("ReturnNoteEditor", () => {
+  it("reloads a draft written through another surface when the notes snapshot changes", async () => {
+    let current: ReturnReviewNote | null = null
+    const api = session()
+    vi.mocked(api.getDraft).mockImplementation(async () => current)
+    const view = render(
+      <ReturnNoteEditor
+        rmaId="RMA-1"
+        currentStage="eligibility"
+        notes={[]}
+        session={api}
+      />
+    )
+    await waitFor(() => expect(screen.getByText("No note draft yet")).toBeTruthy())
+
+    current = note({ content: "由 WebMCP 寫入的備註。", version: 2 })
+    view.rerender(
+      <ReturnNoteEditor
+        rmaId="RMA-1"
+        currentStage="eligibility"
+        notes={[current]}
+        session={api}
+      />
+    )
+
+    await waitFor(() =>
+      expect(
+        (screen.getByRole("textbox", { name: "Note" }) as HTMLTextAreaElement)
+          .value
+      ).toBe("由 WebMCP 寫入的備註。")
+    )
+  })
+
   it("restores and automatically saves the current user's draft without a blocking prompt", async () => {
     vi.useFakeTimers()
     const api = session(note())

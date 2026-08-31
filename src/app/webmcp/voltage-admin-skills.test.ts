@@ -182,7 +182,7 @@ describe("Voltage Admin skills", () => {
     expect(
       getVoltageAdminAgentInstructions(
         "refund-approvals",
-        "目前頁面：退款核准 APR-2008，第 6 階段 refund_approval。"
+        "目前頁面：退款核准 APR-2008，這是第 6 階段 refund_approval 的核准記錄；RMA 流程目前階段為 refund_execution。"
       )
     ).toMatch(
       /APR-2008[\s\S]*refund_approval[\s\S]*發布[\s\S]*rediscoveryRequired[\s\S]*RE_DISCOVER_REQUIRED/

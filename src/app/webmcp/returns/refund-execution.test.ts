@@ -18,7 +18,7 @@ describe("refund and inventory execution boundaries", () => {
     await returns.initialize()
     try {
       const seededRma = (await returns.getSnapshot()).rmas.find(
-        (rma) => rma.eligibility.status === "authorized"
+        (rma) => rma.id === "RMA-2004"
       )!
       const seededItem = (await returns.getSnapshot()).items.find(
         (item) => item.rmaId === seededRma.id

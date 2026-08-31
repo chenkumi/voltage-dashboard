@@ -84,7 +84,12 @@ const createSeedRma = (
   updatedAt: createdAt,
 })
 
-type RefundFixtureStatus = "pending" | "returned" | "approved"
+type RefundFixtureStatus =
+  | "pending"
+  | "returned"
+  | "approved"
+  | "rejected"
+  | "invalidated"
 
 const createRefundFixtureRma = (
   id: string,
@@ -95,6 +100,7 @@ const createRefundFixtureRma = (
 ): Rma => {
   const returned = approvalStatus === "returned"
   const approved = approvalStatus === "approved"
+  const invalidated = approvalStatus === "invalidated"
   return {
     ...createSeedRma(id, orderId, reason, createdAt, {
       status: "authorized",
@@ -132,7 +138,7 @@ const createRefundFixtureRma = (
     },
     approvalStatus,
     refundStatus: approved ? "pending_execution" : "not_started",
-    version: returned ? 6 : 5,
+    version: returned || invalidated ? 6 : 5,
     updatedAt: createdAt,
   }
 }
@@ -164,8 +170,8 @@ export const createReturnSeed = (
   const deliveredOrders = commerce.orders.filter(
     (order) => order.status === "delivered" && order.paymentStatus === "paid"
   )
-  if (deliveredOrders.length < 5) {
-    throw new Error("Return seed requires five delivered paid orders.")
+  if (deliveredOrders.length < 8) {
+    throw new Error("Return seed requires eight delivered paid orders.")
   }
   const [firstOrder, secondOrder, ...refundOrders] = deliveredOrders
   const firstLine = commerce.orderLines.find(
@@ -178,16 +184,23 @@ export const createReturnSeed = (
     throw new Error("Return seed orders require order lines.")
   }
 
-  const refundFixtures = refundOrders.slice(0, 3).map((order, index) => {
+  const refundFixtureOrders = [
+    ...refundOrders.slice(0, 3),
+    ...refundOrders.slice(-2),
+  ]
+  const refundFixtures = refundFixtureOrders.map((order, index) => {
     const line = commerce.orderLines.find((item) => item.orderId === order.id)
     if (!line) throw new Error("Refund fixture order requires an order line.")
     const statuses: readonly RefundFixtureStatus[] = [
       "pending",
       "returned",
       "approved",
+      "rejected",
+      "invalidated",
     ]
     const status = statuses[index]!
-    const rmaId = `RMA-200${index + 6}`
+    const fixtureNumber = 2006 + index
+    const rmaId = `RMA-${fixtureNumber}`
     const createdAt = `2026-08-2${index + 5}T09:0${index}:00.000Z`
     const rma = createRefundFixtureRma(
       rmaId,
@@ -198,7 +211,7 @@ export const createReturnSeed = (
     )
     const item = completedItemFromLine(rmaId, line, createdAt)
     const calculation = calculateRefund({
-      calculationId: `CAL-200${index + 6}`,
+      calculationId: `CAL-${fixtureNumber}`,
       rmaId,
       orderId: order.id,
       reason: rma.reason,
@@ -220,19 +233,76 @@ export const createReturnSeed = (
       createdAt,
     })
     const approval: RefundApproval = {
-      id: `APR-200${index + 6}`,
+      id: `APR-${fixtureNumber}`,
       rmaId,
       calculationId: calculation.id,
       calculationVersion: calculation.version,
       status,
       decidedBy: status === "pending" ? null : "seed-approver",
-      reason: status === "returned" ? "Additional evidence requested." : "",
+      reason:
+        status === "returned"
+          ? "Additional evidence requested."
+          : status === "rejected"
+            ? "Refund request rejected after evidence review."
+            : status === "invalidated"
+              ? "Calculation changed after approval preparation."
+              : "",
       createdAt,
       decidedAt: status === "pending" ? null : createdAt,
       version: status === "pending" ? 1 : 2,
     }
     return { rma, item, calculation, approval }
   })
+
+  const inspectionOrder = refundOrders.find((order) => order.id === "VM-25016")
+  if (!inspectionOrder) {
+    throw new Error("Inspection fixture requires order VM-25016.")
+  }
+  const inspectionLine = commerce.orderLines.find(
+    (item) => item.orderId === inspectionOrder.id
+  )
+  if (!inspectionLine) {
+    throw new Error("Inspection fixture order requires an order line.")
+  }
+  const inspectionCreatedAt = "2026-08-30T09:05:00.000Z"
+  const inspectionRma: Rma = {
+    ...createSeedRma(
+      "RMA-2011",
+      inspectionOrder.id,
+      "defective",
+      inspectionCreatedAt,
+      {
+        status: "authorized",
+        policyVersion: "2026-08-rma-v1",
+        systemResult: {
+          decision: "eligible",
+          matchedRules: ["within_30_days", "not_final_sale"],
+          missingEvidence: [],
+          shippingRefundEligible: true,
+        },
+        userDecision: "authorized",
+        decisionReason: "Seeded return is ready for inspection testing.",
+        assessedAt: inspectionCreatedAt,
+        version: 1,
+      }
+    ),
+    logistics: {
+      status: "received",
+      authorizedAt: inspectionCreatedAt,
+      returnDueAt: "2026-09-27T08:00:00.000Z",
+      receivedAt: inspectionCreatedAt,
+      receivedPackageCount: 1,
+      receiptResult: "complete",
+      version: 2,
+    },
+    inspection: {
+      status: "in_progress",
+      version: 1,
+      startedAt: inspectionCreatedAt,
+      completedAt: null,
+    },
+    version: 3,
+  }
 
   const rmas = [
     createSeedRma(
@@ -280,11 +350,16 @@ export const createReturnSeed = (
       }
     ),
   ]
-  const allRmas = [...rmas, ...refundFixtures.map((fixture) => fixture.rma)]
+  const allRmas = [
+    ...rmas,
+    ...refundFixtures.map((fixture) => fixture.rma),
+    inspectionRma,
+  ]
   const items = [
     itemFromLine(rmas[0].id, firstLine),
     itemFromLine(rmas[1].id, secondLine),
     ...refundFixtures.map((fixture) => fixture.item),
+    itemFromLine(inspectionRma.id, inspectionLine),
   ]
   const timeline = allRmas.flatMap((rma) => [
     {

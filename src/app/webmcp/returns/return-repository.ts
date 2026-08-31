@@ -78,7 +78,7 @@ export const RETURN_DATABASE_SCHEMA = {
   metadata: "key",
 } as const
 
-const RETURN_SEED_VERSION = 3
+const RETURN_SEED_VERSION = 7
 const ITEM_CONDITIONS = ["sealed", "opened", "used", "damaged"] as const
 const PACKAGING_STATES = ["intact", "damaged", "missing"] as const
 const REJECTION_REASONS = [
@@ -337,6 +337,12 @@ export class ReturnRepository {
           }
           let changed = false
           let nextMetadata = metadata
+          if (metadata.seedVersion < 5) {
+            changed ||= (await this.removeMalformedV4Fixture()) > 0
+          }
+          if (metadata.seedVersion < 7) {
+            changed ||= (await this.removeMalformedV6InspectionFixture()) > 0
+          }
           const inserted = await Promise.all([
             this.insertMissing(this.database.rmas, this.seed.rmas),
             this.insertMissing(this.database.items, this.seed.items),
@@ -2130,6 +2136,83 @@ export class ReturnRepository {
     const missing = records.filter((record) => !existingIds.has(record.id))
     if (missing.length > 0) await table.bulkAdd(missing.map(clone))
     return missing.length
+  }
+
+  private async removeMalformedV4Fixture() {
+    const malformedRmaId = "RMA-20010"
+    const [malformed, item, calculation, approval, noteCount] = await Promise.all([
+      this.database.rmas.get(malformedRmaId),
+      this.database.items.get("RMA-20010-I1"),
+      this.database.calculations.get("CAL-20010"),
+      this.database.approvals.get("APR-20010"),
+      this.database.notes.where("rmaId").equals(malformedRmaId).count(),
+    ])
+    if (
+      !malformed ||
+      malformed.source !== "external" ||
+      malformed.orderId !== "VM-25016" ||
+      malformed.approvalStatus !== "invalidated" ||
+      malformed.createdAt !== "2026-08-29T09:04:00.000Z" ||
+      !item ||
+      item.rmaId !== malformedRmaId ||
+      item.orderLineId !== "VM-25016-L1" ||
+      !calculation ||
+      calculation.rmaId !== malformedRmaId ||
+      calculation.orderId !== "VM-25016" ||
+      calculation.rmaVersion !== 5 ||
+      !approval ||
+      approval.rmaId !== malformedRmaId ||
+      approval.calculationId !== calculation.id ||
+      approval.status !== "invalidated" ||
+      noteCount > 0
+    ) {
+      return 0
+    }
+    const relatedCounts = await Promise.all([
+      this.database.items.where("rmaId").equals(malformedRmaId).delete(),
+      this.database.calculations.where("rmaId").equals(malformedRmaId).delete(),
+      this.database.approvals.where("rmaId").equals(malformedRmaId).delete(),
+      this.database.executionAttempts
+        .where("approvalId")
+        .equals("APR-20010")
+        .delete(),
+      this.database.timeline.where("rmaId").equals(malformedRmaId).delete(),
+      this.database.notes.where("rmaId").equals(malformedRmaId).delete(),
+    ])
+    await this.database.rmas.delete(malformedRmaId)
+    return 1 + relatedCounts.reduce((sum, count) => sum + count, 0)
+  }
+
+  private async removeMalformedV6InspectionFixture() {
+    const rmaId = "RMA-2011"
+    const [rma, item, noteCount] = await Promise.all([
+      this.database.rmas.get(rmaId),
+      this.database.items.get("RMA-2011-I1"),
+      this.database.notes.where("rmaId").equals(rmaId).count(),
+    ])
+    if (
+      !rma ||
+      rma.source !== "external" ||
+      rma.orderId !== "VM-25012" ||
+      rma.createdAt !== "2026-08-30T09:05:00.000Z" ||
+      rma.inspection.status !== "in_progress" ||
+      rma.version !== 3 ||
+      !item ||
+      item.rmaId !== rmaId ||
+      item.orderLineId !== "VM-25012-L1" ||
+      noteCount > 0
+    ) {
+      return 0
+    }
+    const timelineCount = await this.database.timeline
+      .where("rmaId")
+      .equals(rmaId)
+      .delete()
+    await Promise.all([
+      this.database.items.delete(item.id),
+      this.database.rmas.delete(rmaId),
+    ])
+    return timelineCount + 2
   }
 
   private async invalidateForOrderSnapshotChange() {

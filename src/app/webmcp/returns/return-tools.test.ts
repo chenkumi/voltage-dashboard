@@ -103,9 +103,7 @@ describe("return WebMCP tools", () => {
 
   it("projects RMA and approval data without private text or actor identity", async () => {
     const snapshot = await repository.getSnapshot()
-    const rma = snapshot.rmas.find(
-      (item) => item.eligibility.status === "authorized"
-    )!
+    const rma = snapshot.rmas.find((item) => item.id === "RMA-2004")!
     const detail = await execute("get_return_detail", { rmaId: rma.id })
     const serialized = JSON.stringify(detail)
     expect(serialized).toContain(rma.id)
@@ -178,7 +176,7 @@ describe("return WebMCP tools", () => {
         },
       })
     const search = (await execute("search_returns", {
-      status: "active",
+      query: "RMA-2004",
     })) as {
       items: Array<{ id: string; rmaId: string }>
     }
@@ -197,6 +195,22 @@ describe("return WebMCP tools", () => {
     expect(navigatedTo).toBe(`/returns/${result.rmaId}`)
   })
 
+  it("bounds broad return searches and reports truncation", async () => {
+    expect(await execute("search_returns", { status: "active" })).toMatchObject({
+      status: "OK",
+      items: expect.arrayContaining([
+        expect.objectContaining({ rmaId: expect.any(String) }),
+      ]),
+      total: 8,
+      truncated: true,
+    })
+    expect(
+      (await execute("search_returns", { status: "active" }) as {
+        items: unknown[]
+      }).items
+    ).toHaveLength(5)
+  })
+
   it("reads seeded calculations and each approval queue state without private fields", async () => {
     const before = await repository.getSnapshot()
     const snapshot = await repository.getSnapshot()
@@ -208,6 +222,12 @@ describe("return WebMCP tools", () => {
     )!
     const approved = snapshot.approvals.find(
       (approval) => approval.status === "approved"
+    )!
+    const rejected = snapshot.approvals.find(
+      (approval) => approval.status === "rejected"
+    )!
+    const invalidated = snapshot.approvals.find(
+      (approval) => approval.status === "invalidated"
     )!
 
     expect(
@@ -244,6 +264,18 @@ describe("return WebMCP tools", () => {
       items: [
         expect.objectContaining({ id: approved.id, rmaId: approved.rmaId }),
       ],
+    })
+    expect(
+      await execute("list_refund_approvals", { status: "rejected" })
+    ).toMatchObject({
+      status: "OK",
+      items: [expect.objectContaining({ id: rejected.id })],
+    })
+    expect(
+      await execute("list_refund_approvals", { status: "invalidated" })
+    ).toMatchObject({
+      status: "OK",
+      items: [expect.objectContaining({ id: invalidated.id })],
     })
     const detail = await execute("get_refund_approval", {
       approvalId: approved.id,
