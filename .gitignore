@@ -17,7 +17,9 @@ refactor_*.diff
 !.env.example
 
 # Local tool/cache directories
-.agents/
+.agents/*
+!.agents/rules/
+!.agents/rules/*.md
 .codex/
 .svn/
 .vite/

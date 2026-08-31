@@ -2,12 +2,12 @@
 
 ## 專案概覽
 
-`voltage-dashboard` 是純前端 Vite WebMCP Dashboard Provider。應用程式只有一個
-Dashboard 主體，不包含 Market storefront、Chat Room、內建 Agent 或網站切換器。
-Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報表編輯 tools；
-瀏覽器尚未支援原生 API 時，使用同頁測試 provider。
+`voltage-dashboard` 是純前端 Vite WebMCP Dashboard Provider，定位為參加
+[OpenAI WebMCP 挑戰賽](https://openai.com/zh-Hant/webmcp-challenge/)的電商營運自動化
+平台。應用程式只有一個 Dashboard 主體；以 `document.modelContext` 暴露管理、唯讀
+SQL、skills 與報表編輯 tools，原生 API 不可用時使用同頁測試 provider。
 
-## 參賽目標與產品敘事
+## 產品敘事
 
 <!-- user-specified -->
 
@@ -16,11 +16,6 @@ Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報�
 - 核心敘事不是「做一個可以讓 AI 操作的頁面」，而是「讓既有企業 Web 系統透過
   WebMCP 將商品、訂單、售後、庫存與報表等既有模組暴露給 Agent，使 Agent 能跨功能
   蒐集資料、填寫內容、準備退貨審查、建立草稿並推進原本需要大量人工操作的行政流程」。
-- 外部 Agent 由內嵌瀏覽器開啟本系統，並可使用 Agent 自身的瀏覽、搜尋或網路讀取能力
-  蒐集第三方資料；本系統的 WebMCP Provider 只負責暴露目前頁面的導覽、查詢、表單填寫
-  與安全草稿操作。以外部商品頁建檔時，應由 Agent 先讀取來源，再將整理後的商品欄位
-  傳給本頁 WebMCP 填寫工具；不得為此把第三方網頁抓取責任放進 WebMCP executor。
-  <!-- user-specified -->
 - 產品設計應優先形成可展示的端到端營運流程，而不是加入孤立的 AI 按鈕、聊天介面或
   與業務狀態分離的工具。
 - 代表性場景包含：商品資料蒐集、規格與描述填寫、分類及上架草稿；未出貨、付款失敗
@@ -30,91 +25,51 @@ Dashboard 以 `document.modelContext` 暴露管理、唯讀 SQL、skills 與報�
   使用者負責檢查結果，並在頁面中直接完成商品發布、訂單變更、退款、付款及其他
   高風險最終核准。
 
-## 環境與基線
+## 專案結構
+
+- `src/main.tsx`、`src/App.tsx`：應用程式入口與路由。
+- `src/app/webmcp/voltage-admin.tsx`：Provider、tool 註冊與 fallback executor。
+- `src/app/webmcp/products/`、`inventory/`、`orders/`、`customers/`、`returns/`：各營運
+  領域的資料、頁面與 route-aware tools。
+- `src/app/webmcp/commerce-data/`：Commerce Repository 與訂單／客戶資料基線。
+- `src/app/webmcp/reporting/`：SQLite runtime、安全 SQL、query cache 與 Report Canvas。
+- `src/app/webmcp/operational-ui/`：清單與指標共用 UI；不承擔資料投影或 tool 安全邏輯。
+- `src/components/ui/`：共用 shadcn 元件與 Markdown renderer。
+
+## 基線環境
 
 - 使用繁體中文回答，文字檔預設以 UTF-8 讀取。 <!-- user-specified -->
 - 使用 Node.js、npm、React 19、TypeScript、shadcn/ui、Tailwind CSS 與 Vite。
   <!-- user-specified -->
 - 本專案目前沒有後端；未來新增後端時使用 Node.js 與 Hono。
   <!-- user-specified -->
-- 安裝依賴：`npm install`；開發伺服器：`npm run dev`，預設
-  `http://localhost:6171`。
-- 完成修改至少執行 `npm run test`、`npm run typecheck`、`npm run lint` 與
-  `npm run build`；UI 修改需在根路徑驗證 Dashboard、WebMCP discovery 與相關工具。
-- <!-- user-specified -->Outlet 路由頁面統一使用 `PageLayout`：Header 外層為
-  `p-1`，下方 view 為 `grid grid-cols-12 gap-2`；每個 grid block 必須有 `p-1`，
-  以 responsive `col-span-*` 分配版面。不得以額外 margin 重複區塊間距，保留
-  block padding 供內容的 shadow 或 ring 使用。
-
-## 專案結構與入口
-
-- `src/main.tsx`、`src/App.tsx`：單一 Dashboard 應用程式入口。
-- `src/app/webmcp/voltage-admin.tsx`：Dashboard UI、WebMCP tool 註冊與 fallback
-  executor。
-- `src/app/webmcp/products/`：Product Repository、商品清單／詳細／編輯頁、editor
-  state 與路由感知 WebMCP tools。
-- `src/app/webmcp/data/dummyjson-products.json`：本機商品種子快照；評價已移除身分欄位。
-- `src/app/webmcp/commerce-data/`：Commerce Repository、訂單／客戶 snapshot、唯讀訂單
-  facts 與客戶人工 mutation；metadata v2 只遷移唯讀基線 facts，不覆寫使用者客戶修改。
-- `src/app/webmcp/inventory/`：InventoryMovement 歷史、週／月／年統計、風險分析與 UI
-  人工調整流程。
-- `src/app/webmcp/operational-ui/`：Dashboard metric 與 Products、Inventory、Orders、
-  Customers 清單共用的視覺及互動元件；不承擔 Repository、資料投影或 WebMCP
-  schema／executor 安全邏輯。
-- `src/app/webmcp/voltage-admin-data.ts`：以 Product Repository snapshot 計算 Dashboard、
-  商品搜尋與庫存投影。
-- `src/app/webmcp/reporting/`：SQLite runtime、查詢限制、query cache、報表狀態與
-  Report Canvas。
-- `src/app/webmcp/returns/`：RMA Repository、完整狀態機、Returns／Refund Approvals
-  頁面、route-aware WebMCP 草稿與安全查詢 tools。
-- `src/app/webmcp/voltage-admin-skills.ts`：Dashboard instructions 與 skills。
-- `src/app/webmcp/content-safety.ts`：商品與 RMA 草稿共用的不可信文字安全驗證。
-- `src/app/webmcp/operations-redirects.ts` 與 `src/app/webmcp/operations/`：
-  舊售後網址的相容 redirect 契約與 route regression；不再包含泛用案件 workflow。
-- `src/components/ui/`：共用 shadcn 元件與 Markdown renderer。
+- 安裝：`npm install`；開發：`npm run dev`（預設 `http://localhost:6171`）。
+- 完成修改至少執行：`npm run test`、`npm run typecheck`、`npm run lint`、`npm run build`。
 
 ## 核心邊界
 
 - 根路徑直接渲染 Dashboard；不得重新加入 Market、Chat、AI SDK runtime 或多網站
   registry，除非使用者明確要求。
-- WebMCP schema 只協助外部 Agent 選擇工具；executor 必須獨立驗證輸入、處理錯誤，
-  並遵守瀏覽器來源與 Permissions Policy。
-- WebMCP tools 接收外部 Agent 整理後的最小必要欄位並操作本頁狀態；它們不負責搜尋網路、
-  讀取第三方商品頁或代理跨來源 fetch。Agent 從外部來源取得的標題、描述、規格與文案仍
-  屬不可信內容，executor 必須重新驗證後才能填入頁面。 <!-- user-specified -->
-- SQL 僅允許安全的唯讀查詢；不得放寬 single-statement、row/column、字串資料、VM
-  steps、逾時或 SQLite authorizer 限制。
-- query result 與 active report 綁定目前頁面 runtime；不得跨 context 重用。
-- Products、Inventory、Dashboard、商品 WebMCP 查詢與 reporting 商品／庫存投影必須使用
-  同一 Product Repository snapshot；商品 mutation 後舊 query ID 與 active report 失效。
-- Dashboard、Orders、Customers 與 reporting 必須使用同一 Commerce Repository
-  snapshot；Reporting 只能接收 `createSafeOperationalProjection()` 產生的匿名投影，
-  不得把 raw Customer、Order、note、聯絡資訊、付款方式或付款識別送入 SQLite。
-- Operational Reporting version 必須同時反映 Product、InventoryMovement、Commerce
-  與 Returns 安全資料變化；重建後舊 query ID、active report 與 saved evidence 一律
-  失效。Returns 只能經安全聚合投影進入 SQLite，不得包含 RMA／Order／Customer ID、
-  自由文字、Timeline 原文或退款／付款識別；退貨客群列至少包含 5 位不同顧客。
-- 個資與付款屬高風險資料：tools 不得接受或回傳姓名、Email、地址、電話、帳戶識別
-  或付款資料。 <!-- user-specified -->
-- WebMCP 營運查詢可使用固定且不可識別個人的付款結果狀態碼
-  (`paid`、`pending`、`failed`、`refunded`) 作為篩選或彙總維度；不得接受或回傳付款
-  方式、卡號、token、授權碼、帳戶資訊或其他付款識別資料。 <!-- user-specified -->
-- 訂單只能唯讀查看；不得新增可建立、確認、取消訂單或提交付款的 tool。高風險最終
-  確認必須由使用者直接操作頁面。 <!-- user-specified -->
-- Inventory、Orders 與 Customers 的 WebMCP tools 僅提供安全查詢及導覽；庫存調整與
-  客戶新增、修改、停權及復權只能由使用者在 UI 中確認執行。 <!-- user-specified -->
+- WebMCP tools 僅處理本頁的安全查詢、導覽與草稿；高風險最終動作一律由使用者在 UI
+  完成。修改 tool、資料投影、SQL、商品或 RMA 流程前，閱讀
+  [.agents/rules/webmcp-data-safety.md](.agents/rules/webmcp-data-safety.md)。
+- 不得提交 secrets 或 API key；本機密鑰僅放 `.env`。不得使用破壞性 Git 操作，並保留
+  工作樹中與任務無關的修改。
 
-## 開發與 Git
+## 參考規則
 
-- 遵循 Prettier：2 spaces、LF、無分號、雙引號、80 欄寬；Tailwind class 由 plugin
-  排序。元件使用 PascalCase，hooks 使用 `use-*.ts`。
-- 本機密鑰只放 `.env`，不可提交 API key 或 secrets。
-- 不得使用破壞性 Git 操作；保留工作樹中與任務無關的修改。
-- Commit 使用簡短命令式訊息，例如 `feat: focus app on dashboard`。
-
-## 參考文件
-
+- [.agents/rules/webmcp-data-safety.md](.agents/rules/webmcp-data-safety.md)：修改
+  WebMCP schema／executor、SQLite、Repository 投影、商品、訂單或 RMA 時閱讀。
+- [.agents/rules/ui-quality.md](.agents/rules/ui-quality.md)：修改 Outlet 路由頁面、Tailwind
+  版面、元件格式或規劃驗證時閱讀。
 - [docs/SMART-DASHBOARD.md](docs/SMART-DASHBOARD.md)：修改 SQLite、skills、報表 tools
   或 Report Canvas 前閱讀其架構與安全限制。
 - [docs/COMMERCE-AUTOMATION.md](docs/COMMERCE-AUTOMATION.md)：修改商品 editor、RMA、
   Refund Approvals、Returns tools 或人工核准／退款邊界前閱讀。
+- [docs/RETURNS-RMA-SYSTEM-MODEL.md](docs/RETURNS-RMA-SYSTEM-MODEL.md)：變更 RMA 狀態、
+  退款模型、退貨投影或其驗收行為前閱讀。
+
+## 追蹤項目
+
+- [TODO.md](TODO.md) 是動態待辦；開始涉及 tool chain、輸入視窗、provider、Report Canvas
+  或模型錯誤顯示的工作前重新確認。
