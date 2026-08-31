@@ -1291,7 +1291,9 @@ export const ReturnDetailPage = () => {
           <CardContent>
             <ReturnWorkflowProgress
               workflow={workflow}
-              labelFor={(label) => t(label)}
+              labelFor={(label) =>
+                t(label === "receipt" ? "Return receipt" : label)
+              }
             />
           </CardContent>
         </Card>

@@ -42,14 +42,16 @@ query ID、active report 與 saved evidence 失效。
 1. Agent 找到已送達且付款結果為 paid 的訂單，用 `open_return_create` 開啟新增頁。
 2. 在新增路由，Agent 用 `apply_return_form_draft` 填入來源、固定原因、安全顧客
    陳述與品項數量，再以 `get_return_form_state` 驗證。只有使用者能儲存或提交。
-3. 使用者依序完成資格決定、退貨授權、收貨與逐商品驗貨。Agent 可用
-   `check_return_eligibility` 準備固定政策結果，或以
-   `apply_return_review_draft` 填可逆審查草稿，但不能執行 transition。
-4. 驗貨完成後系統依逐商品實付分配及運費全退／不退規則產生不可編輯的全額退款計算；
-   使用者送出單級核准。
-5. Refund Approvals 將核准與退款執行分離。核准人只能核准、拒絕或退回整份計算；
-   核准後仍需使用者另外記錄成功／失敗結果，失敗可重試，成功後不可重複。
-6. 只有 `restock + completed` 的 RMA item 會增加可售庫存，來源參照防止重複入庫。
+3. 頁面以七階段呈現：退貨申請、資格審查、退貨收件、逐商品驗貨、退款計算、退款核准、
+   退款執行。後續階段在前置工作完成前保持鎖定，終止與需補正狀態會直接標示。
+4. 使用者依序完成資格決定、退貨授權、收貨與逐商品驗貨。Agent 可用
+   `check_return_eligibility` 準備固定政策結果，也可讀取或更新目前帳號、目前階段的
+   備註草稿，但不能發布備註或執行 transition。
+5. 驗貨完成後系統依逐商品實付分配及運費全退／不退規則產生不可編輯的全額退款計算；
+   使用者送出單級核准。Refund Approval 詳細頁只處理第六階段的核准、退回或拒絕。
+6. 核准後回到 RMA 詳細頁進行第七階段退款執行；使用者另行記錄成功／失敗結果，
+   失敗可重試，成功後不可重複。庫存處置是驗貨後的平行人工作業，不取代七階段順序。
+7. 只有 `restock + completed` 的 RMA item 會增加可售庫存，來源參照防止重複入庫。
    Timeline 保存結構化 actor、action、時間與結果，不複製顧客陳述或付款識別。
 
 ### 2.4 庫存與客戶人工操作
@@ -84,13 +86,14 @@ Execution ID、Timeline 原文、自由文字、付款方式或付款識別。
 | 客群             | `get_customer_analytics`, `open_customer_analysis`                                                                                         | 至少 5 人匿名群組；不讀寫個人客戶         |
 | Returns 全域     | `search_returns`, `get_return_detail`, `open_return_create`, `open_return_detail`                                                          | 安全查詢與導覽；不提交 RMA                |
 | Return 新增頁    | `apply_return_form_draft`, `get_return_form_state`                                                                                         | 可逆暫存；verifier 確認版本與完整度       |
-| Return Detail    | `check_return_eligibility`, `apply_return_review_draft`, `get_return_review_state`, `get_refund_calculation`                               | 固定政策、草稿、唯讀計算；無 transition   |
-| Refund Approvals | `list_refund_approvals`, `open_refund_approval`, `get_refund_approval`                                                                     | 核准頁只讀；決策與退款執行均 user-only    |
+| Return Detail    | `check_return_eligibility`, `get_refund_calculation`, `get_my_return_note_draft`, `apply_my_return_note_draft`                              | 固定政策、唯讀計算、目前帳號備註草稿      |
+| Refund Approvals | `list_refund_approvals`, `open_refund_approval`, `get_refund_approval`, `get_my_return_note_draft`, `apply_my_return_note_draft`             | 第六階段資料與目前帳號備註；決策 user-only |
 
 所有 input object 都以 `additionalProperties: false` 關閉額外欄位，executor 仍獨立驗證
 ID、enum、長度、陣列、內容安全、來源、目前 route 與 version。商品與 Returns 成功
 輸出各自有 1,500 字元上限。Route-aware tools 只在正確頁面 discovery，頁面切換會
-觸發 `toolchange`。
+觸發 `toolchange`。導覽成功會回傳 `rediscoveryRequired: true`；若 Agent 使用舊 registry，
+executor 以 `RE_DISCOVER_REQUIRED` 拒絕，Agent 最多重新 discovery 一次後再重試。
 
 ## 4. 安全與人工邊界
 
@@ -98,7 +101,8 @@ ID、enum、長度、陣列、內容安全、來源、目前 route 與 version�
   token、授權碼、付款或外部退款識別。
 - Agent 沒有商品發布、庫存調整、客戶 mutation、RMA 提交、資格決定、收貨、驗貨、
   送出退款核准、核准／退回／拒絕、記錄退款結果、重新入庫或完成 RMA 的 tools。
-- Agent 草稿必須由最新唯讀 verifier 確認；stale version 與不完整輸入安全拒絕。
+- Agent 草稿必須由最新唯讀 verifier 確認；備註草稿以 `expectedVersion` 防止覆蓋，
+  stale version 回傳 `VERSION_CONFLICT`。Agent 不能發布或捨棄備註。
 - 退款計算綁定 RMA、Inspection 與 Order snapshot version；資料改變後既有核准失效。
 - 退款只支援全額、單級核准且核准與執行分離；不存在部分退款、換貨或補寄。
 

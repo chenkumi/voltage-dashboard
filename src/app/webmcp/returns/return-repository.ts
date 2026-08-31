@@ -203,7 +203,8 @@ export const createReturnOperationalRepository = (
   repository: ReturnRepository
 ): ReturnOperationalRepository => ({
   async getSnapshot() {
-    const { notes: _privateNotes, ...snapshot } = await repository.getSnapshot()
+    const { notes, ...snapshot } = await repository.getSnapshot()
+    void notes
     return snapshot
   },
   createDraft: repository.createDraft.bind(repository),

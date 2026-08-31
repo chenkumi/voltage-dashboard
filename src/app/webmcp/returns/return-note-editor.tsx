@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import { useTranslation } from "react-i18next"
 import { Button } from "@/components/ui/button"
 import type { ReturnReviewNoteSession } from "./return-repository"
 import type {
@@ -54,12 +55,13 @@ export const ReturnNoteEditor = ({
   notes: readonly ReturnReviewNote[]
   session: ReturnReviewNoteSession
 }) => {
+  const { t } = useTranslation()
   const [stage, setStage] = useState(currentStage)
   const [saved, setSaved] = useState<ReturnReviewNote | null>(null)
   const [draft, setDraft] = useState<NoteDraft>(emptyDraft)
   const [dirty, setDirty] = useState(false)
   const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState("Loading draft…")
+  const [message, setMessage] = useState(() => t("Loading note draft…"))
   const otherDrafts = useMemo(
     () =>
       notes.filter(
@@ -93,23 +95,25 @@ export const ReturnNoteEditor = ({
 
   useEffect(() => {
     let active = true
-    setDirty(false)
-    setMessage("Loading draft…")
     void session
       .getDraft(rmaId, stage)
       .then((note) => {
         if (!active) return
         setSaved(note)
         setDraft(toDraft(note))
-        setMessage(note ? `Draft restored · version ${note.version}` : "No draft yet")
+        setMessage(
+          note
+            ? `${t("Draft restored")} · ${t("version")} ${note.version}`
+            : t("No note draft yet")
+        )
       })
       .catch(() => {
-        if (active) setMessage("Draft could not be loaded.")
+        if (active) setMessage(t("Note draft could not be loaded."))
       })
     return () => {
       active = false
     }
-  }, [rmaId, session, stage])
+  }, [rmaId, session, stage, t])
 
   useEffect(() => {
     if (!dirty || !draft.content.trim()) return
@@ -135,7 +139,9 @@ export const ReturnNoteEditor = ({
         .then((note) => {
           setSaved(note)
           setDirty(false)
-          setMessage(`Automatically saved · version ${note.version}`)
+          setMessage(
+            `${t("Automatically saved")} · ${t("version")} ${note.version}`
+          )
         })
         .catch(async (error: unknown) => {
           if (
@@ -148,20 +154,27 @@ export const ReturnNoteEditor = ({
             setSaved(current)
             setDraft(toDraft(current))
             setDirty(false)
-            setMessage("A newer draft was loaded. Review it before continuing.")
+            setMessage(
+              t("A newer draft was loaded. Review it before continuing.")
+            )
             return
           }
-          setMessage("Draft could not be saved.")
+          setMessage(t("Note draft could not be saved."))
         })
         .finally(() => setBusy(false))
     }, 500)
     return () => window.clearTimeout(timeout)
-  }, [dirty, draft, rmaId, saved, session, stage])
+  }, [dirty, draft, rmaId, saved, session, stage, t])
 
   const update = (patch: Partial<NoteDraft>) => {
     setDraft((current) => ({ ...current, ...patch }))
     setDirty(true)
-    setMessage("Unsaved changes")
+    setMessage(t("Unsaved changes"))
+  }
+  const selectStage = (nextStage: ReturnReviewStage) => {
+    setStage(nextStage)
+    setDirty(false)
+    setMessage(t("Loading note draft…"))
   }
   const reloadAfterConflict = async (targetStage = stage) => {
     const current = await session.getDraft(rmaId, targetStage)
@@ -170,7 +183,7 @@ export const ReturnNoteEditor = ({
       setDraft(toDraft(current))
       setDirty(false)
     }
-    setMessage("A newer draft was loaded. Review it before continuing.")
+    setMessage(t("A newer draft was loaded. Review it before continuing."))
   }
   const isVersionConflict = (error: unknown) =>
     Boolean(
@@ -187,10 +200,10 @@ export const ReturnNoteEditor = ({
       setSaved(null)
       setDraft(emptyDraft())
       setDirty(false)
-      setMessage("Draft discarded")
+      setMessage(t("Note draft discarded"))
     } catch (error) {
       if (isVersionConflict(error)) await reloadAfterConflict()
-      else setMessage("Draft could not be discarded.")
+      else setMessage(t("Note draft could not be discarded."))
     } finally {
       setBusy(false)
     }
@@ -202,24 +215,26 @@ export const ReturnNoteEditor = ({
       await session.publishDraft(rmaId, stage, saved.version)
       setSaved(null)
       setDraft(emptyDraft())
-      setMessage("Added to review notes")
+      setMessage(t("Added to review notes"))
     } catch (error) {
       if (isVersionConflict(error)) await reloadAfterConflict()
-      else setMessage("Draft could not be published.")
+      else setMessage(t("Note draft could not be published."))
     } finally {
       setBusy(false)
     }
   }
 
   return (
-    <section className="grid gap-4" aria-label="Review notes">
+    <section className="grid gap-4" aria-label={t("Review notes")}>
       {otherDrafts.length > 0 ? (
         <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
           {otherDrafts.map((note) => (
             <p key={note.id}>
-              You have an unpublished draft in {note.stage}.{" "}
-              <Button variant="link" onClick={() => setStage(note.stage)}>
-                Continue editing
+              {`${t("You have an unpublished note draft in")} ${t(
+                note.stage === "receipt" ? "Return receipt" : note.stage
+              )}.`}{" "}
+              <Button variant="link" onClick={() => selectStage(note.stage)}>
+                {t("Continue editing")}
               </Button>
               <Button
                 variant="link"
@@ -227,16 +242,16 @@ export const ReturnNoteEditor = ({
                   setBusy(true)
                   void session
                     .discardDraft(rmaId, note.stage, note.version)
-                    .then(() => setMessage("Older draft discarded"))
+                    .then(() => setMessage(t("Older note draft discarded")))
                     .catch(async (error: unknown) => {
                       if (isVersionConflict(error))
                         await reloadAfterConflict(note.stage)
-                      else setMessage("Draft could not be discarded.")
+                      else setMessage(t("Note draft could not be discarded."))
                     })
                     .finally(() => setBusy(false))
                 }}
               >
-                Discard
+                {t("Discard")}
               </Button>
             </p>
           ))}
@@ -245,21 +260,23 @@ export const ReturnNoteEditor = ({
       <div className="grid gap-3 rounded-md border p-3">
         <div className="grid gap-3 sm:grid-cols-3">
           <label className="grid gap-1 text-sm">
-            Stage
+            {t("Stage")}
             <select
               className="h-9 rounded-md border border-input bg-transparent px-3"
               value={stage}
-              onChange={(event) => setStage(event.target.value as ReturnReviewStage)}
+              onChange={(event) =>
+                selectStage(event.target.value as ReturnReviewStage)
+              }
             >
               {editableStages.map((value) => (
                 <option key={value} value={value}>
-                  {value}
+                  {t(value === "receipt" ? "Return receipt" : value)}
                 </option>
               ))}
             </select>
           </label>
           <label className="grid gap-1 text-sm">
-            Type
+            {t("Type")}
             <select
               className="h-9 rounded-md border border-input bg-transparent px-3"
               value={draft.category}
@@ -272,14 +289,14 @@ export const ReturnNoteEditor = ({
             >
               {RETURN_REVIEW_CATEGORIES.map((value) => (
                 <option key={value} value={value}>
-                  {value}
+                  {t(value)}
                 </option>
               ))}
             </select>
           </label>
           {draft.category === "review_recommendation" ? (
             <label className="grid gap-1 text-sm">
-              Recommendation
+              {t("Recommendation")}
               <select
                 className="h-9 rounded-md border border-input bg-transparent px-3"
                 value={draft.recommendation ?? ""}
@@ -290,10 +307,10 @@ export const ReturnNoteEditor = ({
                   })
                 }
               >
-                <option value="">Select recommendation</option>
+                <option value="">{t("Select recommendation")}</option>
                 {RETURN_REVIEW_RECOMMENDATIONS.map((value) => (
                   <option key={value} value={value}>
-                    {value}
+                    {t(value)}
                   </option>
                 ))}
               </select>
@@ -301,7 +318,7 @@ export const ReturnNoteEditor = ({
           ) : null}
         </div>
         <label className="grid gap-1 text-sm">
-          Evidence codes (comma separated)
+          {t("Evidence codes (comma separated)")}
           <input
             className="h-9 rounded-md border border-input bg-transparent px-3"
             value={draft.evidenceCodes}
@@ -309,7 +326,7 @@ export const ReturnNoteEditor = ({
           />
         </label>
         <label className="grid gap-1 text-sm">
-          Note
+          {t("Note")}
           <textarea
             className="min-h-28 rounded-md border border-input bg-transparent p-3"
             maxLength={1_000}
@@ -323,22 +340,23 @@ export const ReturnNoteEditor = ({
           </p>
           <div className="flex gap-2">
             <Button variant="outline" disabled={busy || !saved} onClick={() => void discard()}>
-              Discard draft
+              {t("Discard note draft")}
             </Button>
             <Button disabled={busy || !saved || dirty} onClick={() => void publish()}>
-              Add to review notes
+              {t("Add to review notes")}
             </Button>
           </div>
         </div>
       </div>
       <div className="grid gap-2">
-        <h3 className="font-semibold">Published notes</h3>
+        <h3 className="font-semibold">{t("Published notes")}</h3>
         {published.length > 0 ? (
           published.map((note) => (
             <article key={note.id} className="rounded-md border p-3 text-sm">
               <strong>
-                {note.stage} · {note.category}
-                {note.recommendation ? `: ${note.recommendation}` : ""}
+                {t(note.stage === "receipt" ? "Return receipt" : note.stage)} ·{" "}
+                {t(note.category)}
+                {note.recommendation ? `: ${t(note.recommendation)}` : ""}
               </strong>
               <p>{note.content}</p>
               <small className="text-muted-foreground">
@@ -347,7 +365,9 @@ export const ReturnNoteEditor = ({
             </article>
           ))
         ) : (
-          <p className="text-sm text-muted-foreground">No published notes.</p>
+          <p className="text-sm text-muted-foreground">
+            {t("No published notes.")}
+          </p>
         )}
       </div>
     </section>

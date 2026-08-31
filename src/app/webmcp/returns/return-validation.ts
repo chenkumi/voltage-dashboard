@@ -32,7 +32,11 @@ const BARE_CHINESE_PERSON_NAME_PATTERN =
   /^[陳林黃張李王吳劉蔡楊許鄭謝郭洪曾邱廖賴徐周葉蘇莊呂江何蕭羅高潘簡朱鍾游彭詹胡施沈余盧梁趙顏柯翁魏孫戴范方宋鄧杜傅侯曹薛丁卓阮馬董唐溫藍蔣石古紀姚連馮歐程湯][\u3400-\u9fff]{1,2}$/
 const COMMON_ENGLISH_PERSON_NAME_PATTERN =
   /\b(?:john|jane|james|mary|michael|david|robert|jennifer|william|linda|richard|elizabeth|joseph|susan|thomas|jessica|charles|sarah|daniel|karen|matthew|nancy|anthony|lisa|mark|betty|donald|sandra|steven|ashley|paul|kimberly|andrew|emily|joshua|donna|kenneth|michelle|kevin|carol|brian|amanda|george|melissa|edward|deborah|ronald|stephanie|timothy|rebecca|jason|laura|jeffrey|sharon|ryan|cynthia|jacob|kathleen|gary|amy|nicholas|angela|eric|shirley|jonathan|anna|stephen|brenda|larry|pamela|justin|emma|scott|nicole|brandon|helen|benjamin|samantha|samuel|katherine|gregory|christine|alexander|debra|patrick|rachel|frank|carolyn|raymond|janet|jack|catherine|dennis|maria|jerry|heather|tyler|diane|aaron|ruth|jose|julie|adam|olivia|nathan|joyce|henry|virginia)\s+[a-z][a-z'-]{1,30}\b/i
-const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f]/
+const containsControlCharacter = (value: string) =>
+  Array.from(value).some((character) => {
+    const code = character.charCodeAt(0)
+    return code <= 0x1f || code === 0x7f
+  })
 
 const SAFE_OPERATIONAL_WORDS = new Set(
   "a accepted additional after against agent approval authorized before broken changed completed condition contradictory customer damaged decision declined defective delivered delivery description does duplicate eligible evidence fail failed failure finance flickers in inspection invalid item line missing must no not on opened ops order package packaging parts policy power present product provider received reconciled refund requested result return screen second serial snapshot stale stopped successfully system the to unavailable updated user verified was within working wrong".split(
@@ -144,7 +148,7 @@ export const normalizeReturnNoteContent = (value: unknown) => {
     !normalized ||
     normalized.length > 1_000 ||
     PLAIN_TEXT_HTML.test(normalized) ||
-    CONTROL_CHARACTER_PATTERN.test(normalized) ||
+    containsControlCharacter(normalized) ||
     EMAIL_PATTERN.test(normalized) ||
     PHONE_PATTERN.test(normalized) ||
     ADDRESS_PATTERN.test(normalized) ||

@@ -78,7 +78,7 @@ describe("ReturnNoteEditor", () => {
       "ui"
     )
     expect(
-      beforeUnload.mock.calls.some(([event]) => event === "beforeunload")
+      beforeUnload.mock.calls.some(([event]) => String(event) === "beforeunload")
     ).toBe(false)
   })
 
@@ -97,7 +97,9 @@ describe("ReturnNoteEditor", () => {
     await waitFor(() =>
       expect(screen.getByText(/Draft restored/)).toBeTruthy()
     )
-    expect(screen.getByText(/unpublished draft in return_request/)).toBeTruthy()
+    expect(
+      screen.getByText(/unpublished note draft in return_request/)
+    ).toBeTruthy()
     const stageOptions = Array.from(
       (screen.getByRole("combobox", { name: "Stage" }) as HTMLSelectElement)
         .options

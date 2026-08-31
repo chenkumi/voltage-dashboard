@@ -143,7 +143,7 @@ Agent 只能修改目前頁面的可逆暫存欄位，不能建立、儲存或�
       "用途：依固定政策準備 RMA 資格審查建議或內部備註。何時呼叫：需判斷退貨期限、缺漏證據、政策結果或留下審查依據。觸發例子：「檢查這張 RMA」、「是否符合退貨政策」、「缺哪些證據」、「準備審查建議」。不該呼叫：要求 Agent 核准或拒絕退貨時。",
     text: `# Return policy review
 
-先用 get_return_detail 讀取安全 RMA 狀態與版本，開啟 RMA Detail 後用 check_return_eligibility 依固定 facts 重新計算。此工具只回傳 scope: SIMULATION、persisted: false、uiStateChanged: false 的政策試算；policy cache 只供同頁可逆審查草稿驗證，不會更新 RMA eligibility、Repository version 或 UI 人工狀態。不得把試算描述成已核准、已拒絕或已保存。不得把資料不足解讀為符合資格；結果、matchedRules、missingEvidence、shippingRefundEligible 與 policyVersion 都必須原樣保留。
+先用 get_return_detail 讀取安全 RMA 狀態與版本，開啟 RMA Detail 後用 check_return_eligibility 依固定 facts 重新計算。此工具只回傳 scope: SIMULATION、persisted: false、uiStateChanged: false 的政策試算；policy cache 只供同頁可逆備註草稿驗證，不會更新 RMA eligibility、Repository version 或 UI 人工狀態。不得把試算描述成已核准、已拒絕或已保存。不得把資料不足解讀為符合資格；結果、matchedRules、missingEvidence、shippingRefundEligible 與 policyVersion 都必須原樣保留。
 
 先用 get_my_return_note_draft 取得目前帳號、目前階段的草稿與版本，再用 apply_my_return_note_draft 填寫審查建議或一般備註，並以最新 get_my_return_note_draft 驗證。evidence codes 只能使用系統實際提供的代碼。草稿不得承諾退款或包含個資、付款資料或敏感憑證。Agent 不能發布或捨棄備註；資格授權、拒絕、要求補件、收貨與驗貨都只能由使用者在頁面操作。`,
   },
@@ -165,7 +165,7 @@ const skillByName = new Map<string, VoltageAdminSkill>(
 
 const routeGuidance: Partial<Record<VoltageAdminView, string>> = {
   returns:
-    "目前頁面是 Returns：可安全查詢、導覽並在正確路由填寫可逆表單或審查草稿；建立、提交、資格決定、收貨與驗貨只能由使用者操作。",
+    "目前頁面是 Returns：可安全查詢、導覽並在正確路由填寫可逆表單或備註草稿；建立、提交、資格決定、收貨與驗貨只能由使用者操作。",
 }
 
 export const getVoltageAdminAgentInstructions = (

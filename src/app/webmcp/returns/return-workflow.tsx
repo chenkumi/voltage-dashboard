@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components */
 import type {
   RefundApproval,
   RefundCalculation,
@@ -5,6 +6,7 @@ import type {
   ReturnReviewStage,
   Rma,
 } from "./types"
+import { useTranslation } from "react-i18next"
 import { RETURN_REVIEW_STAGES } from "./types"
 
 export type ReturnWorkflowStageState =
@@ -199,6 +201,7 @@ export const ReturnWorkflowProgress = ({
   workflow: readonly ReturnWorkflowStage[]
   labelFor?: (label: ReturnReviewStage | ReturnWorkflowDetail) => string
 }) => {
+  const { t } = useTranslation()
   const active = currentReturnWorkflowStage(workflow)
   const tone: Record<ReturnWorkflowStageState, string> = {
     completed: "border-emerald-300 bg-emerald-50 text-emerald-900",
@@ -224,7 +227,7 @@ export const ReturnWorkflowProgress = ({
             : active.id === stage.id
               ? "●"
               : stage.number}{" "}
-          {active.id === stage.id ? "Current" : stage.state}
+          {active.id === stage.id ? t("Current") : t(stage.state)}
         </span>
         <strong>{labelFor(stage.id)}</strong>
         {stage.detail ? (
@@ -233,7 +236,9 @@ export const ReturnWorkflowProgress = ({
           </small>
         ) : null}
         {stage.state === "upcoming" ? (
-          <small className="block text-xs">Complete prior stages to unlock.</small>
+          <small className="block text-xs">
+            {t("Complete prior stages to unlock.")}
+          </small>
         ) : null}
       </li>
       ))}
