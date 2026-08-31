@@ -19,6 +19,7 @@ import {
 import {
   assertReturnQuantity,
   assertReturnSourceAndReason,
+  normalizeReturnNoteContent,
   normalizeReturnStatement,
   ReturnValidationError,
 } from "./return-validation"
@@ -27,6 +28,10 @@ import type {
   RefundCalculation,
   RefundExecutionAttempt,
   ReturnItem,
+  ReturnReviewCategory,
+  ReturnReviewNote,
+  ReturnReviewRecommendation,
+  ReturnReviewStage,
   ReturnReason,
   ReturnRepositorySnapshot,
   ReturnSource,
@@ -34,11 +39,17 @@ import type {
   Rma,
   WorkflowActor,
 } from "./types"
+import {
+  RETURN_REVIEW_CATEGORIES,
+  RETURN_REVIEW_RECOMMENDATIONS,
+  RETURN_REVIEW_STAGES,
+} from "./types"
 
 type ReturnMetadata = {
   key: "returns"
   seedVersion: number
   dataVersion: number
+  operationalVersion: number
   orderSnapshotVersion: number
   initializedAt: string
 }
@@ -50,6 +61,7 @@ type ReturnDatabase = Dexie & {
   approvals: EntityTable<RefundApproval, "id">
   executionAttempts: EntityTable<RefundExecutionAttempt, "id">
   timeline: EntityTable<ReturnTimelineEvent, "id">
+  notes: EntityTable<ReturnReviewNote, "id">
   metadata: EntityTable<ReturnMetadata, "key">
 }
 
@@ -61,10 +73,12 @@ export const RETURN_DATABASE_SCHEMA = {
   executionAttempts:
     "id, approvalId, result, sequence, executedAt, [approvalId+sequence]",
   timeline: "id, rmaId, action, occurredAt, [rmaId+occurredAt]",
+  notes:
+    "id, rmaId, stage, authorUserId, status, updatedAt, [rmaId+stage+authorUserId+status]",
   metadata: "key",
 } as const
 
-const RETURN_SEED_VERSION = 2
+const RETURN_SEED_VERSION = 3
 const ITEM_CONDITIONS = ["sealed", "opened", "used", "damaged"] as const
 const PACKAGING_STATES = ["intact", "damaged", "missing"] as const
 const REJECTION_REASONS = [
@@ -128,6 +142,87 @@ export type ReturnDraftInput = {
   items: readonly ReturnDraftItemInput[]
 }
 
+export type ReturnReviewNoteDraftInput = {
+  rmaId: string
+  stage: ReturnReviewStage
+  category: ReturnReviewCategory
+  content: string
+  recommendation?: ReturnReviewRecommendation | null
+  evidenceCodes?: readonly string[]
+  supersedesNoteId?: string | null
+}
+
+export type ReturnReviewNoteSession = {
+  getDraft: (rmaId: string, stage: ReturnReviewStage) => Promise<ReturnReviewNote | null>
+  listPublished: (rmaId: string) => Promise<ReturnReviewNote[]>
+  saveDraft: (
+    input: ReturnReviewNoteDraftInput,
+    expectedVersion: number,
+    inputSource: ReturnReviewNote["inputSource"]
+  ) => Promise<ReturnReviewNote>
+  discardDraft: (
+    rmaId: string,
+    stage: ReturnReviewStage,
+    expectedVersion: number
+  ) => Promise<boolean>
+  publishDraft: (
+    rmaId: string,
+    stage: ReturnReviewStage,
+    expectedVersion: number
+  ) => Promise<ReturnReviewNote>
+}
+
+export type ReturnOperationalSnapshot = Omit<
+  ReturnRepositorySnapshot,
+  "notes"
+>
+
+type ReturnOperationalMethod =
+  | "createDraft"
+  | "submit"
+  | "decideEligibility"
+  | "recordReceipt"
+  | "startInspection"
+  | "completeInspection"
+  | "reopenInspection"
+  | "generateRefundCalculation"
+  | "submitForApproval"
+  | "decideApproval"
+  | "recordRefundResult"
+  | "recordRestockCompletion"
+  | "recordRestockFailure"
+
+export type ReturnOperationalRepository = Pick<
+  ReturnRepository,
+  ReturnOperationalMethod
+> & {
+  getSnapshot: () => Promise<ReturnOperationalSnapshot>
+}
+
+export const createReturnOperationalRepository = (
+  repository: ReturnRepository
+): ReturnOperationalRepository => ({
+  async getSnapshot() {
+    const { notes: _privateNotes, ...snapshot } = await repository.getSnapshot()
+    return snapshot
+  },
+  createDraft: repository.createDraft.bind(repository),
+  submit: repository.submit.bind(repository),
+  decideEligibility: repository.decideEligibility.bind(repository),
+  recordReceipt: repository.recordReceipt.bind(repository),
+  startInspection: repository.startInspection.bind(repository),
+  completeInspection: repository.completeInspection.bind(repository),
+  reopenInspection: repository.reopenInspection.bind(repository),
+  generateRefundCalculation:
+    repository.generateRefundCalculation.bind(repository),
+  submitForApproval: repository.submitForApproval.bind(repository),
+  decideApproval: repository.decideApproval.bind(repository),
+  recordRefundResult: repository.recordRefundResult.bind(repository),
+  recordRestockCompletion:
+    repository.recordRestockCompletion.bind(repository),
+  recordRestockFailure: repository.recordRestockFailure.bind(repository),
+})
+
 export type InspectionItemInput = {
   returnItemId: string
   receivedQuantity: number
@@ -169,6 +264,17 @@ const createDatabase = (name: string) => {
               ? "pending"
               : "not_applicable"
           item.inventoryMovementId = null
+        })
+    )
+  database
+    .version(3)
+    .stores(RETURN_DATABASE_SCHEMA)
+    .upgrade((transaction) =>
+      transaction
+        .table<ReturnMetadata, string>("metadata")
+        .toCollection()
+        .modify((metadata) => {
+          metadata.operationalVersion = metadata.dataVersion
         })
     )
   return database
@@ -215,6 +321,7 @@ export class ReturnRepository {
         this.database.approvals,
         this.database.executionAttempts,
         this.database.timeline,
+        this.database.notes,
         this.database.metadata,
       ],
       async () => {
@@ -229,22 +336,20 @@ export class ReturnRepository {
           }
           let changed = false
           let nextMetadata = metadata
+          const inserted = await Promise.all([
+            this.insertMissing(this.database.rmas, this.seed.rmas),
+            this.insertMissing(this.database.items, this.seed.items),
+            this.insertMissing(this.database.calculations, this.seed.calculations),
+            this.insertMissing(this.database.approvals, this.seed.approvals),
+            this.insertMissing(
+              this.database.executionAttempts,
+              this.seed.executionAttempts
+            ),
+            this.insertMissing(this.database.timeline, this.seed.timeline),
+            this.insertMissing(this.database.notes, this.seed.notes),
+          ])
+          changed ||= inserted.some((count) => count > 0)
           if (metadata.seedVersion < RETURN_SEED_VERSION) {
-            const inserted = await Promise.all([
-              this.insertMissing(this.database.rmas, this.seed.rmas),
-              this.insertMissing(this.database.items, this.seed.items),
-              this.insertMissing(
-                this.database.calculations,
-                this.seed.calculations
-              ),
-              this.insertMissing(this.database.approvals, this.seed.approvals),
-              this.insertMissing(
-                this.database.executionAttempts,
-                this.seed.executionAttempts
-              ),
-              this.insertMissing(this.database.timeline, this.seed.timeline),
-            ])
-            changed ||= inserted.some((count) => count > 0)
             nextMetadata = {
               ...nextMetadata,
               seedVersion: RETURN_SEED_VERSION,
@@ -262,6 +367,7 @@ export class ReturnRepository {
             nextMetadata = {
               ...nextMetadata,
               dataVersion: metadata.dataVersion + 1,
+              operationalVersion: metadata.operationalVersion + 1,
             }
           }
           await this.database.metadata.put(nextMetadata)
@@ -274,6 +380,7 @@ export class ReturnRepository {
           this.database.approvals.count(),
           this.database.executionAttempts.count(),
           this.database.timeline.count(),
+          this.database.notes.count(),
         ])
         if (counts.some((count) => count > 0)) {
           throw new ReturnValidationError(
@@ -290,11 +397,13 @@ export class ReturnRepository {
             this.seed.executionAttempts.map(clone)
           ),
           this.database.timeline.bulkAdd(this.seed.timeline.map(clone)),
+          this.database.notes.bulkAdd(this.seed.notes.map(clone)),
         ])
         await this.database.metadata.add({
           key: "returns",
           seedVersion: RETURN_SEED_VERSION,
           dataVersion: this.seed.version,
+          operationalVersion: this.seed.operationalVersion,
           orderSnapshotVersion: this.orderSnapshotVersion,
           initializedAt: this.timestamp(),
         })
@@ -313,12 +422,13 @@ export class ReturnRepository {
         this.database.approvals,
         this.database.executionAttempts,
         this.database.timeline,
+        this.database.notes,
         this.database.metadata,
       ],
       async () => {
         const metadata = await this.requireMetadata()
         await this.assertRepositoryCurrent(metadata)
-        const [rmas, items, calculations, approvals, attempts, timeline] =
+        const [rmas, items, calculations, approvals, attempts, timeline, notes] =
           await Promise.all([
             this.database.rmas.toArray(),
             this.database.items.toArray(),
@@ -326,9 +436,11 @@ export class ReturnRepository {
             this.database.approvals.toArray(),
             this.database.executionAttempts.toArray(),
             this.database.timeline.toArray(),
+            this.database.notes.toArray(),
           ])
         return clone({
           version: metadata.dataVersion,
+          operationalVersion: metadata.operationalVersion,
           orderSnapshotVersion: metadata.orderSnapshotVersion,
           rmas: sortByCreatedAt(rmas),
           items,
@@ -342,9 +454,264 @@ export class ReturnRepository {
           timeline: timeline.sort((left, right) =>
             left.occurredAt.localeCompare(right.occurredAt)
           ),
+          notes: notes.sort((left, right) =>
+            right.updatedAt.localeCompare(left.updatedAt)
+          ),
         })
       }
     )
+  }
+
+  reviewNotesForUser(authorUserId: string): ReturnReviewNoteSession {
+    this.assertReviewNoteIdentity("RMA-session", undefined, authorUserId)
+    return {
+      getDraft: (rmaId, stage) =>
+        this.getReviewNoteDraft(rmaId, stage, authorUserId),
+      listPublished: (rmaId) => this.listPublishedReviewNotes(rmaId),
+      saveDraft: (input, expectedVersion, inputSource) =>
+        this.saveReviewNoteDraft(
+          input,
+          expectedVersion,
+          authorUserId,
+          inputSource
+        ),
+      discardDraft: (rmaId, stage, expectedVersion) =>
+        this.discardReviewNoteDraft(
+          rmaId,
+          stage,
+          authorUserId,
+          expectedVersion
+        ),
+      publishDraft: (rmaId, stage, expectedVersion) =>
+        this.publishReviewNoteDraft(
+          rmaId,
+          stage,
+          authorUserId,
+          expectedVersion
+        ),
+    }
+  }
+
+  private async getReviewNoteDraft(
+    rmaId: string,
+    stage: ReturnReviewStage,
+    authorUserId: string
+  ) {
+    this.assertReviewNoteIdentity(rmaId, stage, authorUserId)
+    await this.assertRepositoryCurrent()
+    const note = await this.database.notes
+      .where("[rmaId+stage+authorUserId+status]")
+      .equals([rmaId, stage, authorUserId, "draft"])
+      .first()
+    return note ? clone(note) : null
+  }
+
+  private async listPublishedReviewNotes(rmaId: string) {
+    this.assertReviewNoteIdentity(rmaId)
+    await this.assertRepositoryCurrent()
+    const notes = await this.database.notes
+      .where("rmaId")
+      .equals(rmaId)
+      .filter((note) => note.status === "published")
+      .toArray()
+    return clone(
+      notes.sort((left, right) =>
+        (right.publishedAt ?? right.updatedAt).localeCompare(
+          left.publishedAt ?? left.updatedAt
+        )
+      )
+    )
+  }
+
+  private async saveReviewNoteDraft(
+    input: ReturnReviewNoteDraftInput,
+    expectedVersion: number,
+    authorUserId: string,
+    inputSource: ReturnReviewNote["inputSource"]
+  ) {
+    this.assertReviewNoteIdentity(input.rmaId, input.stage, authorUserId)
+    if (inputSource !== "ui" && inputSource !== "webmcp") {
+      throw new ReturnValidationError(
+        "INVALID_RETURN",
+        "Return note input source is invalid."
+      )
+    }
+    const saved = await this.database.transaction(
+      "rw",
+      [
+        this.database.rmas,
+        this.database.items,
+        this.database.calculations,
+        this.database.approvals,
+        this.database.executionAttempts,
+        this.database.notes,
+        this.database.metadata,
+      ],
+      async () => {
+        await this.assertRepositoryCurrent()
+        const rma = await this.database.rmas.get(input.rmaId)
+        if (!rma) {
+          throw new ReturnWorkflowError("NOT_FOUND", "RMA was not found.")
+        }
+        const draft = this.normalizeReviewNoteDraft(
+          input,
+          authorUserId,
+          await this.getAllowedReviewEvidenceCodes(rma, input.stage)
+        )
+        const existing = await this.database.notes
+          .where("[rmaId+stage+authorUserId+status]")
+          .equals([draft.rmaId, draft.stage, authorUserId, "draft"])
+          .first()
+        if (
+          !Number.isInteger(expectedVersion) ||
+          expectedVersion < 0 ||
+          (existing ? existing.version !== expectedVersion : expectedVersion !== 0)
+        ) {
+          throw new ReturnWorkflowError(
+            "VERSION_CONFLICT",
+            "The return note draft changed after it was read."
+          )
+        }
+        if (draft.supersedesNoteId) {
+          const superseded = await this.database.notes.get(
+            draft.supersedesNoteId
+          )
+          if (
+            !superseded ||
+            superseded.rmaId !== draft.rmaId ||
+            superseded.stage !== draft.stage ||
+            superseded.status !== "published"
+          ) {
+            throw new ReturnValidationError(
+              "INVALID_RETURN",
+              "The superseded return note is invalid."
+            )
+          }
+        }
+        const timestamp = this.timestamp()
+        const note: ReturnReviewNote = {
+          id: existing?.id ?? this.createId("NOTE"),
+          ...draft,
+          authorUserId,
+          status: "draft",
+          createdAt: existing?.createdAt ?? timestamp,
+          updatedAt: timestamp,
+          publishedAt: null,
+          version: (existing?.version ?? 0) + 1,
+          inputSource,
+        }
+        await this.database.notes.put(note)
+        const version = await this.bumpNoteVersion()
+        return { note, version }
+      }
+    )
+    await this.emit({
+      type: "review_note_draft_saved",
+      rmaId: saved.note.rmaId,
+      version: saved.version,
+    })
+    return clone(saved.note)
+  }
+
+  private async discardReviewNoteDraft(
+    rmaId: string,
+    stage: ReturnReviewStage,
+    authorUserId: string,
+    expectedVersion: number
+  ) {
+    this.assertReviewNoteIdentity(rmaId, stage, authorUserId)
+    const result = await this.database.transaction(
+      "rw",
+      [this.database.notes, this.database.metadata],
+      async () => {
+        await this.assertRepositoryCurrent()
+        const note = await this.database.notes
+          .where("[rmaId+stage+authorUserId+status]")
+          .equals([rmaId, stage, authorUserId, "draft"])
+          .first()
+        if (!note) return null
+        if (note.version !== expectedVersion) {
+          throw new ReturnWorkflowError(
+            "VERSION_CONFLICT",
+            "The return note draft changed after it was read."
+          )
+        }
+        await this.database.notes.delete(note.id)
+        return { note, version: await this.bumpNoteVersion() }
+      }
+    )
+    if (result) {
+      await this.emit({
+        type: "review_note_draft_discarded",
+        rmaId,
+        version: result.version,
+      })
+    }
+    return Boolean(result)
+  }
+
+  private async publishReviewNoteDraft(
+    rmaId: string,
+    stage: ReturnReviewStage,
+    authorUserId: string,
+    expectedVersion: number
+  ) {
+    this.assertReviewNoteIdentity(rmaId, stage, authorUserId)
+    const published = await this.database.transaction(
+      "rw",
+      [
+        this.database.rmas,
+        this.database.notes,
+        this.database.timeline,
+        this.database.metadata,
+      ],
+      async () => {
+        await this.assertRepositoryCurrent()
+        const rma = await this.database.rmas.get(rmaId)
+        const note = await this.database.notes
+          .where("[rmaId+stage+authorUserId+status]")
+          .equals([rmaId, stage, authorUserId, "draft"])
+          .first()
+        if (!rma || !note) {
+          throw new ReturnWorkflowError(
+            "NOT_FOUND",
+            "Return note draft was not found."
+          )
+        }
+        if (note.version !== expectedVersion) {
+          throw new ReturnWorkflowError(
+            "VERSION_CONFLICT",
+            "The return note draft changed after it was read."
+          )
+        }
+        const timestamp = this.timestamp()
+        const next: ReturnReviewNote = {
+          ...note,
+          status: "published",
+          updatedAt: timestamp,
+          publishedAt: timestamp,
+          version: note.version + 1,
+        }
+        await this.database.notes.put(next)
+        await this.database.timeline.add({
+          id: this.createId("EVT"),
+          rmaId,
+          actor: "user",
+          action: "return_note_published",
+          entityId: next.id,
+          occurredAt: timestamp,
+          result: next.category,
+          version: rma.version,
+        })
+        return { note: next, version: await this.bumpNoteVersion() }
+      }
+    )
+    await this.emit({
+      type: "review_note_published",
+      rmaId,
+      version: published.version,
+    })
+    return clone(published.note)
   }
 
   async createDraft(input: ReturnDraftInput, actor: WorkflowActor) {
@@ -1955,6 +2322,17 @@ export class ReturnRepository {
 
   private async bumpVersion() {
     const metadata = await this.requireMetadata()
+    const next = {
+      ...metadata,
+      dataVersion: metadata.dataVersion + 1,
+      operationalVersion: metadata.operationalVersion + 1,
+    }
+    await this.database.metadata.put(next)
+    return next.dataVersion
+  }
+
+  private async bumpNoteVersion() {
+    const metadata = await this.requireMetadata()
     const next = { ...metadata, dataVersion: metadata.dataVersion + 1 }
     await this.database.metadata.put(next)
     return next.dataVersion
@@ -1967,6 +2345,8 @@ export class ReturnRepository {
       metadata.seedVersion > RETURN_SEED_VERSION ||
       !Number.isInteger(metadata.dataVersion) ||
       metadata.dataVersion < 1 ||
+      !Number.isInteger(metadata.operationalVersion) ||
+      metadata.operationalVersion < 1 ||
       !Number.isInteger(metadata.orderSnapshotVersion) ||
       metadata.orderSnapshotVersion < 1 ||
       !Number.isFinite(Date.parse(metadata.initializedAt))
@@ -1995,6 +2375,175 @@ export class ReturnRepository {
       throw new ReturnValidationError("INVALID_RETURN", "A reason is required.")
     }
     return reason
+  }
+
+  private assertReviewNoteIdentity(
+    rmaId: string,
+    stage?: ReturnReviewStage,
+    authorUserId?: string
+  ) {
+    if (!/^RMA-[A-Za-z0-9_-]+$/.test(rmaId)) {
+      throw new ReturnValidationError("INVALID_RETURN", "RMA ID is invalid.")
+    }
+    if (stage !== undefined && !RETURN_REVIEW_STAGES.includes(stage)) {
+      throw new ReturnValidationError(
+        "INVALID_RETURN",
+        "Return note stage is invalid."
+      )
+    }
+    if (
+      authorUserId !== undefined &&
+      !/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(authorUserId)
+    ) {
+      throw new ReturnValidationError(
+        "INVALID_RETURN",
+        "Return note author is invalid."
+      )
+    }
+  }
+
+  private normalizeReviewNoteDraft(
+    input: ReturnReviewNoteDraftInput,
+    authorUserId: string,
+    allowedEvidenceCodes: ReadonlySet<string>
+  ) {
+    this.assertReviewNoteIdentity(input.rmaId, input.stage, authorUserId)
+    if (!RETURN_REVIEW_CATEGORIES.includes(input.category)) {
+      throw new ReturnValidationError(
+        "INVALID_RETURN",
+        "Return note category is invalid."
+      )
+    }
+    const recommendation = input.recommendation ?? null
+    if (
+      (recommendation !== null &&
+        !RETURN_REVIEW_RECOMMENDATIONS.includes(recommendation)) ||
+      (input.category !== "review_recommendation" && recommendation !== null)
+    ) {
+      throw new ReturnValidationError(
+        "INVALID_RETURN",
+        "Return note recommendation is invalid."
+      )
+    }
+    const evidenceCodes = [...(input.evidenceCodes ?? [])]
+    if (
+      evidenceCodes.length > 12 ||
+      new Set(evidenceCodes).size !== evidenceCodes.length ||
+      evidenceCodes.some(
+        (code) =>
+          !/^[A-Za-z0-9][A-Za-z0-9_-]{0,79}$/.test(code) ||
+          !allowedEvidenceCodes.has(code)
+      )
+    ) {
+      throw new ReturnValidationError(
+        "INVALID_RETURN",
+        "Return note evidence codes are invalid."
+      )
+    }
+    const supersedesNoteId = input.supersedesNoteId ?? null
+    if (
+      supersedesNoteId !== null &&
+      !/^NOTE-[A-Za-z0-9_-]+$/.test(supersedesNoteId)
+    ) {
+      throw new ReturnValidationError(
+        "INVALID_RETURN",
+        "Superseded return note ID is invalid."
+      )
+    }
+    return {
+      rmaId: input.rmaId,
+      stage: input.stage,
+      category: input.category,
+      content: normalizeReturnNoteContent(input.content),
+      recommendation,
+      evidenceCodes,
+      supersedesNoteId,
+    }
+  }
+
+  private async getAllowedReviewEvidenceCodes(
+    rma: Rma,
+    stage: ReturnReviewStage
+  ) {
+    const allowed = new Set<string>()
+    const stageIndex = RETURN_REVIEW_STAGES.indexOf(stage)
+    if (stageIndex >= RETURN_REVIEW_STAGES.indexOf("eligibility")) {
+      for (const code of rma.eligibility.systemResult?.matchedRules ?? [])
+        allowed.add(code)
+      for (const code of rma.eligibility.systemResult?.missingEvidence ?? [])
+        allowed.add(code)
+    }
+    if (
+      stageIndex >= RETURN_REVIEW_STAGES.indexOf("receipt") &&
+      rma.logistics.receiptResult
+    ) {
+      allowed.add(`RECEIPT_${rma.logistics.receiptResult.toUpperCase()}`)
+    }
+    if (stageIndex >= RETURN_REVIEW_STAGES.indexOf("inspection")) {
+      const items = await this.database.items.where("rmaId").equals(rma.id).toArray()
+      if (items.some((item) => (item.acceptedQuantity ?? 0) > 0))
+        allowed.add("INSPECTION_ACCEPTED")
+      if (items.some((item) => item.inspectionResult === "rejected"))
+        allowed.add("INSPECTION_REJECTED")
+      if (items.some((item) => item.inspectionResult === "partial"))
+        allowed.add("INSPECTION_PARTIAL")
+    }
+    const calculations = await this.database.calculations
+      .where("rmaId")
+      .equals(rma.id)
+      .toArray()
+    const currentCalculation = calculations
+      .filter(
+        (calculation) =>
+          calculation.rmaVersion === rma.version &&
+          calculation.inspectionVersion === rma.inspection.version &&
+          calculation.orderSnapshotVersion === this.orderSnapshotVersion
+      )
+      .sort(
+        (left, right) =>
+          right.version - left.version ||
+          right.createdAt.localeCompare(left.createdAt)
+      )[0]
+    if (
+      stageIndex >= RETURN_REVIEW_STAGES.indexOf("refund_calculation") &&
+      currentCalculation
+    ) {
+      allowed.add("REFUND_CALCULATION_AVAILABLE")
+    }
+    const currentApproval = currentCalculation
+      ? (await this.database.approvals
+        .where("rmaId")
+        .equals(rma.id)
+        .toArray())
+        .filter(
+          (approval) =>
+            approval.calculationId === currentCalculation.id &&
+            approval.calculationVersion === currentCalculation.version &&
+            approval.status === rma.approvalStatus &&
+            approval.status !== "invalidated"
+        )
+        .sort(
+          (left, right) =>
+            right.createdAt.localeCompare(left.createdAt) ||
+            right.version - left.version
+        )[0]
+      : undefined
+    if (
+      stageIndex >= RETURN_REVIEW_STAGES.indexOf("refund_approval") &&
+      currentApproval
+    ) {
+      allowed.add(`REFUND_APPROVAL_${currentApproval.status.toUpperCase()}`)
+    }
+    if (stage === "refund_execution" && currentApproval) {
+      const attempts = await this.database.executionAttempts
+        .where("approvalId")
+        .equals(currentApproval.id)
+        .toArray()
+      for (const attempt of attempts) {
+        allowed.add(attempt.resultCode)
+      }
+    }
+    return allowed
   }
 
   private async emit(

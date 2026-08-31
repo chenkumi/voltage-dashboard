@@ -7,7 +7,10 @@ import type {
   ReturnReviewDraft,
 } from "./return-editor-controller"
 import { checkReturnEligibility } from "./return-policy"
-import type { ReturnRepository } from "./return-repository"
+import type {
+  ReturnOperationalRepository,
+  ReturnOperationalSnapshot,
+} from "./return-repository"
 import {
   APPROVAL_STATUSES,
   ELIGIBILITY_STATUSES,
@@ -16,7 +19,6 @@ import {
   RETURN_SOURCES,
   RMA_STATUSES,
   type ReturnReason,
-  type ReturnRepositorySnapshot,
   type ReturnSource,
 } from "./types"
 
@@ -308,7 +310,7 @@ const error = (cause: unknown) => ({
 })
 
 const projectItems = (
-  snapshot: Awaited<ReturnType<ReturnRepository["getSnapshot"]>>,
+  snapshot: Awaited<ReturnType<ReturnOperationalRepository["getSnapshot"]>>,
   rmaId: string
 ) =>
   snapshot.items
@@ -330,7 +332,7 @@ const projectItems = (
 
 const projectEligibility = (
   eligibility: Awaited<
-    ReturnType<ReturnRepository["getSnapshot"]>
+    ReturnType<ReturnOperationalRepository["getSnapshot"]>
   >["rmas"][number]["eligibility"]
 ) => ({
   status: eligibility.status,
@@ -343,7 +345,7 @@ const projectEligibility = (
 
 const getAvailableReturnLines = (
   commerce: CommerceDataSnapshot,
-  snapshot: ReturnRepositorySnapshot,
+  snapshot: ReturnOperationalSnapshot,
   orderId: string
 ) => {
   const activeRmaIds = new Set(
@@ -394,7 +396,7 @@ const getAvailableReturnLines = (
 const projectFormState = (
   controller: ReturnEditorController,
   commerce: CommerceDataSnapshot,
-  snapshot: ReturnRepositorySnapshot
+  snapshot: ReturnOperationalSnapshot
 ) => {
   const state = controller.getFormState()
   return state
@@ -463,7 +465,7 @@ export const executeReturnTool = async ({
 }: {
   name: string
   args: Record<string, unknown>
-  repository: ReturnRepository
+  repository: ReturnOperationalRepository
   commerce: CommerceDataSnapshot
   editor: ReturnEditorController
   navigate: (path: string) => void

@@ -81,7 +81,12 @@ import {
   isOperationalTool,
   OPERATIONAL_TOOLS,
 } from "./operational-tools"
-import { ReturnRepository } from "./returns/return-repository"
+import {
+  createReturnOperationalRepository,
+  ReturnRepository,
+  type ReturnOperationalRepository,
+  type ReturnReviewNoteSession,
+} from "./returns/return-repository"
 import { ReturnEditorController } from "./returns/return-editor-controller"
 import {
   executeReturnTool,
@@ -92,6 +97,7 @@ import {
   RETURN_GLOBAL_TOOLS,
 } from "./returns/return-tools"
 import {
+  projectReturnStoreSnapshotForUser,
   ReturnStore,
   useReturnStore,
   type ReturnStoreSnapshot,
@@ -336,7 +342,8 @@ type VoltageAdminContextValue = {
   productDraftStore: ProductDraftStore
   products: ProductStoreSnapshot
   reportingController: ReportingRuntimeController
-  returnRepository: ReturnRepository
+  returnRepository: ReturnOperationalRepository
+  returnReviewNotes: ReturnReviewNoteSession | null
   returnEditorController: ReturnEditorController
   returns: ReturnStoreSnapshot
 }
@@ -512,7 +519,11 @@ const useVoltageAdminWebMcpTools = (
 }
 
 export const VoltageAdminProvider = () => {
-  const { isAuthenticated, status: authenticationStatus } = useDemoAuth()
+  const {
+    currentUserId,
+    isAuthenticated,
+    status: authenticationStatus,
+  } = useDemoAuth()
   const navigate = useNavigate()
   const location = useLocation()
   const navigationType = useNavigationType()
@@ -530,6 +541,9 @@ export const VoltageAdminProvider = () => {
         orderSnapshotVersion: COMMERCE_SEED_VERSION,
       })
   )
+  const [returnOperations] = useState(() =>
+    createReturnOperationalRepository(returnRepository)
+  )
   const [returnEditorController] = useState(() => new ReturnEditorController())
   const [productEditorController] = useState(
     () => new ProductEditorController()
@@ -538,9 +552,20 @@ export const VoltageAdminProvider = () => {
   const [productStore] = useState(() => new ProductStore(productRepository))
   const [commerceStore] = useState(() => new CommerceStore(commerceRepository))
   const [returnStore] = useState(() => new ReturnStore(returnRepository))
+  const returnReviewNotes = useMemo(
+    () =>
+      currentUserId
+        ? returnRepository.reviewNotesForUser(currentUserId)
+        : null,
+    [currentUserId, returnRepository]
+  )
   const products = useProductStore(productStore)
   const commerce = useCommerceStore(commerceStore)
   const returns = useReturnStore(returnStore)
+  const visibleReturns = useMemo(
+    () => projectReturnStoreSnapshotForUser(returns, currentUserId),
+    [currentUserId, returns]
+  )
   const dashboard = useMemo(
     () => getVoltageAdminDashboard(products.products, commerce),
     [commerce, products.products]
@@ -621,7 +646,7 @@ export const VoltageAdminProvider = () => {
           createOperationalReportingVersion(
             products.version,
             commerce.version,
-            returns.version
+            returns.operationalVersion
           )
         )
       })
@@ -679,7 +704,7 @@ export const VoltageAdminProvider = () => {
       createOperationalReportingVersion(
         productSnapshot.version,
         commerceSnapshot.version,
-        returnSnapshot.version
+        returnSnapshot.operationalVersion
       )
     )
   }, [
@@ -752,7 +777,7 @@ export const VoltageAdminProvider = () => {
         await executeReturnTool({
           name,
           args,
-          repository: returnRepository,
+          repository: returnOperations,
           commerce: await commerceRepository.getSnapshot(),
           editor: returnEditorController,
           navigate: navigateForTool,
@@ -857,9 +882,10 @@ export const VoltageAdminProvider = () => {
       productDraftStore,
       products,
       reportingController,
-      returnRepository,
+      returnRepository: returnOperations,
+      returnReviewNotes,
       returnEditorController,
-      returns,
+      returns: visibleReturns,
     }),
     [
       commerce,
@@ -870,9 +896,10 @@ export const VoltageAdminProvider = () => {
       productDraftStore,
       products,
       reportingController,
-      returnRepository,
+      returnOperations,
+      returnReviewNotes,
       returnEditorController,
-      returns,
+      visibleReturns,
     ]
   )
 

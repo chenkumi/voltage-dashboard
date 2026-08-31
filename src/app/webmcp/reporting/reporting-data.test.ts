@@ -24,6 +24,40 @@ const createSource = () => {
 }
 
 describe("unified operational reporting projection", () => {
+  it("keeps private return notes outside every reporting projection", () => {
+    const source = createSource()
+    const snapshot = createReportingDataSnapshot({
+      ...source,
+      returns: {
+        ...source.returns,
+        version: source.returns.version + 1,
+        notes: [
+          {
+            id: "NOTE-PRIVATE",
+            rmaId: source.returns.rmas[0].id,
+            stage: "eligibility",
+            category: "internal_note",
+            content: "PRIVATE NOTE CONTENT",
+            recommendation: null,
+            evidenceCodes: [],
+            authorUserId: "private-user",
+            status: "draft",
+            createdAt: "2026-08-31T08:00:00.000Z",
+            updatedAt: "2026-08-31T08:00:00.000Z",
+            publishedAt: null,
+            version: 1,
+            inputSource: "ui",
+            supersedesNoteId: null,
+          },
+        ],
+      },
+    })
+
+    expect(JSON.stringify(snapshot)).not.toMatch(
+      /NOTE-PRIVATE|PRIVATE NOTE CONTENT|private-user/
+    )
+  })
+
   it("uses all three repository versions in the reporting context version", () => {
     const baseline = createOperationalReportingVersion(1, 2, 3)
 

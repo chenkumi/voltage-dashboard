@@ -108,6 +108,7 @@ const emptyReturnSnapshot = (
   orderSnapshotVersion = 0
 ): ReturnRepositorySnapshot => ({
   version: 0,
+  operationalVersion: 0,
   orderSnapshotVersion,
   rmas: [],
   items: [],
@@ -115,6 +116,7 @@ const emptyReturnSnapshot = (
   approvals: [],
   executionAttempts: [],
   timeline: [],
+  notes: [],
 })
 
 export const createSafeOperationalProjection = (

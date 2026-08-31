@@ -7,8 +7,21 @@ export type ReturnStoreSnapshot = ReturnRepositorySnapshot & {
   error: string | null
 }
 
+export const projectReturnStoreSnapshotForUser = (
+  snapshot: ReturnStoreSnapshot,
+  currentUserId: string | null
+): ReturnStoreSnapshot => ({
+  ...snapshot,
+  notes: snapshot.notes.filter(
+    (note) =>
+      note.status === "published" ||
+      (currentUserId !== null && note.authorUserId === currentUserId)
+  ),
+})
+
 const emptySnapshot: ReturnRepositorySnapshot = {
   version: 0,
+  operationalVersion: 0,
   orderSnapshotVersion: 0,
   rmas: [],
   items: [],
@@ -16,6 +29,7 @@ const emptySnapshot: ReturnRepositorySnapshot = {
   approvals: [],
   executionAttempts: [],
   timeline: [],
+  notes: [],
 }
 
 const initialSnapshot: ReturnStoreSnapshot = {

@@ -11,6 +11,7 @@ export class ReturnWorkflowError extends Error {
     | "INVALID_ACTOR"
     | "INVALID_STATE"
     | "STALE_VERSION"
+    | "VERSION_CONFLICT"
     | "ALREADY_COMPLETED"
 
   constructor(code: ReturnWorkflowError["code"], message: string) {

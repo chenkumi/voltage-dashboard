@@ -18,6 +18,7 @@ const DEMO_PASSWORD = "123456"
 type DemoAuthContextValue = {
   status: "loading" | "authenticated" | "unauthenticated"
   isAuthenticated: boolean
+  currentUserId: DemoAuthSession["username"] | null
   signIn: (username: string, password: string) => Promise<boolean>
   signOut: () => Promise<void>
 }
@@ -59,10 +60,12 @@ export const DemoAuthProvider = ({ children }: { children: ReactNode }) => {
     () => ({
       status,
       isAuthenticated: status === "authenticated",
+      currentUserId:
+        status === "authenticated" ? (session?.username ?? null) : null,
       signIn,
       signOut,
     }),
-    [signIn, signOut, status]
+    [session?.username, signIn, signOut, status]
   )
 
   return (

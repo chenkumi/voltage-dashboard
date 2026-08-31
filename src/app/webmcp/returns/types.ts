@@ -47,6 +47,25 @@ export const REFUND_STATUSES = [
   "succeeded",
   "failed",
 ] as const
+export const RETURN_REVIEW_STAGES = [
+  "return_request",
+  "eligibility",
+  "receipt",
+  "inspection",
+  "refund_calculation",
+  "refund_approval",
+  "refund_execution",
+] as const
+export const RETURN_REVIEW_CATEGORIES = [
+  "review_recommendation",
+  "internal_note",
+  "handoff",
+] as const
+export const RETURN_REVIEW_RECOMMENDATIONS = [
+  "approve",
+  "request_information",
+  "reject",
+] as const
 
 export type ReturnSource = (typeof RETURN_SOURCES)[number]
 export type ReturnReason = (typeof RETURN_REASONS)[number]
@@ -57,6 +76,10 @@ export type InspectionStatus = (typeof INSPECTION_STATUSES)[number]
 export type ApprovalStatus = (typeof APPROVAL_STATUSES)[number]
 export type RefundStatus = (typeof REFUND_STATUSES)[number]
 export type WorkflowActor = "agent" | "user" | "system"
+export type ReturnReviewStage = (typeof RETURN_REVIEW_STAGES)[number]
+export type ReturnReviewCategory = (typeof RETURN_REVIEW_CATEGORIES)[number]
+export type ReturnReviewRecommendation =
+  (typeof RETURN_REVIEW_RECOMMENDATIONS)[number]
 
 export type ReturnItem = {
   id: string
@@ -189,6 +212,24 @@ export type ReturnTimelineEvent = {
   version: number
 }
 
+export type ReturnReviewNote = {
+  id: string
+  rmaId: string
+  stage: ReturnReviewStage
+  category: ReturnReviewCategory
+  content: string
+  recommendation: ReturnReviewRecommendation | null
+  evidenceCodes: readonly string[]
+  authorUserId: string
+  status: "draft" | "published"
+  createdAt: string
+  updatedAt: string
+  publishedAt: string | null
+  version: number
+  inputSource: "ui" | "webmcp"
+  supersedesNoteId: string | null
+}
+
 export type Rma = {
   id: string
   orderId: string
@@ -212,6 +253,7 @@ export type Rma = {
 
 export type ReturnRepositorySnapshot = {
   version: number
+  operationalVersion: number
   orderSnapshotVersion: number
   rmas: readonly Rma[]
   items: readonly ReturnItem[]
@@ -219,4 +261,5 @@ export type ReturnRepositorySnapshot = {
   approvals: readonly RefundApproval[]
   executionAttempts: readonly RefundExecutionAttempt[]
   timeline: readonly ReturnTimelineEvent[]
+  notes: readonly ReturnReviewNote[]
 }

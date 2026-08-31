@@ -5,7 +5,9 @@ import userEvent from "@testing-library/user-event"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import App from "../../App"
+import { DemoAuthProvider, useDemoAuth } from "./demo-auth"
 import { demoAuthDb, DEMO_AUTH_SESSION_ID } from "./demo-auth-db"
+import type { WebMcpTestProvider } from "../webmcp/types"
 
 vi.mock("../webmcp/reporting/reporting-tools", async (importOriginal) => {
   const actual =
@@ -30,13 +32,33 @@ vi.mock("../webmcp/reporting/reporting-tools", async (importOriginal) => {
 
 const webMcpWindow = () =>
   window as typeof window & {
-    __webmcpTestProvider?: unknown
+    __webmcpTestProvider?: WebMcpTestProvider
   }
 
 afterEach(() => cleanup())
 
 describe("展示登入流程", () => {
-  it("未登入時僅顯示登入頁，且不掛載 WebMCP tools", async () => {
+  it("向業務功能提供目前登入帳號識別", async () => {
+    await demoAuthDb.sessions.put({
+      id: DEMO_AUTH_SESSION_ID,
+      username: "guest",
+      signedInAt: "2026-08-31T08:00:00.000Z",
+    })
+    const Probe = () => {
+      const { currentUserId } = useDemoAuth()
+      return <span>{currentUserId ?? "none"}</span>
+    }
+
+    render(
+      <DemoAuthProvider>
+        <Probe />
+      </DemoAuthProvider>
+    )
+
+    expect(await screen.findByText("guest")).toBeTruthy()
+  })
+
+  it("未登入時僅暴露登入說明的 WebMCP 工具", async () => {
     await demoAuthDb.sessions.delete(DEMO_AUTH_SESSION_ID)
     const router = createMemoryRouter([{ path: "*", element: <App /> }], {
       initialEntries: ["/products"],
@@ -48,7 +70,18 @@ describe("展示登入流程", () => {
       await screen.findByRole("heading", { name: "登入營運後台" })
     ).toBeTruthy()
     expect(router.state.location.pathname).toBe("/login")
-    expect(webMcpWindow().__webmcpTestProvider).toBeUndefined()
+    await waitFor(() =>
+      expect(webMcpWindow().__webmcpTestProvider?.getTools()).toHaveLength(1)
+    )
+    const provider = webMcpWindow().__webmcpTestProvider!
+    expect(provider.getTools().map((tool) => tool.name)).toEqual([
+      "agent_instructions",
+    ])
+    await expect(
+      provider.executeTool(provider.getTools()[0], {})
+    ).resolves.toMatchObject({
+      text: expect.stringMatching(/尚未登入[\s\S]*登入/),
+    })
   })
 
   it("拒絕錯誤憑證，並在成功登入後啟用後台與 WebMCP", async () => {
@@ -78,10 +111,18 @@ describe("展示登入流程", () => {
       expect(webMcpWindow().__webmcpTestProvider).toBeDefined()
     )
 
+    await waitFor(() =>
+      expect(screen.getByTitle("Sign out")).toBeTruthy()
+    )
+
     await user.click(screen.getByTitle("Sign out"))
     await waitFor(() => expect(router.state.location.pathname).toBe("/login"))
     await waitFor(() =>
-      expect(webMcpWindow().__webmcpTestProvider).toBeUndefined()
+      expect(
+        webMcpWindow()
+          .__webmcpTestProvider?.getTools()
+          .map((tool) => tool.name)
+      ).toEqual(["agent_instructions"])
     )
   })
 })

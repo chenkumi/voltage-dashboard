@@ -3,11 +3,17 @@ import { afterEach, describe, expect, it } from "vitest"
 import { createCommerceSeed } from "../commerce-data/commerce-seed"
 import type { CommerceDataSnapshot } from "../commerce-data/types"
 import {
+  createReturnOperationalRepository,
   ReturnRepository,
   RETURN_DATABASE_SCHEMA,
   type ReturnDraftInput,
 } from "./return-repository"
+import { createReturnSeed } from "./return-seed"
 import { ReturnWorkflowError } from "./return-state"
+
+const RETURN_DATABASE_SCHEMA_V2 = Object.fromEntries(
+  Object.entries(RETURN_DATABASE_SCHEMA).filter(([table]) => table !== "notes")
+)
 
 const repositories: ReturnRepository[] = []
 
@@ -116,6 +122,237 @@ const completeToInspection = async (
 }
 
 describe("ReturnRepository", () => {
+  it("exposes an allowlisted operational facade without private notes or lifecycle capabilities", async () => {
+    const repository = createRepository()
+    await repository.initialize()
+    const rmaId = (await repository.getSnapshot()).rmas[0].id
+    await repository.reviewNotesForUser("guest").saveDraft(
+      {
+        rmaId,
+        stage: "return_request",
+        category: "internal_note",
+        content: "僅目前帳號可見的私人草稿。",
+      },
+      0,
+      "ui"
+    )
+
+    const operational = createReturnOperationalRepository(repository)
+    expect(await operational.getSnapshot()).not.toHaveProperty("notes")
+    expect(
+      (operational as unknown as Record<string, unknown>).reviewNotesForUser
+    ).toBeUndefined()
+    expect(
+      (operational as unknown as Record<string, unknown>).deleteDatabaseForTests
+    ).toBeUndefined()
+    expect(
+      (operational as unknown as Record<string, unknown>).close
+    ).toBeUndefined()
+  })
+
+  it("persists private per-user review drafts without changing the operational version", async () => {
+    const databaseName = `return-notes-${crypto.randomUUID()}`
+    const repository = createRepository(databaseName)
+    await repository.initialize()
+    const before = await repository.getSnapshot()
+    const rmaId = "RMA-2004"
+    const guestNotes = repository.reviewNotesForUser("guest")
+    const warehouseNotes = repository.reviewNotesForUser("warehouse-user")
+
+    const first = await guestNotes.saveDraft(
+      {
+        rmaId,
+        stage: "eligibility",
+        category: "review_recommendation",
+        recommendation: "approve",
+        evidenceCodes: ["within_30_days"],
+        content: "政策與退貨期限均符合，建議核准。",
+      },
+      0,
+      "ui"
+    )
+    await warehouseNotes.saveDraft(
+      {
+        rmaId,
+        stage: "eligibility",
+        category: "internal_note",
+        content: "等待倉庫確認包裝狀態。",
+      },
+      0,
+      "ui"
+    )
+
+    const afterDrafts = await repository.getSnapshot()
+    expect(afterDrafts.version).toBe(before.version + 2)
+    expect(afterDrafts.operationalVersion).toBe(before.operationalVersion)
+    expect(afterDrafts.notes).toHaveLength(2)
+    await expect(
+      guestNotes.saveDraft(
+        {
+          rmaId,
+          stage: "eligibility",
+          category: "internal_note",
+          content: "過期版本不得覆寫目前草稿。",
+        },
+        0,
+        "webmcp"
+      )
+    ).rejects.toMatchObject({ code: "VERSION_CONFLICT" })
+
+    const published = await guestNotes.publishDraft(
+      rmaId,
+      "eligibility",
+      first.version
+    )
+    expect(published).toMatchObject({
+      status: "published",
+      authorUserId: "guest",
+      inputSource: "ui",
+    })
+    expect(
+      await guestNotes.getDraft(rmaId, "eligibility")
+    ).toBeNull()
+    expect(await guestNotes.listPublished(rmaId)).toEqual([
+      expect.objectContaining({ id: published.id, version: 2 }),
+    ])
+
+    repository.close()
+    const reopened = createRepository(databaseName)
+    await reopened.initialize()
+    const reopenedSnapshot = await reopened.getSnapshot()
+    expect(reopenedSnapshot.notes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: published.id, status: "published" }),
+        expect.objectContaining({
+          authorUserId: "warehouse-user",
+          status: "draft",
+        }),
+      ])
+    )
+    expect(reopenedSnapshot.operationalVersion).toBe(before.operationalVersion)
+  })
+
+  it("publishes corrections as new immutable notes and supports owner discard", async () => {
+    const repository = createRepository()
+    await repository.initialize()
+    const rmaId = (await repository.getSnapshot()).rmas[0].id
+    const notes = repository.reviewNotesForUser("guest")
+    const originalDraft = await notes.saveDraft(
+      {
+        rmaId,
+        stage: "inspection",
+        category: "internal_note",
+        content: "原始驗貨備註。",
+      },
+      0,
+      "ui"
+    )
+    const original = await notes.publishDraft(
+      rmaId,
+      "inspection",
+      originalDraft.version
+    )
+    const correction = await notes.saveDraft(
+      {
+        rmaId,
+        stage: "inspection",
+        category: "internal_note",
+        content: "修正後的驗貨備註。",
+        supersedesNoteId: original.id,
+      },
+      0,
+      "ui"
+    )
+    expect(correction.id).not.toBe(original.id)
+    expect(correction.supersedesNoteId).toBe(original.id)
+    await expect(
+      notes.discardDraft(
+        rmaId,
+        "inspection",
+        correction.version - 1
+      )
+    ).rejects.toMatchObject({ code: "VERSION_CONFLICT" })
+    await expect(
+      notes.discardDraft(
+        rmaId,
+        "inspection",
+        correction.version
+      )
+    ).resolves.toBe(true)
+    expect(await notes.listPublished(rmaId)).toEqual([
+      expect.objectContaining({ id: original.id, content: "原始驗貨備註。" }),
+    ])
+
+    await expect(
+      notes.saveDraft(
+        {
+          rmaId,
+          stage: "eligibility",
+          category: "internal_note",
+          content: "不可跨階段建立修正關聯。",
+          supersedesNoteId: original.id,
+        },
+        0,
+        "ui"
+      )
+    ).rejects.toMatchObject({ code: "INVALID_RETURN" })
+  })
+
+  it("rejects unsafe note fields and evidence that the RMA did not provide", async () => {
+    const repository = createRepository()
+    await repository.initialize()
+    const rmaId = (await repository.getSnapshot()).rmas[0].id
+    const notes = repository.reviewNotesForUser("guest")
+    const invalidInputs = [
+      { category: "unknown" as never, content: "有效內容。" },
+      {
+        category: "internal_note" as const,
+        recommendation: "approve" as const,
+        content: "有效內容。",
+      },
+      {
+        category: "review_recommendation" as const,
+        recommendation: "unknown" as never,
+        content: "有效內容。",
+      },
+      {
+        category: "internal_note" as const,
+        evidenceCodes: ["FABRICATED_CODE"],
+        content: "有效內容。",
+      },
+      { category: "internal_note" as const, content: "<b>不是純文字</b>" },
+      { category: "internal_note" as const, content: "a".repeat(1_001) },
+      {
+        category: "internal_note" as const,
+        content: "請聯絡 customer@example.com 取得資料。",
+      },
+      { category: "internal_note" as const, content: "含有\u0000控制字元。" },
+    ]
+
+    for (const input of invalidInputs) {
+      await expect(
+        notes.saveDraft(
+          { rmaId, stage: "eligibility", ...input },
+          0,
+          "ui"
+        )
+      ).rejects.toMatchObject({ code: "INVALID_RETURN" })
+    }
+    await expect(
+      notes.saveDraft(
+        {
+          rmaId,
+          stage: "eligibility",
+          category: "internal_note",
+          content: "來源值必須由系統固定。",
+        },
+        0,
+        "import" as never
+      )
+    ).rejects.toMatchObject({ code: "INVALID_RETURN" })
+    expect(await notes.getDraft(rmaId, "eligibility")).toBeNull()
+  })
+
   it("reopens the same repository after lifecycle cleanup", async () => {
     const repository = createRepository()
     await repository.initialize()
@@ -367,9 +604,62 @@ describe("ReturnRepository", () => {
         "user"
       )
     ).rejects.toBeInstanceOf(ReturnWorkflowError)
+
+    const notes = repository.reviewNotesForUser("finance-user")
+    await expect(
+      notes.saveDraft(
+        {
+          rmaId,
+          stage: "refund_approval",
+          category: "internal_note",
+          content: "失效核准不可作為目前證據。",
+          evidenceCodes: ["REFUND_APPROVAL_APPROVED"],
+        },
+        0,
+        "ui"
+      )
+    ).rejects.toMatchObject({ code: "INVALID_RETURN" })
+
+    const returnItem = snapshot.items.find((item) => item.rmaId === rmaId)!
+    await repository.completeInspection(
+      rmaId,
+      [
+        {
+          returnItemId: returnItem.id,
+          receivedQuantity: 1,
+          acceptedQuantity: 1,
+          condition: "opened",
+          packaging: "intact",
+          missingContents: false,
+          rejectionReason: null,
+          inventoryDisposition: "restock",
+          inspectionNote: "Verified against the order line.",
+          inspectedBy: "ops-user",
+        },
+      ],
+      "user"
+    )
+    const currentCalculation = await repository.generateRefundCalculation(
+      rmaId,
+      "system"
+    )
+    await repository.submitForApproval(rmaId, currentCalculation.id, "user")
+    await expect(
+      notes.saveDraft(
+        {
+          rmaId,
+          stage: "refund_approval",
+          category: "internal_note",
+          content: "目前待核准紀錄可作為證據。",
+          evidenceCodes: ["REFUND_APPROVAL_PENDING"],
+        },
+        0,
+        "ui"
+      )
+    ).resolves.toMatchObject({ evidenceCodes: ["REFUND_APPROVAL_PENDING"] })
   })
 
-  it("seeds the two external RMAs once without overlapping order units", async () => {
+  it("seeds external RMAs and approval fixtures once without overlapping order units", async () => {
     const commerce = createCommerceSeed()
     const repository = createRepository(undefined, commerce)
     await repository.initialize()
@@ -378,12 +668,66 @@ describe("ReturnRepository", () => {
     const second = await repository.getSnapshot()
 
     expect(first.rmas.filter((rma) => rma.source === "external")).toHaveLength(
-      2
+      5
+    )
+    expect(first.approvals.map((approval) => approval.status)).toEqual(
+      expect.arrayContaining(["pending", "returned", "approved"])
     )
     expect(new Set(first.items.map((item) => item.orderLineId)).size).toBe(
       first.items.length
     )
     expect(second.rmas).toEqual(first.rmas)
+  })
+
+  it("upgrades a real version 2 database without losing existing return data", async () => {
+    const commerce = createCommerceSeed()
+    const databaseName = `returns-v2-${crypto.randomUUID()}`
+    const seed = createReturnSeed(commerce, 3)
+    const legacyRmas = seed.rmas.map((rma) =>
+      rma.id === "RMA-2004"
+        ? { ...rma, customerStatement: "User-maintained legacy statement." }
+        : rma
+    )
+    const legacy = new Dexie(databaseName)
+    legacy.version(2).stores(RETURN_DATABASE_SCHEMA_V2)
+    await legacy.open()
+    await legacy.transaction(
+      "rw",
+      legacy.tables,
+      async () => {
+        await Promise.all([
+          legacy.table("rmas").bulkAdd(legacyRmas),
+          legacy.table("items").bulkAdd(seed.items),
+          legacy.table("calculations").bulkAdd(seed.calculations),
+          legacy.table("approvals").bulkAdd(seed.approvals),
+          legacy.table("executionAttempts").bulkAdd(seed.executionAttempts),
+          legacy.table("timeline").bulkAdd(seed.timeline),
+          legacy.table("metadata").add({
+            key: "returns",
+            seedVersion: 3,
+            dataVersion: 7,
+            orderSnapshotVersion: 3,
+            initializedAt: "2026-08-30T08:00:00.000Z",
+          }),
+        ])
+      }
+    )
+    legacy.close()
+
+    const migrated = createRepository(databaseName, commerce)
+    await migrated.initialize()
+    const snapshot = await migrated.getSnapshot()
+    expect(snapshot.rmas).toHaveLength(seed.rmas.length)
+    expect(snapshot.items).toHaveLength(seed.items.length)
+    expect(snapshot.timeline).toHaveLength(seed.timeline.length)
+    expect(
+      snapshot.rmas.find((rma) => rma.id === "RMA-2004")?.customerStatement
+    ).toBe("User-maintained legacy statement.")
+    expect(snapshot).toMatchObject({
+      version: 7,
+      operationalVersion: 7,
+      notes: [],
+    })
   })
 
   it("migrates only missing seed rows without overwriting user changes", async () => {
@@ -402,7 +746,14 @@ describe("ReturnRepository", () => {
       legacy.table("rmas").delete("RMA-2005"),
       legacy.table("items").delete("RMA-2005-I1"),
       legacy.table("timeline").delete("RMA-2005-T1"),
-      legacy.table("metadata").update("returns", { seedVersion: 1 }),
+      ...["2006", "2007", "2008"].flatMap((suffix) => [
+        legacy.table("rmas").delete(`RMA-${suffix}`),
+        legacy.table("items").delete(`RMA-${suffix}-I1`),
+        legacy.table("calculations").delete(`CAL-${suffix}`),
+        legacy.table("approvals").delete(`APR-${suffix}`),
+        legacy.table("timeline").delete(`RMA-${suffix}-T1`),
+      ]),
+      legacy.table("metadata").update("returns", { seedVersion: 2 }),
     ])
     legacy.close()
 
@@ -416,6 +767,12 @@ describe("ReturnRepository", () => {
     expect(snapshot.rmas.some((candidate) => candidate.id === "RMA-2005")).toBe(
       true
     )
+    expect(snapshot.calculations.map((calculation) => calculation.id)).toEqual(
+      expect.arrayContaining(["CAL-2006", "CAL-2007", "CAL-2008"])
+    )
+    expect(snapshot.approvals.map((approval) => approval.id)).toEqual(
+      expect.arrayContaining(["APR-2006", "APR-2007", "APR-2008"])
+    )
     expect(snapshot.version).toBe(2)
 
     migrated.close()
@@ -424,9 +781,35 @@ describe("ReturnRepository", () => {
     await expect(
       inspected.table("metadata").get("returns")
     ).resolves.toMatchObject({
-      seedVersion: 2,
+      seedVersion: 3,
     })
     inspected.close()
+  })
+
+  it("repairs missing fixture rows even when metadata already has the current seed version", async () => {
+    const commerce = createCommerceSeed()
+    const databaseName = `returns-${crypto.randomUUID()}`
+    const first = createRepository(databaseName, commerce)
+    await first.initialize()
+    first.close()
+
+    const damaged = new Dexie(databaseName)
+    damaged.version(1).stores(RETURN_DATABASE_SCHEMA)
+    await Promise.all([
+      damaged.table("rmas").delete("RMA-2006"),
+      damaged.table("items").delete("RMA-2006-I1"),
+      damaged.table("calculations").delete("CAL-2006"),
+      damaged.table("approvals").delete("APR-2006"),
+      damaged.table("timeline").delete("RMA-2006-T1"),
+    ])
+    damaged.close()
+
+    const repaired = createRepository(databaseName, commerce)
+    await repaired.initialize()
+    const snapshot = await repaired.getSnapshot()
+    expect(snapshot.rmas.some((item) => item.id === "RMA-2006")).toBe(true)
+    expect(snapshot.calculations.some((item) => item.id === "CAL-2006")).toBe(true)
+    expect(snapshot.approvals.some((item) => item.id === "APR-2006")).toBe(true)
   })
 
   it("rejects inconsistent refund execution result codes", async () => {
@@ -646,7 +1029,7 @@ describe("ReturnRepository", () => {
         "agent"
       )
     ).rejects.toMatchObject({ code: "INVALID_RETURN" })
-    expect((await repository.getSnapshot()).rmas).toHaveLength(2)
+    expect((await repository.getSnapshot()).rmas).toHaveLength(5)
   })
 
   it("runtime-validates structured inspection fields and rejection reasons", async () => {
@@ -849,7 +1232,7 @@ describe("ReturnRepository", () => {
           (order) =>
             order.status === "delivered" && order.paymentStatus === "paid"
         )
-        .slice(0, 2)
+        .slice(0, 5)
         .map((order) => order.id)
     )
     const line = commerce.orderLines.find((candidate) => {
