@@ -97,6 +97,11 @@ describe("refund approval pages", () => {
     await user.click(
       await screen.findByRole("button", { name: "Complete inspection" })
     )
+    expect(
+      await screen.findByText(
+        "Reopening inspection invalidates the current refund calculation and approval."
+      )
+    ).toBeTruthy()
 
     const restock = await screen.findByRole("button", {
       name: "Confirm restock",

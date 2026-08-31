@@ -200,6 +200,14 @@ export const ReturnWorkflowProgress = ({
   labelFor?: (label: ReturnReviewStage | ReturnWorkflowDetail) => string
 }) => {
   const active = currentReturnWorkflowStage(workflow)
+  const tone: Record<ReturnWorkflowStageState, string> = {
+    completed: "border-emerald-300 bg-emerald-50 text-emerald-900",
+    current: "border-primary bg-primary/10 text-primary",
+    attention: "border-amber-300 bg-amber-50 text-amber-950",
+    upcoming: "border-border bg-muted/30 text-muted-foreground",
+    terminal: "border-destructive/40 bg-destructive/10 text-destructive",
+    not_applicable: "border-dashed border-border text-muted-foreground",
+  }
   return (
     <ol className="grid gap-2 sm:grid-cols-4 xl:grid-cols-7">
       {workflow.map((stage) => (
@@ -208,16 +216,24 @@ export const ReturnWorkflowProgress = ({
         data-stage={stage.id}
         data-state={stage.state}
         aria-current={active.id === stage.id ? "step" : undefined}
-        className="rounded-md border p-2 text-sm"
+        className={`rounded-md border p-2 text-sm ${tone[stage.state]}`}
       >
-        <span className="block text-xs text-muted-foreground">
-          {stage.number}
+        <span className="block text-xs">
+          {stage.state === "completed"
+            ? "✓"
+            : active.id === stage.id
+              ? "●"
+              : stage.number}{" "}
+          {active.id === stage.id ? "Current" : stage.state}
         </span>
         <strong>{labelFor(stage.id)}</strong>
         {stage.detail ? (
           <small className="block text-xs text-muted-foreground">
             {labelFor(stage.detail)}
           </small>
+        ) : null}
+        {stage.state === "upcoming" ? (
+          <small className="block text-xs">Complete prior stages to unlock.</small>
         ) : null}
       </li>
       ))}

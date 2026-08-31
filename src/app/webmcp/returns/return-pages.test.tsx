@@ -126,9 +126,16 @@ describe("return pages", () => {
     )
     expect(await screen.findByRole("heading", { name: /^RMA-/ })).toBeTruthy()
     expect(document.querySelectorAll("[data-stage]")).toHaveLength(7)
+    const currentTaskCard = screen
+      .getByText("Current task")
+      .closest("[data-slot='card']")
+    expect(currentTaskCard).toBeTruthy()
     expect(
-      await screen.findByRole("button", { name: "Authorize return" })
+      within(currentTaskCard as HTMLElement).getByRole("button", {
+        name: "Authorize return",
+      })
     ).toBeTruthy()
+    expect(document.querySelectorAll("details[open]")).toHaveLength(1)
     await user.click(screen.getByRole("button", { name: "Authorize return" }))
     const packageCount = await screen.findByRole("spinbutton", {
       name: "Package count",

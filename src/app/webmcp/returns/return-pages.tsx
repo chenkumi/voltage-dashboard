@@ -15,9 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { Order, OrderLine } from "../commerce-data/types"
 import {
   createReturnFormEditorState,
-  createReturnReviewEditorState,
   type ReturnFormDraft,
-  type ReturnReviewDraft,
 } from "./return-editor-controller"
 import {
   ActiveFilterSummary,
@@ -48,6 +46,7 @@ import type {
   ReturnDraftInput,
 } from "./return-repository"
 import type { ReturnStoreSnapshot } from "./return-store"
+import { ReturnNoteEditor } from "./return-note-editor"
 import {
   createReturnWorkflow,
   currentReturnWorkflowStage,
@@ -806,17 +805,36 @@ const ReturnAddPageForOrder = ({ orderId }: { orderId: string }) => {
 const DetailCard = ({
   title,
   children,
+  collapsible = false,
+  defaultOpen = false,
 }: {
   title: string
   children: React.ReactNode
-}) => (
-  <Card className="h-full">
-    <CardHeader>
-      <CardTitle>{title}</CardTitle>
-    </CardHeader>
-    <CardContent className="grid gap-2 text-sm">{children}</CardContent>
-  </Card>
-)
+  collapsible?: boolean
+  defaultOpen?: boolean
+}) => {
+  if (collapsible)
+    return (
+      <Card className="h-full">
+        <details open={defaultOpen || undefined}>
+          <summary className="cursor-pointer list-none">
+            <CardHeader>
+              <CardTitle>{title}</CardTitle>
+            </CardHeader>
+          </summary>
+          <CardContent className="grid gap-2 text-sm">{children}</CardContent>
+        </details>
+      </Card>
+    )
+  return (
+    <Card className="h-full">
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+      </CardHeader>
+      <CardContent className="grid gap-2 text-sm">{children}</CardContent>
+    </Card>
+  )
+}
 
 export const ReturnDetailPage = () => {
   const { returnId } = useParams()
@@ -824,8 +842,8 @@ export const ReturnDetailPage = () => {
   const navigate = useNavigate()
   const {
     productRepository,
-    returnEditorController,
     returnRepository,
+    returnReviewNotes,
     returns,
   } = useVoltageAdmin()
   const [busy, setBusy] = useState(false)
@@ -846,42 +864,6 @@ export const ReturnDetailPage = () => {
     finalSale: false,
   })
   const currentRma = returns.rmas.find((candidate) => candidate.id === returnId)
-  const [review, setReview] = useState(
-    () =>
-      returnEditorController.getReviewState(returnId) ??
-      createReturnReviewEditorState({
-        rmaId: returnId ?? "",
-        rmaVersion: currentRma?.version ?? 1,
-        policyVersion: currentRma?.eligibility.policyVersion ?? "unknown",
-      })
-  )
-  if (
-    currentRma &&
-    (review.rmaId !== currentRma.id ||
-      review.rmaVersion !== currentRma.version ||
-      review.policyVersion !== currentRma.eligibility.policyVersion)
-  ) {
-    setReview(
-      createReturnReviewEditorState({
-        rmaId: currentRma.id,
-        rmaVersion: currentRma.version,
-        policyVersion: currentRma.eligibility.policyVersion,
-      })
-    )
-  }
-  useEffect(
-    () => returnEditorController.attachReview(review, setReview),
-    [returnEditorController, review]
-  )
-  const updateReview = (patch: Partial<ReturnReviewDraft>) =>
-    setReview((current) =>
-      createReturnReviewEditorState(
-        current,
-        { ...current.draft, ...patch },
-        current.version + 1,
-        true
-      )
-    )
   if (returns.state === "error")
     return (
       <PageLayout ariaLabel={t("Return details")} pageName="Returns">
@@ -923,10 +905,6 @@ export const ReturnDetailPage = () => {
   const timeline = returns.timeline
     .filter((item) => item.rmaId === rma.id)
     .sort((a, b) => a.occurredAt.localeCompare(b.occurredAt))
-  const availableEvidence = [
-    ...(rma.eligibility.systemResult?.matchedRules ?? []),
-    ...(rma.eligibility.systemResult?.missingEvidence ?? []),
-  ]
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true)
     setError("")
@@ -1074,6 +1052,208 @@ export const ReturnDetailPage = () => {
       )
     )
   }
+  const currentTaskControl =
+    currentWorkflowStage.id === "eligibility" &&
+    ["pending", "needs_information"].includes(rma.eligibility.status) ? (
+      <div className="grid gap-3">
+        <div className="grid gap-2 sm:grid-cols-2">
+          <label>
+            {t("Days since delivery")}
+            <input
+              className={fieldClass}
+              type="number"
+              min={0}
+              value={facts.daysSinceDelivery ?? ""}
+              onChange={(event) =>
+                setFacts((current) => ({
+                  ...current,
+                  daysSinceDelivery: Number(event.target.value),
+                }))
+              }
+            />
+          </label>
+          <label>
+            {t("Condition")}
+            <select
+              className={fieldClass}
+              value={facts.condition}
+              onChange={(event) =>
+                setFacts((current) => ({
+                  ...current,
+                  condition: event.target.value as
+                    | "unused"
+                    | "used"
+                    | "damaged",
+                }))
+              }
+            >
+              {(["unused", "used", "damaged"] as const).map((value) => (
+                <option key={value} value={value}>
+                  {t(value)}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={facts.packageOpened ?? false}
+              onChange={(event) =>
+                setFacts((current) => ({
+                  ...current,
+                  packageOpened: event.target.checked,
+                }))
+              }
+            />
+            {t("Package opened")}
+          </label>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={facts.finalSale ?? false}
+              onChange={(event) =>
+                setFacts((current) => ({
+                  ...current,
+                  finalSale: event.target.checked,
+                }))
+              }
+            />
+            {t("Final sale")}
+          </label>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button disabled={busy} onClick={() => void decide("authorized")}>
+            {t("Authorize return")}
+          </Button>
+          <Button
+            disabled={busy}
+            variant="outline"
+            onClick={() => void decide("needs_information")}
+          >
+            {t("Request information")}
+          </Button>
+          <Button
+            disabled={busy}
+            variant="destructive"
+            onClick={() => void decide("rejected")}
+          >
+            {t("Reject return")}
+          </Button>
+        </div>
+      </div>
+    ) : currentWorkflowStage.id === "receipt" &&
+      rma.logistics.status === "awaiting_return" ? (
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label>
+          {t("Package count")}
+          <input
+            className={fieldClass}
+            type="number"
+            min={1}
+            value={packageCount}
+            onChange={(event) => setPackageCount(Number(event.target.value))}
+          />
+        </label>
+        <label>
+          {t("Receipt result")}
+          <select
+            className={fieldClass}
+            value={receiptResult}
+            onChange={(event) =>
+              setReceiptResult(
+                event.target.value as "complete" | "partial" | "damaged"
+              )
+            }
+          >
+            {(["complete", "partial", "damaged"] as const).map((value) => (
+              <option key={value} value={value}>
+                {t(value)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <Button
+          className="sm:col-span-2 sm:justify-self-start"
+          disabled={busy || !Number.isInteger(packageCount) || packageCount < 1}
+          onClick={() =>
+            void run(() =>
+              returnRepository.recordReceipt(
+                rma.id,
+                { packageCount, result: receiptResult },
+                "user"
+              )
+            )
+          }
+        >
+          {t("Record receipt")}
+        </Button>
+      </div>
+    ) : currentWorkflowStage.id === "refund_approval" && latestApproval ? (
+      <Button
+        variant="outline"
+        onClick={() => navigate(`/refund-approvals/${latestApproval.id}`)}
+      >
+        {t("Open refund approval")}
+      </Button>
+    ) : currentWorkflowStage.id === "refund_execution" &&
+      latestApproval?.status === "approved" &&
+      ["pending_execution", "failed"].includes(rma.refundStatus) ? (
+      <div className="grid gap-3">
+        <label>
+          {t("Execution result")}
+          <select
+            className={fieldClass}
+            value={executionResult}
+            onChange={(event) => {
+              const result = event.target.value as "succeeded" | "failed"
+              setExecutionResult(result)
+              setResultCode(
+                result === "succeeded" ? "recorded_success" : "provider_declined"
+              )
+            }}
+          >
+            <option value="succeeded">{t("succeeded")}</option>
+            <option value="failed">{t("failed")}</option>
+          </select>
+        </label>
+        <label>
+          {t("Result code")}
+          <select
+            className={fieldClass}
+            value={resultCode}
+            onChange={(event) => setResultCode(event.target.value)}
+          >
+            {(executionResult === "succeeded"
+              ? ["recorded_success"]
+              : [
+                  "provider_declined",
+                  "provider_unavailable",
+                  "manual_reconciliation_required",
+                ]
+            ).map((value) => (
+              <option key={value} value={value}>
+                {t(value)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          {t("Operational note")}
+          <textarea
+            className={textAreaClass}
+            value={executionNote}
+            onChange={(event) => setExecutionNote(event.target.value)}
+          />
+        </label>
+        <Button disabled={busy} onClick={() => void recordRefundResult()}>
+          {rma.refundStatus === "failed"
+            ? t("Record retry result")
+            : t("Record refund result")}
+        </Button>
+      </div>
+    ) : (
+      action
+    )
   return (
     <PageLayout
       ariaLabel={t("Return details")}
@@ -1090,7 +1270,6 @@ export const ReturnDetailPage = () => {
             <ChevronLeft />
             {t("Back")}
           </Button>
-          {action}
         </div>
       }
     >
@@ -1116,6 +1295,36 @@ export const ReturnDetailPage = () => {
             />
           </CardContent>
         </Card>
+      </GridBlock>
+      <GridBlock className="col-span-12 lg:col-span-8">
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader>
+            <CardTitle>{t("Current task")}</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 text-sm">
+            <p>
+              {t(`current_task_${currentWorkflowStage.id}`)}
+            </p>
+            {currentTaskControl}
+          </CardContent>
+        </Card>
+      </GridBlock>
+      <GridBlock className="col-span-12 lg:col-span-4">
+        <DetailCard title={t("Case summary")}>
+          <p>{t(rma.reason)}</p>
+          <p>
+            {t("Requested quantity")}: {items.reduce(
+              (sum, item) => sum + item.requestedQuantity,
+              0
+            )}
+          </p>
+          <p>
+            {t("Updated")}: {formatDate(
+              rma.updatedAt,
+              i18n.resolvedLanguage ?? "en"
+            )}
+          </p>
+        </DetailCard>
       </GridBlock>
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
@@ -1192,177 +1401,28 @@ export const ReturnDetailPage = () => {
           ))}
         </DetailCard>
       </GridBlock>
-      <GridBlock>
-        <DetailCard title={t("Agent review draft")}>
-          <p className="text-muted-foreground">
-            {t(
-              "This draft is reversible. Eligibility decisions and submissions remain user-only."
-            )}
+      <GridBlock className="col-span-12 lg:col-span-6">
+        <DetailCard
+          title={t("Eligibility")}
+          collapsible
+          defaultOpen={currentWorkflowStage.id === "eligibility"}
+        >
+          <p>
+            {t("Decision")}: <strong>{t(rma.eligibility.status)}</strong>
           </p>
-          <fieldset className="grid gap-2">
-            <legend>{t("Evidence codes")}</legend>
-            {availableEvidence.length > 0 ? (
-              <div className="flex flex-wrap gap-3">
-                {availableEvidence.map((code) => (
-                  <label key={code} className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={review.draft.evidenceCodes.includes(code)}
-                      onChange={(event) =>
-                        updateReview({
-                          evidenceCodes: event.target.checked
-                            ? [...review.draft.evidenceCodes, code]
-                            : review.draft.evidenceCodes.filter(
-                                (item) => item !== code
-                              ),
-                        })
-                      }
-                    />
-                    {code}
-                  </label>
-                ))}
-              </div>
-            ) : (
-              <p>{t("Run the policy assessment before preparing evidence.")}</p>
-            )}
-          </fieldset>
-          <div className="grid gap-3 lg:grid-cols-3">
-            {(
-              [
-                ["operationalSummary", "Operational summary", 600],
-                ["nextStep", "Next step", 300],
-                ["supportDraft", "Support response draft", 600],
-              ] as const
-            ).map(([key, label, maxLength]) => (
-              <label key={key} className="grid gap-1">
-                {t(label)}
-                <textarea
-                  className={textAreaClass}
-                  maxLength={maxLength}
-                  value={review.draft[key]}
-                  onChange={(event) =>
-                    updateReview({ [key]: event.target.value })
-                  }
-                />
-              </label>
-            ))}
-          </div>
-          <p className="text-muted-foreground">
-            {review.valid
-              ? t("Review draft is complete")
-              : t("Missing: {{fields}}", {
-                  fields: review.missingFields.join(", "),
-                })}
-            {" · "}
-            {t("Version")}: {review.version}
+          <p>
+            {rma.eligibility.decisionReason
+              ? t(rma.eligibility.decisionReason)
+              : t("Not decided")}
           </p>
         </DetailCard>
       </GridBlock>
       <GridBlock className="col-span-12 lg:col-span-6">
-        <DetailCard title={t("Eligibility")}>
-          {["pending", "needs_information"].includes(rma.eligibility.status) &&
-          rma.status === "active" ? (
-            <>
-              <div className="grid gap-2 sm:grid-cols-2">
-                <label>
-                  {t("Days since delivery")}
-                  <input
-                    className={fieldClass}
-                    type="number"
-                    min={0}
-                    value={facts.daysSinceDelivery ?? ""}
-                    onChange={(event) =>
-                      setFacts((current) => ({
-                        ...current,
-                        daysSinceDelivery: Number(event.target.value),
-                      }))
-                    }
-                  />
-                </label>
-                <label>
-                  {t("Condition")}
-                  <select
-                    className={fieldClass}
-                    value={facts.condition}
-                    onChange={(event) =>
-                      setFacts((current) => ({
-                        ...current,
-                        condition: event.target.value as
-                          "unused" | "used" | "damaged",
-                      }))
-                    }
-                  >
-                    <option value="unused">{t("unused")}</option>
-                    <option value="used">{t("used")}</option>
-                    <option value="damaged">{t("damaged")}</option>
-                  </select>
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={facts.packageOpened ?? false}
-                    onChange={(event) =>
-                      setFacts((current) => ({
-                        ...current,
-                        packageOpened: event.target.checked,
-                      }))
-                    }
-                  />
-                  {t("Package opened")}
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={facts.finalSale ?? false}
-                    onChange={(event) =>
-                      setFacts((current) => ({
-                        ...current,
-                        finalSale: event.target.checked,
-                      }))
-                    }
-                  />
-                  {t("Final sale")}
-                </label>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  disabled={busy}
-                  onClick={() => void decide("authorized")}
-                >
-                  {t("Authorize return")}
-                </Button>
-                <Button
-                  disabled={busy}
-                  variant="outline"
-                  onClick={() => void decide("needs_information")}
-                >
-                  {t("Request information")}
-                </Button>
-                <Button
-                  disabled={busy}
-                  variant="destructive"
-                  onClick={() => void decide("rejected")}
-                >
-                  {t("Reject return")}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p>
-                {t("Decision")}: <strong>{t(rma.eligibility.status)}</strong>
-              </p>
-              <p>
-                {rma.eligibility.decisionReason
-                  ? t(rma.eligibility.decisionReason)
-                  : t("Not decided")}
-              </p>
-            </>
-          )}
-        </DetailCard>
-      </GridBlock>
-      <GridBlock className="col-span-12 lg:col-span-6">
-        <DetailCard title={t("Logistics")}>
+        <DetailCard
+          title={t("Logistics")}
+          collapsible
+          defaultOpen={currentWorkflowStage.id === "receipt"}
+        >
           <div className="flex items-center gap-2">
             <span>{t("Status")}:</span>
             <Badge className={toneFor(rma.logistics.status)}>
@@ -1377,60 +1437,14 @@ export const ReturnDetailPage = () => {
             {t("Receipt result")}:{" "}
             {rma.logistics.receiptResult ? t(rma.logistics.receiptResult) : "—"}
           </p>
-          {rma.status === "active" &&
-          rma.logistics.status === "awaiting_return" ? (
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label>
-                {t("Package count")}
-                <input
-                  className={fieldClass}
-                  type="number"
-                  min={1}
-                  value={packageCount}
-                  onChange={(event) =>
-                    setPackageCount(Number(event.target.value))
-                  }
-                />
-              </label>
-              <label>
-                {t("Receipt result")}
-                <select
-                  className={fieldClass}
-                  value={receiptResult}
-                  onChange={(event) =>
-                    setReceiptResult(
-                      event.target.value as "complete" | "partial" | "damaged"
-                    )
-                  }
-                >
-                  <option value="complete">{t("complete")}</option>
-                  <option value="partial">{t("partial")}</option>
-                  <option value="damaged">{t("damaged")}</option>
-                </select>
-              </label>
-              <Button
-                className="sm:col-span-2 sm:justify-self-start"
-                disabled={
-                  busy || !Number.isInteger(packageCount) || packageCount < 1
-                }
-                onClick={() =>
-                  void run(() =>
-                    returnRepository.recordReceipt(
-                      rma.id,
-                      { packageCount, result: receiptResult },
-                      "user"
-                    )
-                  )
-                }
-              >
-                {t("Record receipt")}
-              </Button>
-            </div>
-          ) : null}
         </DetailCard>
       </GridBlock>
       <GridBlock className="col-span-12 lg:col-span-6">
-        <DetailCard title={t("Inspection")}>
+        <DetailCard
+          title={t("Inspection")}
+          collapsible
+          defaultOpen={currentWorkflowStage.id === "inspection"}
+        >
           <p>
             {t("Status")}: {t(rma.inspection.status)}
           </p>
@@ -1443,22 +1457,33 @@ export const ReturnDetailPage = () => {
           !items.some(
             (item) => item.inventoryDispositionStatus === "completed"
           ) ? (
-            <Button
-              variant="outline"
-              onClick={() =>
-                void run(() =>
-                  returnRepository.reopenInspection(rma.id, "user")
-                )
-              }
-            >
-              <RotateCcw />
-              {t("Reopen inspection")}
-            </Button>
+            <div className="grid gap-2 rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-950">
+              <p>
+                {t(
+                  "Reopening inspection invalidates the current refund calculation and approval."
+                )}
+              </p>
+              <Button
+                variant="outline"
+                onClick={() =>
+                  void run(() =>
+                    returnRepository.reopenInspection(rma.id, "user")
+                  )
+                }
+              >
+                <RotateCcw />
+                {t("Reopen inspection")}
+              </Button>
+            </div>
           ) : null}
         </DetailCard>
       </GridBlock>
       <GridBlock className="col-span-12 lg:col-span-6">
-        <DetailCard title={t("Refund calculation")}>
+        <DetailCard
+          title={t("Refund calculation")}
+          collapsible
+          defaultOpen={currentWorkflowStage.id === "refund_calculation"}
+        >
           {calculations[0] ? (
             <>
               <p>
@@ -1481,14 +1506,10 @@ export const ReturnDetailPage = () => {
                 {calculations[0].total.currency}
               </p>
               {latestApproval ? (
-                <Button
-                  variant="outline"
-                  onClick={() =>
-                    navigate(`/refund-approvals/${latestApproval.id}`)
-                  }
-                >
-                  {t("Open refund approval")}
-                </Button>
+                <p>
+                  {t("Refund approval")}: {latestApproval.id} ·{" "}
+                  {t(latestApproval.status)}
+                </p>
               ) : null}
             </>
           ) : (
@@ -1538,74 +1559,14 @@ export const ReturnDetailPage = () => {
         </DetailCard>
       </GridBlock>
       <GridBlock className="col-span-12 lg:col-span-6">
-        <DetailCard title={t("Refund execution")}>
-          {latestApproval?.status === "approved" &&
-          ["pending_execution", "failed"].includes(rma.refundStatus) ? (
-            <>
-              <label>
-                {t("Execution result")}
-                <select
-                  className={fieldClass}
-                  value={executionResult}
-                  onChange={(event) => {
-                    const result = event.target.value as "succeeded" | "failed"
-                    setExecutionResult(result)
-                    setResultCode(
-                      result === "succeeded"
-                        ? "recorded_success"
-                        : "provider_declined"
-                    )
-                  }}
-                >
-                  <option value="succeeded">{t("succeeded")}</option>
-                  <option value="failed">{t("failed")}</option>
-                </select>
-              </label>
-              <label>
-                {t("Result code")}
-                <select
-                  className={fieldClass}
-                  value={resultCode}
-                  onChange={(event) => setResultCode(event.target.value)}
-                >
-                  {executionResult === "succeeded" ? (
-                    <option value="recorded_success">
-                      {t("recorded_success")}
-                    </option>
-                  ) : (
-                    <>
-                      <option value="provider_declined">
-                        {t("provider_declined")}
-                      </option>
-                      <option value="provider_unavailable">
-                        {t("provider_unavailable")}
-                      </option>
-                      <option value="manual_reconciliation_required">
-                        {t("manual_reconciliation_required")}
-                      </option>
-                    </>
-                  )}
-                </select>
-              </label>
-              <label>
-                {t("Operational note")}
-                <textarea
-                  className={textAreaClass}
-                  value={executionNote}
-                  onChange={(event) => setExecutionNote(event.target.value)}
-                />
-              </label>
-              <Button disabled={busy} onClick={() => void recordRefundResult()}>
-                {rma.refundStatus === "failed"
-                  ? t("Record retry result")
-                  : t("Record refund result")}
-              </Button>
-            </>
-          ) : (
-            <p className="text-muted-foreground">
-              {t("Refund execution is available only after approval.")}
-            </p>
-          )}
+        <DetailCard
+          title={t("Refund execution")}
+          collapsible
+          defaultOpen={currentWorkflowStage.id === "refund_execution"}
+        >
+          <p className="text-muted-foreground">
+            {t("Status")}: {t(rma.refundStatus)}
+          </p>
           {latestApproval
             ? returns.executionAttempts
                 .filter((attempt) => attempt.approvalId === latestApproval.id)
@@ -1620,6 +1581,20 @@ export const ReturnDetailPage = () => {
                   </div>
                 ))
             : null}
+        </DetailCard>
+      </GridBlock>
+      <GridBlock>
+        <DetailCard title={t("Review notes")}>
+          {returnReviewNotes ? (
+            <ReturnNoteEditor
+              rmaId={rma.id}
+              currentStage={currentWorkflowStage.id}
+              notes={returns.notes}
+              session={returnReviewNotes}
+            />
+          ) : (
+            <p className="text-muted-foreground">{t("Sign in is required.")}</p>
+          )}
         </DetailCard>
       </GridBlock>
       <GridBlock>
