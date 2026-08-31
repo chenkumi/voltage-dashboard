@@ -49,8 +49,14 @@ import type {
 } from "./return-repository"
 import type { ReturnStoreSnapshot } from "./return-store"
 import {
+  createReturnWorkflow,
+  currentReturnWorkflowStage,
+  ReturnWorkflowProgress,
+} from "./return-workflow"
+import {
   APPROVAL_STATUSES,
   RETURN_REASONS,
+  RETURN_REVIEW_STAGES,
   RETURN_SOURCES,
   type ReturnItem,
   type Rma,
@@ -73,15 +79,7 @@ const initialFilters: ReturnListFilters = {
 
 const stageOptions: readonly OperationalSelectOption[] = [
   { value: "all", label: "All stages" },
-  ...[
-    "draft",
-    "eligibility",
-    "logistics",
-    "inspection",
-    "approval",
-    "refund",
-    "complete",
-  ].map((value) => ({ value, label: value })),
+  ...RETURN_REVIEW_STAGES.map((value) => ({ value, label: value })),
 ]
 const sourceOptions: readonly OperationalSelectOption[] = [
   { value: "all", label: "All sources" },
@@ -264,12 +262,16 @@ export const ReturnsPage = () => {
     ],
     [
       "Awaiting inspection",
-      rows.filter(({ stage }) => ["logistics", "inspection"].includes(stage))
+      rows.filter(({ stage }) => ["receipt", "inspection"].includes(stage))
         .length,
     ],
     [
       "Refund follow-up",
-      rows.filter(({ stage }) => ["approval", "refund"].includes(stage)).length,
+      rows.filter(({ stage }) =>
+        ["refund_calculation", "refund_approval", "refund_execution"].includes(
+          stage
+        )
+      ).length,
     ],
   ] as const
 
@@ -503,12 +505,16 @@ const OrderSummary = ({
 }
 
 export const ReturnAddPage = () => {
+  const [searchParams] = useSearchParams()
+  const orderId = searchParams.get("orderId") ?? ""
+  return <ReturnAddPageForOrder key={orderId} orderId={orderId} />
+}
+
+const ReturnAddPageForOrder = ({ orderId }: { orderId: string }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
   const { commerce, returnEditorController, returnRepository, returns } =
     useVoltageAdmin()
-  const orderId = searchParams.get("orderId") ?? ""
   const order = commerce.orders.find((candidate) => candidate.id === orderId)
   const lines = commerce.orderLines.filter((line) => line.orderId === orderId)
   const [form, setForm] = useState(() =>
@@ -900,6 +906,13 @@ export const ReturnDetailPage = () => {
     .filter((item) => item.rmaId === rma.id)
     .sort((a, b) => b.version - a.version)
   const rmaApprovals = returns.approvals.filter((item) => item.rmaId === rma.id)
+  const workflow = createReturnWorkflow({
+    rma,
+    items,
+    calculations,
+    approvals: rmaApprovals,
+  })
+  const currentWorkflowStage = currentReturnWorkflowStage(workflow)
   const latestApproval =
     rmaApprovals.find(
       (item) =>
@@ -1091,20 +1104,23 @@ export const ReturnDetailPage = () => {
           </p>
         </GridBlock>
       ) : null}
+      <GridBlock>
+        <Card>
+          <CardHeader>
+            <CardTitle>{t("Return workflow")}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReturnWorkflowProgress
+              workflow={workflow}
+              labelFor={(label) => t(label)}
+            />
+          </CardContent>
+        </Card>
+      </GridBlock>
       <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
         <OperationalMetricCard
           label={t("Stage")}
-          value={t(
-            rma.status === "draft"
-              ? "draft"
-              : rma.inspection.status === "completed"
-                ? "approval"
-                : rma.logistics.status === "received"
-                  ? "inspection"
-                  : rma.eligibility.status === "authorized"
-                    ? "logistics"
-                    : "eligibility"
-          )}
+          value={t(currentWorkflowStage.id)}
           detail={t(rma.source)}
         />
       </GridBlock>

@@ -135,8 +135,10 @@ describe("refund approval pages", () => {
     expect(screen.getByText(/Accepted quantity: 1/)).toBeTruthy()
     expect(screen.getByText(/Original paid unit amounts:/)).toBeTruthy()
     expect(screen.getByText(/Shipping refund eligibility:/)).toBeTruthy()
-    expect(screen.getByText("Agent safe summary")).toBeTruthy()
-    expect(screen.getByText("No Agent summary has been prepared.")).toBeTruthy()
+    expect(screen.getByText("Refund workflow")).toBeTruthy()
+    expect(screen.getByText("Current task")).toBeTruthy()
+    expect(document.querySelectorAll("[data-stage]")).toHaveLength(7)
+    expect(screen.queryByText("Agent safe summary")).toBeNull()
     expect(screen.queryByRole("spinbutton")).toBeNull()
 
     await user.click(
@@ -147,7 +149,15 @@ describe("refund approval pages", () => {
         "Record the execution result from the RMA detail page."
       )
     ).toBeTruthy()
+    const approvalWorkflow = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-stage]")
+    ).map((stage) => [stage.dataset.stage, stage.dataset.state])
     await user.click(screen.getAllByRole("button", { name: "Open return" })[0])
+    await screen.findByRole("heading", { name: /^RMA-/ })
+    const rmaWorkflow = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-stage]")
+    ).map((stage) => [stage.dataset.stage, stage.dataset.state])
+    expect(rmaWorkflow).toEqual(approvalWorkflow)
     expect(
       await screen.findByRole("button", { name: "Record refund result" })
     ).toBeTruthy()
@@ -191,7 +201,7 @@ describe("refund approval pages", () => {
 
     await router.navigate("/refund-approvals")
     expect(await screen.findByText("Pending approval")).toBeTruthy()
-    expect(screen.getByText(/APR-/)).toBeTruthy()
+    expect(screen.getAllByText(/APR-/).length).toBeGreaterThan(0)
     expect(
       screen.getByRole("columnheader", { name: "RMA / Order" })
     ).toBeTruthy()

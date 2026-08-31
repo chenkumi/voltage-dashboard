@@ -86,7 +86,9 @@ describe("return state invariants", () => {
   })
 
   it("rejects stale RMA, calculation, and approval versions", () => {
-    expect(() => assertRmaVersion(rma(), 3)).toThrowError(/changed from version/)
+    expect(() => assertRmaVersion(rma(), 3)).toThrowError(
+      /changed from version/
+    )
 
     const staleRma = { ...rma(), version: 5 }
     expect(() =>
@@ -107,6 +109,6 @@ describe("return state invariants", () => {
         approvalStatus: "approved",
         refundStatus: "failed",
       })
-    ).toBe("refund_retry")
+    ).toBe("refund_execution")
   })
 })

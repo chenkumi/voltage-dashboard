@@ -30,6 +30,10 @@ import {
   type RefundApprovalListFilters,
 } from "./refund-approval-list-model"
 import { APPROVAL_STATUSES, REFUND_STATUSES } from "./types"
+import {
+  createReturnWorkflow,
+  ReturnWorkflowProgress,
+} from "./return-workflow"
 
 const PAGE_SIZE = 15
 const fieldClass =
@@ -462,8 +466,7 @@ export const RefundApprovalDetailPage = () => {
   const { approvalId } = useParams()
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { commerce, returnEditorController, returnRepository, returns } =
-    useVoltageAdmin()
+  const { commerce, returnRepository, returns } = useVoltageAdmin()
   const [reason, setReason] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
@@ -512,7 +515,12 @@ export const RefundApprovalDetailPage = () => {
   const attempts = returns.executionAttempts.filter(
     (item) => item.approvalId === approval.id
   )
-  const agentSummary = returnEditorController.getReviewState(rma.id)?.draft
+  const workflow = createReturnWorkflow({
+    rma,
+    items,
+    calculations: returns.calculations.filter((item) => item.rmaId === rma.id),
+    approvals: returns.approvals.filter((item) => item.rmaId === rma.id),
+  })
   const run = async (action: () => Promise<unknown>) => {
     setBusy(true)
     setError("")
@@ -575,21 +583,111 @@ export const RefundApprovalDetailPage = () => {
           </p>
         </GridBlock>
       ) : null}
-      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
-        <OperationalMetricCard
-          label={t("Approval status")}
-          value={t(approval.status)}
-          detail={t("Single-level approval")}
-        />
+      <GridBlock>
+        <Card>
+          <CardHeader className="gap-1">
+            <CardTitle>{t("Refund workflow")}</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              {t(
+                "A refund approval is created only after authorization, receipt, inspection, and calculation are complete."
+              )}
+            </p>
+          </CardHeader>
+          <CardContent>
+            <ReturnWorkflowProgress
+              workflow={workflow}
+              labelFor={(label) => t(label)}
+            />
+          </CardContent>
+        </Card>
       </GridBlock>
-      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
-        <OperationalMetricCard
-          label={t("Refund status")}
-          value={t(rma.refundStatus)}
-          detail={t("Execution is recorded separately")}
-        />
+      <GridBlock>
+        <Card className="border-primary/30 bg-primary/5">
+          <CardHeader className="gap-2">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <CardTitle>{t("Current task")}</CardTitle>
+              <Badge className={toneFor(approval.status)}>
+                {t(approval.status)}
+              </Badge>
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {approval.status === "pending"
+                ? t(
+                    "Inspection and refund calculation are complete. Review the evidence and decide this calculated refund."
+                  )
+                : approval.status === "approved" &&
+                    ["pending_execution", "failed"].includes(rma.refundStatus)
+                  ? t("Record the execution result from the RMA detail page.")
+                  : approval.status === "approved"
+                    ? t("This refund approval has been completed.")
+                    : t(
+                        "This approval cannot advance. Open the return to review the next required action."
+                      )}
+            </p>
+          </CardHeader>
+          <CardContent className="grid gap-3">
+            {approval.status === "pending" ? (
+              <>
+                <label className="grid gap-1 text-sm font-medium">
+                  {t("Reason for return or rejection")}
+                  <textarea
+                    className={textAreaClass}
+                    value={reason}
+                    onChange={(event) => setReason(event.target.value)}
+                  />
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {t(
+                      "A reason is required when returning or rejecting the calculation."
+                    )}
+                  </span>
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    disabled={busy}
+                    onClick={() => void decide("approved")}
+                  >
+                    {t("Approve full refund")}
+                  </Button>
+                  <Button
+                    disabled={busy || !reason.trim()}
+                    variant="outline"
+                    onClick={() => void decide("returned")}
+                  >
+                    {t("Return for revision")}
+                  </Button>
+                  <Button
+                    disabled={busy || !reason.trim()}
+                    variant="destructive"
+                    onClick={() => void decide("rejected")}
+                  >
+                    {t("Reject refund")}
+                  </Button>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-wrap items-end justify-between gap-3">
+                <div className="grid gap-1 text-sm">
+                  <p>
+                    {t("Decided by")}: {approval.decidedBy ?? "—"}
+                  </p>
+                  <p>
+                    {t("Decision reason")}: {approval.reason || "—"}
+                  </p>
+                </div>
+                {rma.refundStatus !== "succeeded" ? (
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate(`/returns/${rma.id}`)}
+                  >
+                    {t("Open return")}
+                  </Button>
+                ) : null}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </GridBlock>
-      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+      <GridBlock className="col-span-12 md:col-span-4">
         <OperationalMetricCard
           label={t("Refund total")}
           value={formatMoney(
@@ -600,14 +698,21 @@ export const RefundApprovalDetailPage = () => {
           detail={calculation.total.currency}
         />
       </GridBlock>
-      <GridBlock className="col-span-12 md:col-span-6 lg:col-span-3">
+      <GridBlock className="col-span-12 md:col-span-4">
+        <OperationalMetricCard
+          label={t("RMA / Order")}
+          value={rma.id}
+          detail={rma.orderId}
+        />
+      </GridBlock>
+      <GridBlock className="col-span-12 md:col-span-4">
         <OperationalMetricCard
           label={t("Calculation version")}
           value={calculation.version}
-          detail={`${t("RMA version")} ${calculation.rmaVersion}`}
+          detail={`${t("Inspection version")} ${calculation.inspectionVersion} · ${t("RMA version")} ${calculation.rmaVersion}`}
         />
       </GridBlock>
-      <GridBlock className="col-span-12 lg:col-span-7">
+      <GridBlock>
         <DetailCard title={t("Refund calculation")}>
           {calculation.items.map((line) => {
             const item = items.find(
@@ -675,76 +780,6 @@ export const RefundApprovalDetailPage = () => {
           <p className="text-muted-foreground">
             {t("Amounts are immutable and cannot be edited during approval.")}
           </p>
-        </DetailCard>
-      </GridBlock>
-      <GridBlock className="col-span-12 lg:col-span-5">
-        <DetailCard title={t("Approval decision")}>
-          {approval.status === "pending" ? (
-            <>
-              <label>
-                {t("Reason for return or rejection")}
-                <textarea
-                  className={textAreaClass}
-                  value={reason}
-                  onChange={(event) => setReason(event.target.value)}
-                />
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <Button disabled={busy} onClick={() => void decide("approved")}>
-                  {t("Approve full refund")}
-                </Button>
-                <Button
-                  disabled={busy || !reason.trim()}
-                  variant="outline"
-                  onClick={() => void decide("returned")}
-                >
-                  {t("Return for revision")}
-                </Button>
-                <Button
-                  disabled={busy || !reason.trim()}
-                  variant="destructive"
-                  onClick={() => void decide("rejected")}
-                >
-                  {t("Reject refund")}
-                </Button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p>
-                {t("Decided by")}: {approval.decidedBy ?? "—"}
-              </p>
-              <p>
-                {t("Decision reason")}: {approval.reason || "—"}
-              </p>
-            </>
-          )}
-        </DetailCard>
-      </GridBlock>
-      <GridBlock className="col-span-12 lg:col-span-6">
-        <DetailCard title={t("Refund execution")}>
-          <p className="text-muted-foreground">
-            {approval.status === "approved" &&
-            ["pending_execution", "failed"].includes(rma.refundStatus)
-              ? t("Record the execution result from the RMA detail page.")
-              : t("Refund execution is available only after approval.")}
-          </p>
-          <Button
-            variant="outline"
-            onClick={() => navigate(`/returns/${rma.id}`)}
-          >
-            {t("Open return")}
-          </Button>
-          {attempts.map((attempt) => (
-            <div key={attempt.id} className="border-t pt-2">
-              <strong>
-                {t("Attempt")} {attempt.sequence}: {t(attempt.result)}
-              </strong>
-              <p>
-                {t(attempt.resultCode)} · {attempt.executedAt}
-              </p>
-            </div>
-          ))}
         </DetailCard>
       </GridBlock>
       <GridBlock className="col-span-12 lg:col-span-6">
@@ -827,25 +862,24 @@ export const RefundApprovalDetailPage = () => {
         </DetailCard>
       </GridBlock>
       <GridBlock>
-        <DetailCard title={t("Agent safe summary")}>
-          {agentSummary?.operationalSummary ? (
-            <>
-              <p>{agentSummary.operationalSummary}</p>
-              <p>
-                <span className="text-muted-foreground">{t("Next step")}:</span>{" "}
-                {agentSummary.nextStep}
-              </p>
-              <p>
-                <span className="text-muted-foreground">
-                  {t("Evidence codes")}:
-                </span>{" "}
-                {agentSummary.evidenceCodes.join(" · ")}
-              </p>
-            </>
-          ) : (
+        <DetailCard title={t("Refund execution history")}>
+          {attempts.length === 0 ? (
             <p className="text-muted-foreground">
-              {t("No Agent summary has been prepared.")}
+              {approval.status === "approved"
+                ? t("No refund execution has been recorded yet.")
+                : t("Refund execution is available only after approval.")}
             </p>
+          ) : (
+            attempts.map((attempt) => (
+              <div key={attempt.id} className="border-b pb-2">
+                <strong>
+                  {t("Attempt")} {attempt.sequence}: {t(attempt.result)}
+                </strong>
+                <p>
+                  {t(attempt.resultCode)} · {attempt.executedAt}
+                </p>
+              </div>
+            ))
           )}
         </DetailCard>
       </GridBlock>

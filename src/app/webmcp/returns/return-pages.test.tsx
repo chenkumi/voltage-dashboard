@@ -125,6 +125,7 @@ describe("return pages", () => {
       expect(router.state.location.pathname).toMatch(/^\/returns\/RMA-/)
     )
     expect(await screen.findByRole("heading", { name: /^RMA-/ })).toBeTruthy()
+    expect(document.querySelectorAll("[data-stage]")).toHaveLength(7)
     expect(
       await screen.findByRole("button", { name: "Authorize return" })
     ).toBeTruthy()

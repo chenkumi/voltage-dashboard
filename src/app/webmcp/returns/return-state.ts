@@ -4,6 +4,10 @@ import type {
   Rma,
   WorkflowActor,
 } from "./types"
+import {
+  createReturnWorkflow,
+  currentReturnWorkflowStage,
+} from "./return-workflow"
 
 export class ReturnWorkflowError extends Error {
   readonly code:
@@ -88,28 +92,5 @@ export const assertApprovalIsCurrent = (
   }
 }
 
-export const deriveReturnStage = (rma: Rma) => {
-  if (rma.status === "draft") return "draft"
-  if (rma.status === "rejected") return "rejected"
-  if (rma.status === "cancelled") return "cancelled"
-  if (rma.status === "completed") return "completed"
-  if (rma.eligibility.status === "pending") return "eligibility_review"
-  if (rma.eligibility.status === "needs_information") {
-    return "needs_information"
-  }
-  if (rma.eligibility.status === "rejected") return "rejected"
-  if (rma.logistics.status === "awaiting_return") return "awaiting_return"
-  if (rma.logistics.status === "received") {
-    if (rma.inspection.status === "not_started") return "ready_for_inspection"
-    if (rma.inspection.status === "in_progress") return "inspection"
-  }
-  if (rma.inspection.status === "completed") {
-    if (rma.approvalStatus === "not_ready") return "refund_calculation"
-    if (rma.approvalStatus === "pending") return "refund_approval"
-    if (rma.approvalStatus === "returned") return "approval_returned"
-    if (rma.approvalStatus === "rejected") return "refund_rejected"
-    if (rma.refundStatus === "pending_execution") return "refund_execution"
-    if (rma.refundStatus === "failed") return "refund_retry"
-  }
-  return "active"
-}
+export const deriveReturnStage = (rma: Rma) =>
+  currentReturnWorkflowStage(createReturnWorkflow({ rma })).id

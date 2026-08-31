@@ -1,5 +1,15 @@
 import type { Order } from "../commerce-data/types"
-import type { ReturnItem, ReturnReason, Rma, ReturnSource } from "./types"
+import type {
+  ReturnItem,
+  ReturnReason,
+  ReturnReviewStage,
+  Rma,
+  ReturnSource,
+} from "./types"
+import {
+  createReturnWorkflow,
+  currentReturnWorkflowStage,
+} from "./return-workflow"
 
 export type ReturnListRow = {
   rma: Rma
@@ -8,14 +18,7 @@ export type ReturnListRow = {
   stage: ReturnStage
 }
 
-export type ReturnStage =
-  | "draft"
-  | "eligibility"
-  | "logistics"
-  | "inspection"
-  | "approval"
-  | "refund"
-  | "complete"
+export type ReturnStage = ReturnReviewStage
 
 export type ReturnListFilters = {
   query: string
@@ -27,17 +30,11 @@ export type ReturnListFilters = {
   sort: "updated-desc" | "created-desc" | "sla-asc"
 }
 
-export const returnStageFor = (rma: Rma): ReturnStage => {
-  if (rma.status === "draft") return "draft"
-  if (["completed", "rejected", "cancelled"].includes(rma.status)) {
-    return "complete"
-  }
-  if (!["authorized"].includes(rma.eligibility.status)) return "eligibility"
-  if (rma.logistics.status !== "received") return "logistics"
-  if (rma.inspection.status !== "completed") return "inspection"
-  if (!["approved"].includes(rma.approvalStatus)) return "approval"
-  return "refund"
-}
+export const returnStageFor = (
+  rma: Rma,
+  items: readonly ReturnItem[] = []
+): ReturnStage =>
+  currentReturnWorkflowStage(createReturnWorkflow({ rma, items })).id
 
 export const createReturnListRows = (
   rmas: readonly Rma[],
@@ -55,7 +52,7 @@ export const createReturnListRows = (
     rma,
     order: ordersById.get(rma.orderId) ?? null,
     items: itemsByRma.get(rma.id) ?? [],
-    stage: returnStageFor(rma),
+    stage: returnStageFor(rma, itemsByRma.get(rma.id) ?? []),
   }))
 }
 
