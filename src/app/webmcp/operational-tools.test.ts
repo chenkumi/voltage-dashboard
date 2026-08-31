@@ -238,6 +238,80 @@ describe("operational WebMCP tools", () => {
     ).resolves.toMatchObject({ status: "ARGUMENT_ERROR" })
   })
 
+  it("distinguishes visible, partial, fully suppressed, and empty customer analytics", async () => {
+    const analytics = (
+      customers: typeof commerce.customers,
+      args: Record<string, unknown>
+    ) =>
+      executeOperationalTool({
+        name: "get_customer_analytics",
+        args,
+        productRepository: repository,
+        commerce: { ...commerce, customers },
+        navigate: (path) => paths.push(path),
+        now: new Date("2026-08-30T00:00:00.000Z"),
+      })
+
+    const allReturning = commerce.customers.map((customer) => ({
+      ...customer,
+      segment: "returning" as const,
+    }))
+    await expect(
+      analytics(allReturning, { groupBy: "segment" })
+    ).resolves.toMatchObject({
+      outcome: "DATA_AVAILABLE",
+      reasonCode: "NONE",
+      total: 1,
+      visibleGroupCount: 1,
+      suppressedGroupCount: 0,
+    })
+
+    const oneSmallRegion = commerce.customers.map((customer, index) => ({
+      ...customer,
+      region: index === 0 ? ("south" as const) : ("north" as const),
+    }))
+    await expect(
+      analytics(oneSmallRegion, { groupBy: "region" })
+    ).resolves.toMatchObject({
+      outcome: "PARTIAL_PRIVACY_SUPPRESSION",
+      reasonCode: "MINIMUM_GROUP_SIZE",
+      total: 1,
+      visibleGroupCount: 1,
+      suppressedGroupCount: 1,
+    })
+
+    const fourVipRegions = commerce.customers.map((customer, index) => ({
+      ...customer,
+      segment: index < 4 ? ("vip" as const) : ("returning" as const),
+      region: (["north", "central", "south", "east"] as const)[index] ??
+        customer.region,
+    }))
+    const allSuppressed = await analytics(fourVipRegions, {
+      segment: "vip",
+      groupBy: "region",
+    })
+    expect(allSuppressed).toMatchObject({
+      outcome: "ALL_GROUPS_SUPPRESSED",
+      reasonCode: "MINIMUM_GROUP_SIZE",
+      total: 0,
+      visibleGroupCount: 0,
+      suppressedGroupCount: 4,
+      items: [],
+    })
+    expect(JSON.stringify(allSuppressed)).not.toContain("customerCount")
+
+    await expect(
+      analytics(allReturning, { segment: "new", groupBy: "region" })
+    ).resolves.toMatchObject({
+      outcome: "NO_MATCHING_DATA",
+      reasonCode: "NO_ROWS_MATCHED",
+      total: 0,
+      visibleGroupCount: 0,
+      suppressedGroupCount: 0,
+      items: [],
+    })
+  })
+
   it("navigates only to safe detail routes and customer filters", async () => {
     const order = commerce.orders[0]
     await execute("open_inventory_detail", { productId: 1, period: "month" })

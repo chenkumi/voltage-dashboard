@@ -176,7 +176,7 @@ export const OPERATIONAL_TOOLS: WebMcpRegisteredTool[] = [
   {
     name: "get_customer_analytics",
     description:
-      "Purpose: return anonymous customer group statistics with a minimum group size of five. Call for segment, region, status, or activity-period analysis. Do not request an individual customer or arbitrary tags.",
+      "Purpose: return anonymous customer group statistics with a minimum group size of five. outcome distinguishes visible data, partial or complete privacy suppression, and no matching data; total means visible groups only. Call for segment, region, status, or activity-period analysis. Do not request an individual customer or arbitrary tags.",
     inputSchema: schema({
       status: { type: "string", enum: [...CUSTOMER_STATUSES] },
       segment: { type: "string", enum: [...CUSTOMER_SEGMENTS] },
@@ -871,16 +871,34 @@ export const executeOperationalTool = async ({
           ),
         })),
       }))
+    const suppressedGroupCount = allGroups.length - groups.length
+    const outcome =
+      rows.length === 0
+        ? "NO_MATCHING_DATA"
+        : groups.length === 0
+          ? "ALL_GROUPS_SUPPRESSED"
+          : suppressedGroupCount > 0
+            ? "PARTIAL_PRIVACY_SUPPRESSION"
+            : "DATA_AVAILABLE"
+    const reasonCode =
+      outcome === "NO_MATCHING_DATA"
+        ? "NO_ROWS_MATCHED"
+        : outcome === "DATA_AVAILABLE"
+          ? "NONE"
+          : "MINIMUM_GROUP_SIZE"
     return boundedItems(
       {
         status: "OK",
+        outcome,
+        reasonCode,
         total: groups.length,
+        visibleGroupCount: groups.length,
         dataPeriod: dataPeriod(
           commerce.activities.map((item) => item.occurredAt)
         ),
         groupBy,
         minimumGroupSize: MINIMUM_CUSTOMER_GROUP_SIZE,
-        suppressedGroupCount: allGroups.length - groups.length,
+        suppressedGroupCount,
       },
       groups
     )

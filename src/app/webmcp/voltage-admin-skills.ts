@@ -23,7 +23,7 @@ const skills = [
     name: "voltage-admin-customer-analytics",
     description:
       "用途：查詢匿名客群統計與開啟安全篩選頁。何時呼叫：分析區域、客群、狀態或活動期間。觸發例子：「南區 VIP 統計」、「近 90 天客群」。不該呼叫：查詢個別客戶或要求修改客戶時。",
-    text: "get_customer_analytics 只接受 status、segment、region、period 與 groupBy，且只回傳至少 5 人的群組統計；小群組會抑制。跨月份與營收分析使用 agent_customer_monthly，並按 currency_code 分組；other/suppressed 代表合併後的安全小群組，不可反推成個人。open_customer_analysis 只把 status、segment、region、period 寫入 Customers 頁面的安全 query filters。不得傳入客戶 ID、姓名、Email、電話、地址、備註或任意標籤；新增、編輯、停權、復權與備註都由使用者在 UI 完成。",
+    text: "get_customer_analytics 只接受 status、segment、region、period 與 groupBy，且只回傳至少 5 人的群組統計；total 與 visibleGroupCount 都是可見群組數。DATA_AVAILABLE 表示資料可見，PARTIAL_PRIVACY_SUPPRESSION 表示部分小群組被抑制，ALL_GROUPS_SUPPRESSED 表示有符合資料但所有群組都低於門檻，NO_MATCHING_DATA 才表示沒有符合篩選的資料；不得把 ALL_GROUPS_SUPPRESSED 描述成沒有顧客。跨月份與營收分析使用 agent_customer_monthly，並按 currency_code 分組；other/suppressed 代表合併後的安全小群組，不可反推成個人。open_customer_analysis 只把 status、segment、region、period 寫入 Customers 頁面的安全 query filters。不得傳入客戶 ID、姓名、Email、電話、地址、備註或任意標籤；新增、編輯、停權、復權與備註都由使用者在 UI 完成。",
   },
   {
     name: "voltage-sales-data",
