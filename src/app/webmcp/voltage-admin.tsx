@@ -43,6 +43,7 @@ import {
   EXECUTE_READONLY_SQL_TOOL_NAME,
   ReportingRuntimeController,
 } from "./reporting/reporting-tools"
+import { executeReadonlySqlToolResult } from "./reporting/reporting-tool-result"
 import {
   createOperationalReportingVersion,
   createReportingDataSnapshot,
@@ -739,7 +740,9 @@ export const VoltageAdminProvider = () => {
       )
     }
     if (name === EXECUTE_READONLY_SQL_TOOL_NAME) {
-      return reportingController.execute(args)
+      return executeReadonlySqlToolResult(() =>
+        reportingController.execute(args)
+      )
     }
     if (isReportAuthoringTool(name)) {
       return reportingController.executeReportTool(name, args)

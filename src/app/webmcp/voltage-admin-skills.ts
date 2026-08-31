@@ -99,6 +99,8 @@ const skills = [
 
 SQL 負責探索與聚合資料；本 skill 負責報表品質與語意。只有在目前頁面實際 discovery 到報表建立或編輯 tools 時才能使用它們；未 discovery 到時，不得宣稱已建立 Report Canvas、已保存 query result 或已修改報表。
 
+execute_readonly_sql 的預期失敗會回傳結構化結果，不是成功查詢：SQL_PARAMETER_ERROR 應依 tool schema 修正輸入；SQL_POLICY_REJECTED 應移除受限欄位或改用允許的匿名聚合；SQL_SCHEMA_MISMATCH 應先查詢 sqlite_schema 再修正表名與欄名；SQL_RUNTIME_ERROR 應依 nextStep 等待或縮小查詢後最多重試一次。不得把錯誤結果當成空 rows，也不得輸出底層 SQLite 訊息。
+
 execute_readonly_sql 與 create_report 沒有固定先後，兩種順序都有效；但 add_report_widget 必須在 active report 存在後，使用同一 workspace 中成功 SQL 回傳的有效 queryId。每次報表 mutation 成功後都要再呼叫 discovery 到的唯讀 report-state verifier；只有最新 verifier 結果包含預期 report 與 widgets 時才能回報完成。
 
 建立前可用 \`SELECT dataset_name, updated_at, time_zone, period_start, period_end, completeness FROM agent_dataset_status ORDER BY dataset_name\` 確認狀態。建立 widget 時必須依 type 使用正確欄位：Metric 用 \`{type:"metric",title,queryId,valueColumn,valueFormat?,currencyCode?,detail?,detailTone?}\`；bar 用 \`{type,title,queryId,categoryColumn,valueColumn}\`；table 用 \`{type,title,queryId,columns}\`；markdown 用 \`{type:"markdown",title,markdown,evidenceQueryIds}\`；space 用 \`{type:"space",xSpace,ySpace}\` 且不含資料或文字。Metric 適合顯示營收、價格、轉換率、庫存量、訂單數或其他單一數值訊號：\`valueFormat\` 可為 \`number\`、\`currency\` 或 \`percent\`；currency 可選 \`currencyCode:"USD"\` 或 \`"TWD"\`；\`detail\` 可加入例如「較上週 +12.4%」的輔助文字，並以 \`detailTone:"positive"\`、\`"negative"\` 或 \`"neutral"\` 指定顏色。百分比值應使用比例（例如 \`0.124\` 顯示為 \`12.4%\`）。markdown 字串可以可選的 \`<markdown>...</markdown>\` 包裝，並支援標準 Markdown 與 \`mermaid\` fenced block；禁止連結、HTML、JavaScript 及其他程式碼 fenced block。所有 widget 均可選填 \`xSpace\`（1 到 6 欄）及 \`ySpace\`（正整數列高，沒有產品上限）；沒有填時會使用各類型的預設尺寸。這些欄位都放在 add_report_widget 的 \`widget\` 物件內。不得把 table 的 \`columns\` 用於 bar，也不得在 create_report 成功前新增 widget。

@@ -35,7 +35,7 @@ export const EXECUTE_READONLY_SQL_TOOL_NAME = "execute_readonly_sql"
 export const EXECUTE_READONLY_SQL_TOOL: WebMcpRegisteredTool = {
   name: EXECUTE_READONLY_SQL_TOOL_NAME,
   description:
-    "SQLite read-only SELECT/WITH; 100 rows max. Curated tables cover products, sales, inventory, orders, customer cohorts, returns, refunds, and dataset status; discover names and columns through sqlite_schema. Keep currency_code groups separate; non-USD compatibility fields are NULL. Customer and return cohorts contain at least 5 people. No customer, order, RMA, payment IDs, or free text. queryIds expire when Product, Commerce, or Returns data changes.",
+    "SQLite read-only SELECT/WITH; 100 rows max. Load voltage-report-authoring and query agent_dataset_status first. Discover columns with sqlite_schema. Covers products, sales, inventory, orders, customer cohorts, returns, and refunds. Keep currency_code groups separate. Cohorts contain at least 5 people; no customer, order, RMA, payment IDs, or free text. Errors: SQL_PARAMETER_ERROR, SQL_POLICY_REJECTED, SQL_SCHEMA_MISMATCH, or SQL_RUNTIME_ERROR; follow nextStep. queryIds expire when data changes.",
   inputSchema: {
     type: "object",
     properties: {
@@ -674,6 +674,8 @@ export class ReportingRuntimeController {
   getReportSnapshot = () => this.reportState.getSnapshot()
 
   getWorkspaceSnapshot = () => this.workspaceSnapshot
+
+  getCurrentContextId = () => this.context?.contextId ?? null
 
   subscribeReport = (listener: () => void) => {
     this.reportListeners.add(listener)
