@@ -142,12 +142,22 @@ describe("refund approval pages", () => {
     expect(screen.getByText(/Shipping refund eligibility:/)).toBeTruthy()
     expect(screen.getByText("Refund workflow")).toBeTruthy()
     expect(screen.getByText("Current task")).toBeTruthy()
+    const headerContext = screen.getByTestId("approval-header-context")
+    expect(headerContext.textContent).toMatch(/RMA-/)
+    expect(headerContext.textContent).toContain(order.id)
+    expect(headerContext.textContent).toContain("Submitted by user")
+    expect(headerContext.textContent).toContain("Waiting time")
     expect(document.querySelectorAll("[data-stage]")).toHaveLength(7)
     expect(screen.queryByText("Agent safe summary")).toBeNull()
     expect(screen.queryByRole("spinbutton")).toBeNull()
 
+    expect(screen.getByText("Approval summary")).toBeTruthy()
+    expect(screen.getByText("Decision outcome")).toBeTruthy()
+    expect(screen.getByRole("region", { name: "Review notes" })).toBeTruthy()
+    expect(screen.queryByText("Refund execution history")).toBeNull()
+    await user.click(screen.getByRole("radio", { name: "Approve refund" }))
     await user.click(
-      screen.getByRole("button", { name: "Approve full refund" })
+      screen.getByRole("button", { name: "Confirm selected decision" })
     )
     expect(
       await screen.findByText(
@@ -157,7 +167,11 @@ describe("refund approval pages", () => {
     const approvalWorkflow = Array.from(
       document.querySelectorAll<HTMLElement>("[data-stage]")
     ).map((stage) => [stage.dataset.stage, stage.dataset.state])
-    await user.click(screen.getAllByRole("button", { name: "Open return" })[0])
+    await user.click(
+      screen.getByRole("button", {
+        name: "Open RMA and record refund result",
+      })
+    )
     await screen.findByRole("heading", { name: /^RMA-/ })
     const rmaWorkflow = Array.from(
       document.querySelectorAll<HTMLElement>("[data-stage]")
@@ -218,4 +232,91 @@ describe("refund approval pages", () => {
     ).toBeTruthy()
     expect(screen.getByRole("combobox", { name: "Waiting time" })).toBeTruthy()
   }, 20_000)
+
+  it("shows returned and approved approvals as read-only decision snapshots", async () => {
+    const router = createMemoryRouter([{ path: "*", element: <App /> }], {
+      initialEntries: ["/refund-approvals/APR-2007"],
+    })
+    render(<RouterProvider router={router} />)
+
+    expect(
+      await screen.findByRole("button", { name: "Open RMA and recalculate" })
+    ).toBeTruthy()
+    expect(screen.queryByRole("radio")).toBeNull()
+    expect(screen.getByText(/Additional evidence requested/)).toBeTruthy()
+
+    await router.navigate("/refund-approvals/APR-2008")
+    expect(
+      await screen.findByRole("button", {
+        name: "Open RMA and record refund result",
+      })
+    ).toBeTruthy()
+    expect(screen.queryByRole("radio")).toBeNull()
+  })
+
+  it("requires a reason to reject and marks refund execution not applicable", async () => {
+    const router = createMemoryRouter([{ path: "*", element: <App /> }], {
+      initialEntries: ["/refund-approvals/APR-2006"],
+    })
+    const user = userEvent.setup()
+    render(<RouterProvider router={router} />)
+
+    await user.click(
+      await screen.findByRole("radio", { name: "Reject refund" })
+    )
+    const confirm = screen.getByRole("button", {
+      name: "Confirm selected decision",
+    })
+    expect((confirm as HTMLButtonElement).disabled).toBe(true)
+    await user.type(
+      screen.getByRole("textbox", { name: "Decision reason" }),
+      "Policy decision declined."
+    )
+    await waitFor(() =>
+      expect(
+        (
+          screen.getByRole("button", {
+            name: "Confirm selected decision",
+          }) as HTMLButtonElement
+        ).disabled
+      ).toBe(false)
+    )
+    await user.click(
+      screen.getByRole("button", { name: "Confirm selected decision" })
+    )
+    await waitFor(() => {
+      const alert = screen.queryByRole("alert")
+      if (alert) throw new Error(alert.textContent ?? "Decision failed")
+      expect(screen.queryByRole("radio")).toBeNull()
+    })
+
+    expect(await screen.findByRole("button", { name: "Open RMA" })).toBeTruthy()
+    expect(
+      document.querySelector<HTMLElement>('[data-stage="refund_execution"]')
+        ?.dataset.state
+    ).toBe("not_applicable")
+    expect(screen.queryByRole("radio")).toBeNull()
+  }, 15_000)
+
+  it("keeps an approval invalidated by reopened inspection read-only", async () => {
+    const router = createMemoryRouter([{ path: "*", element: <App /> }], {
+      initialEntries: ["/returns/RMA-2006"],
+    })
+    const user = userEvent.setup()
+    render(<RouterProvider router={router} />)
+
+    await user.click(
+      await screen.findByRole("button", { name: "Reopen inspection" })
+    )
+    await router.navigate("/refund-approvals/APR-2006")
+
+    expect(
+      await screen.findByRole("button", { name: "Open RMA current task" })
+    ).toBeTruthy()
+    expect(screen.queryByRole("radio")).toBeNull()
+    expect(
+      document.querySelector<HTMLElement>('[data-stage="inspection"]')?.dataset
+        .state
+    ).toBe("current")
+  })
 })

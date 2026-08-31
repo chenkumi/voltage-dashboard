@@ -30,10 +30,8 @@ import {
   type RefundApprovalListFilters,
 } from "./refund-approval-list-model"
 import { APPROVAL_STATUSES, REFUND_STATUSES } from "./types"
-import {
-  createReturnWorkflow,
-  ReturnWorkflowProgress,
-} from "./return-workflow"
+import { createReturnWorkflow, ReturnWorkflowProgress } from "./return-workflow"
+import { ReturnNoteEditor } from "./return-note-editor"
 
 const PAGE_SIZE = 15
 const fieldClass =
@@ -466,7 +464,11 @@ export const RefundApprovalDetailPage = () => {
   const { approvalId } = useParams()
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const { commerce, returnRepository, returns } = useVoltageAdmin()
+  const { commerce, returnRepository, returnReviewNotes, returns } =
+    useVoltageAdmin()
+  const [decision, setDecision] = useState<
+    "approved" | "returned" | "rejected" | ""
+  >("")
   const [reason, setReason] = useState("")
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
@@ -512,8 +514,9 @@ export const RefundApprovalDetailPage = () => {
     )
   const items = returns.items.filter((item) => item.rmaId === rma.id)
   const order = commerce.orders.find((item) => item.id === rma.orderId)
-  const attempts = returns.executionAttempts.filter(
-    (item) => item.approvalId === approval.id
+  const submittedEvent = returns.timeline.find(
+    (event) =>
+      event.rmaId === rma.id && event.action === "refund_submitted"
   )
   const workflow = createReturnWorkflow({
     rma,
@@ -536,8 +539,9 @@ export const RefundApprovalDetailPage = () => {
       setBusy(false)
     }
   }
-  const decide = (decision: "approved" | "returned" | "rejected") =>
-    run(() =>
+  const decide = () => {
+    if (!decision) return
+    return run(() =>
       returnRepository.decideApproval(
         approval.id,
         decision,
@@ -546,6 +550,12 @@ export const RefundApprovalDetailPage = () => {
         "user"
       )
     )
+  }
+  const decisionNeedsReason = decision === "returned" || decision === "rejected"
+  const canConfirmDecision =
+    approval.status === "pending" &&
+    Boolean(decision) &&
+    (!decisionNeedsReason || Boolean(reason.trim()))
   return (
     <PageLayout
       ariaLabel={t("Refund approval details")}
@@ -556,7 +566,19 @@ export const RefundApprovalDetailPage = () => {
         { label: approval.id, translate: false },
       ]}
       status={
-        <Badge className={toneFor(approval.status)}>{t(approval.status)}</Badge>
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <Badge className={toneFor(approval.status)}>
+            {t(approval.status)}
+          </Badge>
+          <span data-testid="approval-header-context">
+            {rma.id} · {rma.orderId} · {t("Submitted by")}{" "}
+            {submittedEvent?.actor ?? "—"} · {t("Waiting time")}{" "}
+            {formatWaitingTime(
+              approvalWaitingHours(approval, new Date().toISOString()),
+              t
+            )}
+          </span>
+        </div>
       }
       actions={
         <div className="flex gap-2">
@@ -568,7 +590,7 @@ export const RefundApprovalDetailPage = () => {
             variant="outline"
             onClick={() => navigate(`/returns/${rma.id}`)}
           >
-            {t("Open return")}
+            {t("Open {{id}}", { id: rma.id })}
           </Button>
         </div>
       }
@@ -601,8 +623,8 @@ export const RefundApprovalDetailPage = () => {
           </CardContent>
         </Card>
       </GridBlock>
-      <GridBlock>
-        <Card className="border-primary/30 bg-primary/5">
+      <GridBlock className="col-span-12 lg:col-span-8">
+        <Card className="h-full border-primary/30 bg-primary/5">
           <CardHeader className="gap-2">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <CardTitle>{t("Current task")}</CardTitle>
@@ -628,9 +650,41 @@ export const RefundApprovalDetailPage = () => {
           <CardContent className="grid gap-3">
             {approval.status === "pending" ? (
               <>
+                <p className="text-sm font-medium">
+                  {t(
+                    "This page can only decide the fixed calculation; amounts cannot be changed here."
+                  )}
+                </p>
+                <fieldset className="grid gap-2">
+                  <legend className="mb-1 text-sm font-medium">
+                    {t("Decision")}
+                  </legend>
+                  {(
+                    [
+                      ["approved", "Approve refund"],
+                      ["returned", "Return for recalculation"],
+                      ["rejected", "Reject refund"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <label
+                      key={value}
+                      className="flex items-center gap-2 text-sm"
+                    >
+                      <input
+                        type="radio"
+                        name="refund-approval-decision"
+                        value={value}
+                        checked={decision === value}
+                        onChange={() => setDecision(value)}
+                      />
+                      {t(label)}
+                    </label>
+                  ))}
+                </fieldset>
                 <label className="grid gap-1 text-sm font-medium">
-                  {t("Reason for return or rejection")}
+                  {t("Decision reason")}
                   <textarea
+                    aria-label={t("Decision reason")}
                     className={textAreaClass}
                     value={reason}
                     onChange={(event) => setReason(event.target.value)}
@@ -641,28 +695,13 @@ export const RefundApprovalDetailPage = () => {
                     )}
                   </span>
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    disabled={busy}
-                    onClick={() => void decide("approved")}
-                  >
-                    {t("Approve full refund")}
-                  </Button>
-                  <Button
-                    disabled={busy || !reason.trim()}
-                    variant="outline"
-                    onClick={() => void decide("returned")}
-                  >
-                    {t("Return for revision")}
-                  </Button>
-                  <Button
-                    disabled={busy || !reason.trim()}
-                    variant="destructive"
-                    onClick={() => void decide("rejected")}
-                  >
-                    {t("Reject refund")}
-                  </Button>
-                </div>
+                <Button
+                  disabled={busy || !canConfirmDecision}
+                  variant={decision === "rejected" ? "destructive" : "default"}
+                  onClick={() => void decide()}
+                >
+                  {t("Confirm selected decision")}
+                </Button>
               </>
             ) : (
               <div className="flex flex-wrap items-end justify-between gap-3">
@@ -673,19 +712,73 @@ export const RefundApprovalDetailPage = () => {
                   <p>
                     {t("Decision reason")}: {approval.reason || "—"}
                   </p>
+                  <p>
+                    {t("Decision time")}: {approval.decidedAt ?? "—"}
+                  </p>
+                  <p>
+                    {t("Fixed calculation version")}:{" "}
+                    {approval.calculationVersion}
+                  </p>
                 </div>
-                {rma.refundStatus !== "succeeded" ? (
-                  <Button
-                    variant="outline"
-                    onClick={() => navigate(`/returns/${rma.id}`)}
-                  >
-                    {t("Open return")}
-                  </Button>
-                ) : null}
+                <Button
+                  variant="outline"
+                  onClick={() => navigate(`/returns/${rma.id}`)}
+                >
+                  {approval.status === "approved"
+                    ? t("Open RMA and record refund result")
+                    : approval.status === "returned"
+                      ? t("Open RMA and recalculate")
+                      : approval.status === "invalidated"
+                        ? t("Open RMA current task")
+                        : t("Open RMA")}
+                </Button>
               </div>
             )}
           </CardContent>
         </Card>
+      </GridBlock>
+      <GridBlock className="col-span-12 lg:col-span-4">
+        <DetailCard title={t("Approval summary")}>
+          <p className="text-2xl font-semibold">
+            {formatMoney(
+              calculation.total.amount,
+              calculation.total.currency,
+              i18n.resolvedLanguage ?? "en"
+            )}
+          </p>
+          <p>
+            {t("Calculation version")}: {calculation.version}
+          </p>
+          <p>
+            {t("Inspection version")}: {calculation.inspectionVersion}
+          </p>
+          <p>
+            {t("Waiting time")}:{" "}
+            {formatWaitingTime(
+              approvalWaitingHours(approval, new Date().toISOString()),
+              t
+            )}
+          </p>
+        </DetailCard>
+      </GridBlock>
+      <GridBlock>
+        <DetailCard title={t("Decision outcome")}>
+          <p>
+            {t(
+              "Approve: stage 6 completes and the RMA moves to stage 7 for refund execution."
+            )}
+          </p>
+          <p>
+            {t(
+              "Return: this approval closes and the RMA returns to stage 5 for recalculation."
+            )}
+          </p>
+          <p>
+            {t(
+              "Reject: the refund flow closes and refund execution is not applicable."
+            )}
+          </p>
+        </DetailCard>
       </GridBlock>
       <GridBlock className="col-span-12 md:col-span-4">
         <OperationalMetricCard
@@ -861,28 +954,16 @@ export const RefundApprovalDetailPage = () => {
           ))}
         </DetailCard>
       </GridBlock>
-      <GridBlock>
-        <DetailCard title={t("Refund execution history")}>
-          {attempts.length === 0 ? (
-            <p className="text-muted-foreground">
-              {approval.status === "approved"
-                ? t("No refund execution has been recorded yet.")
-                : t("Refund execution is available only after approval.")}
-            </p>
-          ) : (
-            attempts.map((attempt) => (
-              <div key={attempt.id} className="border-b pb-2">
-                <strong>
-                  {t("Attempt")} {attempt.sequence}: {t(attempt.result)}
-                </strong>
-                <p>
-                  {t(attempt.resultCode)} · {attempt.executedAt}
-                </p>
-              </div>
-            ))
-          )}
-        </DetailCard>
-      </GridBlock>
+      {returnReviewNotes ? (
+        <GridBlock>
+          <ReturnNoteEditor
+            rmaId={rma.id}
+            currentStage="refund_approval"
+            notes={returns.notes}
+            session={returnReviewNotes}
+          />
+        </GridBlock>
+      ) : null}
       <GridBlock>
         <DetailCard title={t("Timeline")}>
           <ol className="grid gap-2">
