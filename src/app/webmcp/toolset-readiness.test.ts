@@ -75,7 +75,7 @@ describe("ToolsetReadinessCoordinator", () => {
     )
 
     expect(duplicate).toBe(first)
-    expect(duplicate.revision).toBe(1)
+    expect(duplicate?.revision).toBe(1)
   })
 
   it("settles a pending route when a different route is prepared", async () => {

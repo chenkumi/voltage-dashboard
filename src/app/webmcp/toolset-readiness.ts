@@ -51,8 +51,11 @@ export class ToolsetReadinessCoordinator {
   private disposed = false
   private pending: PendingReadiness | null = null
   private revision = 0
+  private readonly timeoutMs: number
 
-  constructor(private readonly timeoutMs = DEFAULT_TIMEOUT_MS) {}
+  constructor(timeoutMs = DEFAULT_TIMEOUT_MS) {
+    this.timeoutMs = timeoutMs
+  }
 
   activate() {
     this.disposed = false
