@@ -20,25 +20,6 @@ export type ReturnFormEditorState = {
   version: number
 }
 
-export type ReturnReviewDraft = {
-  evidenceCodes: readonly string[]
-  operationalSummary: string
-  nextStep: string
-  supportDraft: string
-}
-
-export type ReturnReviewEditorState = {
-  route: "return-detail"
-  rmaId: string
-  rmaVersion: number
-  policyVersion: string
-  draft: ReturnReviewDraft
-  dirty: boolean
-  valid: boolean
-  missingFields: readonly string[]
-  version: number
-}
-
 type Session<T> = {
   state: T
   apply: (state: T) => void
@@ -66,43 +47,8 @@ export const createReturnFormEditorState = (
   }
 }
 
-const reviewMissingFields = (draft: ReturnReviewDraft) => [
-  ...(draft.evidenceCodes.length > 0 ? [] : ["evidenceCodes"]),
-  ...(draft.operationalSummary.trim() ? [] : ["operationalSummary"]),
-  ...(draft.nextStep.trim() ? [] : ["nextStep"]),
-  ...(draft.supportDraft.trim() ? [] : ["supportDraft"]),
-]
-
-export const createReturnReviewEditorState = (
-  identity: Pick<
-    ReturnReviewEditorState,
-    "rmaId" | "rmaVersion" | "policyVersion"
-  >,
-  draft: ReturnReviewDraft = {
-    evidenceCodes: [],
-    operationalSummary: "",
-    nextStep: "",
-    supportDraft: "",
-  },
-  version = 1,
-  dirty = false
-): ReturnReviewEditorState => {
-  const missingFields = reviewMissingFields(draft)
-  return {
-    route: "return-detail",
-    ...identity,
-    draft,
-    dirty,
-    valid: missingFields.length === 0,
-    missingFields,
-    version,
-  }
-}
-
 export class ReturnEditorController {
   private formSession: Session<ReturnFormEditorState> | null = null
-  private reviewSession: Session<ReturnReviewEditorState> | null = null
-  private readonly reviewStates = new Map<string, ReturnReviewEditorState>()
   private readonly policyResults = new Map<
     string,
     { rmaVersion: number; policyVersion: string; result: EligibilityResult }
@@ -145,27 +91,6 @@ export class ReturnEditorController {
     return next
   }
 
-  attachReview(
-    state: ReturnReviewEditorState,
-    apply: Session<ReturnReviewEditorState>["apply"]
-  ) {
-    this.reviewSession = { state, apply }
-    this.reviewStates.set(state.rmaId, state)
-    return () => {
-      this.reviewSession = null
-    }
-  }
-
-  updateReview(state: ReturnReviewEditorState) {
-    if (this.reviewSession) this.reviewSession.state = state
-    this.reviewStates.set(state.rmaId, state)
-  }
-
-  getReviewState(rmaId?: string) {
-    if (!rmaId) return this.reviewSession?.state ?? null
-    return this.reviewStates.get(rmaId) ?? null
-  }
-
   recordPolicyResult(
     rmaId: string,
     rmaVersion: number,
@@ -181,36 +106,5 @@ export class ReturnEditorController {
       entry.policyVersion === policyVersion
       ? entry.result
       : null
-  }
-
-  applyReviewDraft(
-    expected: {
-      rmaId: string
-      rmaVersion: number
-      policyVersion: string
-      editorVersion: number
-    },
-    draft: ReturnReviewDraft
-  ) {
-    const session = this.reviewSession
-    if (!session) throw new Error("Return review is not open.")
-    const current = session.state
-    if (
-      current.rmaId !== expected.rmaId ||
-      current.rmaVersion !== expected.rmaVersion ||
-      current.policyVersion !== expected.policyVersion ||
-      current.version !== expected.editorVersion
-    )
-      throw new Error("Return review version is stale.")
-    const next = createReturnReviewEditorState(
-      current,
-      draft,
-      current.version + 1,
-      true
-    )
-    this.reviewSession = { ...session, state: next }
-    this.reviewStates.set(next.rmaId, next)
-    session.apply(next)
-    return next
   }
 }

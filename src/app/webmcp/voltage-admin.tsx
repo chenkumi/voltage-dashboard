@@ -95,6 +95,7 @@ import {
   RETURN_DETAIL_TOOLS,
   RETURN_FORM_TOOLS,
   RETURN_GLOBAL_TOOLS,
+  RETURN_NOTE_TOOLS,
 } from "./returns/return-tools"
 import {
   projectReturnStoreSnapshotForUser,
@@ -102,6 +103,10 @@ import {
   useReturnStore,
   type ReturnStoreSnapshot,
 } from "./returns/return-store"
+import {
+  createReturnWorkflow,
+  currentReturnWorkflowStage,
+} from "./returns/return-workflow"
 
 export type VoltageAdminView =
   | "dashboard"
@@ -177,6 +182,7 @@ const completeNavigationTool = async (
 
   return {
     ...result,
+    rediscoveryRequired: true,
     nextToolset: {
       status: nextToolset.status,
       route: nextToolset.route,
@@ -445,9 +451,7 @@ const useVoltageAdminWebMcpTools = (
                     execute: (args: Record<string, unknown>) =>
                       executeWithDebugLog(tool.name, args),
                   } as WebMcpRegisteredTool & {
-                    execute: (
-                      args: Record<string, unknown>
-                    ) => Promise<unknown>
+                    execute: (args: Record<string, unknown>) => Promise<unknown>
                   },
                   { signal: controller.signal }
                 )
@@ -554,9 +558,7 @@ export const VoltageAdminProvider = () => {
   const [returnStore] = useState(() => new ReturnStore(returnRepository))
   const returnReviewNotes = useMemo(
     () =>
-      currentUserId
-        ? returnRepository.reviewNotesForUser(currentUserId)
-        : null,
+      currentUserId ? returnRepository.reviewNotesForUser(currentUserId) : null,
     [currentUserId, returnRepository]
   )
   const products = useProductStore(productStore)
@@ -594,10 +596,10 @@ export const VoltageAdminProvider = () => {
                 : []),
               ...(location.pathname !== "/returns/add" &&
               /^\/returns\/[^/]+$/.test(location.pathname)
-                ? RETURN_DETAIL_TOOLS
+                ? [...RETURN_DETAIL_TOOLS, ...RETURN_NOTE_TOOLS]
                 : []),
               ...(/^\/refund-approvals\/[^/]+$/.test(location.pathname)
-                ? REFUND_APPROVAL_DETAIL_TOOLS
+                ? [...REFUND_APPROVAL_DETAIL_TOOLS, ...RETURN_NOTE_TOOLS]
                 : []),
             ]
           : [AGENT_INSTRUCTIONS_TOOL],
@@ -780,6 +782,8 @@ export const VoltageAdminProvider = () => {
           repository: returnOperations,
           commerce: await commerceRepository.getSnapshot(),
           editor: returnEditorController,
+          reviewNotes: returnReviewNotes,
+          routePath: location.pathname,
           navigate: navigateForTool,
         })
       )
@@ -796,7 +800,41 @@ export const VoltageAdminProvider = () => {
       )
     }
     if (name === "agent_instructions") {
-      return { text: getVoltageAdminAgentInstructions(sectionRef.current) }
+      let routeContext = ""
+      const rmaMatch = location.pathname.match(/^\/returns\/([^/]+)$/)
+      const approvalMatch = location.pathname.match(
+        /^\/refund-approvals\/([^/]+)$/
+      )
+      if (rmaMatch) {
+        const rmaId = decodeURIComponent(rmaMatch[1]!)
+        const rma = visibleReturns.rmas.find((item) => item.id === rmaId)
+        if (rma) {
+          const stage = currentReturnWorkflowStage(
+            createReturnWorkflow({
+              rma,
+              items: visibleReturns.items.filter(
+                (item) => item.rmaId === rmaId
+              ),
+              calculations: visibleReturns.calculations.filter(
+                (item) => item.rmaId === rmaId
+              ),
+              approvals: visibleReturns.approvals.filter(
+                (item) => item.rmaId === rmaId
+              ),
+            })
+          ).id
+          routeContext = `目前頁面：退貨 ${rmaId}，目前階段 ${stage}。可讀取安全案件資料，並讀取或更新目前帳號、此階段的可逆備註草稿。`
+        }
+      } else if (approvalMatch) {
+        const approvalId = decodeURIComponent(approvalMatch[1]!)
+        routeContext = `目前頁面：退款核准 ${approvalId}，第 6 階段 refund_approval。可讀取安全核准資料，並讀取或更新目前帳號、第 6 階段的可逆備註草稿；核准、退回、拒絕、修改退款金額與執行退款只能由使用者在頁面完成。`
+      }
+      return {
+        text: getVoltageAdminAgentInstructions(
+          sectionRef.current,
+          routeContext
+        ),
+      }
     }
     if (name === "skill_list") return listVoltageAdminSkills()
     if (name === "load_skill") return loadVoltageAdminSkill(args.name)

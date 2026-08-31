@@ -169,6 +169,7 @@ describe("fallback return workflow", () => {
       await execute(current, "open_return_detail", { rmaId: rma.rmaId })
     ).toMatchObject({
       status: "OK",
+      rediscoveryRequired: true,
       nextToolset: {
         status: "READY",
         route: `/returns/${rma.rmaId}`,
@@ -184,52 +185,46 @@ describe("fallback return workflow", () => {
         fallback()
           .__webmcpTestProvider?.getTools()
           .map(({ name }) => name)
-      ).toContain("apply_return_review_draft")
+      ).toContain("apply_my_return_note_draft")
     )
     current = await provider()
     const detailNames = current.getTools().map(({ name }) => name)
     expect(detailNames).toEqual(
       expect.arrayContaining([
         "check_return_eligibility",
-        "apply_return_review_draft",
-        "get_return_review_state",
+        "apply_my_return_note_draft",
+        "get_my_return_note_draft",
         "get_refund_calculation",
       ])
     )
     expect(detailNames).not.toContain("apply_return_form_draft")
-    const reviewState = (await waitFor(async () => {
-      const value = await execute(current, "get_return_review_state")
-      expect(value).toMatchObject({ status: "OK", rmaId: rma.rmaId })
-      return value
-    })) as { rmaVersion: number; policyVersion: string; version: number }
-    const policy = (await execute(current, "check_return_eligibility", {
-      rmaId: rma.rmaId,
-      rmaVersion: reviewState.rmaVersion,
-      facts: {
-        daysSinceDelivery: 4,
-        packageOpened: false,
-        condition: "unused",
-        finalSale: false,
-      },
-    })) as { eligibility: { matchedRules: string[] } }
-    expect(
-      await execute(current, "apply_return_review_draft", {
-      rmaId: rma.rmaId,
-        rmaVersion: reviewState.rmaVersion,
-        policyVersion: reviewState.policyVersion,
-        editorVersion: reviewState.version,
-        evidenceCodes: policy.eligibility.matchedRules,
-        operationalSummary: "Return policy evidence verified.",
-        nextStep: "User reviews the eligibility decision.",
-        supportDraft: "Return review is ready for user decision.",
+    const noteState = (await waitFor(async () => {
+      const value = await execute(current, "get_my_return_note_draft")
+      expect(value).toMatchObject({
+        status: "NOT_FOUND",
+        rmaId: rma.rmaId,
+        stage: expect.any(String),
       })
-    ).toMatchObject({ status: "OK", valid: true })
+      return value
+    })) as { stage: string }
+    expect(
+      await execute(current, "apply_my_return_note_draft", {
+        rmaId: rma.rmaId,
+        stage: noteState.stage,
+        expectedVersion: 0,
+        category: "internal_note",
+        recommendation: null,
+        evidenceCodes: [],
+        content: "Return workflow evidence reviewed for the current stage.",
+      })
+    ).toMatchObject({ status: "OK", saved: true, published: false })
 
     const approvalId = "APR-2006"
     expect(
       await execute(current, "open_refund_approval", { approvalId })
     ).toMatchObject({
       status: "OK",
+      rediscoveryRequired: true,
       nextToolset: {
         status: "READY",
         route: `/refund-approvals/${approvalId}`,
@@ -246,6 +241,12 @@ describe("fallback return workflow", () => {
     const approvalSnapshot = current.getTools()
     const approvalNames = approvalSnapshot.map(({ name }) => name)
     expect(approvalNames).toContain("get_refund_approval")
+    expect(approvalNames).toEqual(
+      expect.arrayContaining([
+        "get_my_return_note_draft",
+        "apply_my_return_note_draft",
+      ])
+    )
     const getApproval = approvalSnapshot.find(
       ({ name }) => name === "get_refund_approval"
     )
@@ -260,6 +261,7 @@ describe("fallback return workflow", () => {
       expect.arrayContaining([
         "apply_return_form_draft",
         "apply_return_review_draft",
+        "get_return_review_state",
         "approve_refund",
         "reject_refund",
         "record_refund_result",

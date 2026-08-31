@@ -4,15 +4,18 @@ import { createCommerceSeed } from "../commerce-data/commerce-seed"
 import {
   ReturnEditorController,
   createReturnFormEditorState,
-  createReturnReviewEditorState,
 } from "./return-editor-controller"
-import { ReturnRepository } from "./return-repository"
+import {
+  ReturnRepository,
+  type ReturnReviewNoteSession,
+} from "./return-repository"
 import {
   executeReturnTool,
   REFUND_APPROVAL_DETAIL_TOOLS,
   RETURN_DETAIL_TOOLS,
   RETURN_FORM_TOOLS,
   RETURN_GLOBAL_TOOLS,
+  RETURN_NOTE_TOOLS,
   RETURN_TOOLS,
 } from "./return-tools"
 
@@ -20,6 +23,8 @@ describe("return WebMCP tools", () => {
   const commerce = createCommerceSeed()
   let repository: ReturnRepository
   let editor: ReturnEditorController
+  let reviewNotes: ReturnReviewNoteSession
+  let routePath: string
 
   beforeEach(async () => {
     repository = new ReturnRepository({
@@ -28,6 +33,8 @@ describe("return WebMCP tools", () => {
     })
     editor = new ReturnEditorController()
     await repository.initialize()
+    reviewNotes = repository.reviewNotesForUser("guest")
+    routePath = "/returns/RMA-2006"
   })
 
   afterEach(async () => {
@@ -41,6 +48,8 @@ describe("return WebMCP tools", () => {
       repository,
       commerce,
       editor,
+      reviewNotes,
+      routePath,
       navigate: () => undefined,
     })
 
@@ -57,8 +66,8 @@ describe("return WebMCP tools", () => {
         "apply_return_form_draft",
         "get_return_form_state",
         "check_return_eligibility",
-        "apply_return_review_draft",
-        "get_return_review_state",
+        "apply_my_return_note_draft",
+        "get_my_return_note_draft",
         "get_refund_calculation",
         "get_refund_approval",
       ])
@@ -78,14 +87,17 @@ describe("return WebMCP tools", () => {
     )
     expect(RETURN_GLOBAL_TOOLS).toHaveLength(6)
     expect(RETURN_FORM_TOOLS).toHaveLength(2)
-    expect(RETURN_DETAIL_TOOLS).toHaveLength(4)
+    expect(names).not.toContain("apply_return_review_draft")
+    expect(names).not.toContain("get_return_review_state")
+    expect(RETURN_DETAIL_TOOLS).toHaveLength(2)
+    expect(RETURN_NOTE_TOOLS).toHaveLength(2)
     expect(REFUND_APPROVAL_DETAIL_TOOLS).toHaveLength(1)
   })
 
   it("declares completion verifiers for both reversible draft mutations", () => {
     expect(createCompletionVerifierMap(RETURN_TOOLS)).toMatchObject({
       apply_return_form_draft: "get_return_form_state",
-      apply_return_review_draft: "get_return_review_state",
+      apply_my_return_note_draft: "get_my_return_note_draft",
     })
   })
 
@@ -144,43 +156,23 @@ describe("return WebMCP tools", () => {
       approval: expect.not.objectContaining({ reason: expect.anything() }),
     })
 
-    const currentRma = (await repository.getSnapshot()).rmas.find(
-      (item) => item.id === rma.id
-    )!
-    editor.attachReview(
-      createReturnReviewEditorState(
-        {
-          rmaId: currentRma.id,
-          rmaVersion: currentRma.version,
-          policyVersion: currentRma.eligibility.policyVersion,
-        },
-        {
-          evidenceCodes: ["within_30_days"],
-          operationalSummary: "Contact x@example.com for private details.",
-          nextStep: "User reviews the eligibility decision.",
-          supportDraft: "Return review is ready for user decision.",
-        },
-        2,
-        true
-      ),
-      () => undefined
-    )
-    const restricted = await execute("get_refund_approval", {
-      approvalId: approval.id,
-    })
-    expect(restricted).toMatchObject({ status: "ARGUMENT_ERROR" })
-    expect(JSON.stringify(restricted)).not.toContain("x@example.com")
+    expect(approvalResult).not.toHaveProperty("agentSafeSummary")
   })
 
   it("returns a direct rmaId handoff from search to detail and navigation", async () => {
     let navigatedTo = ""
-    const executeWithNavigation = (name: string, args: Record<string, unknown>) =>
+    const executeWithNavigation = (
+      name: string,
+      args: Record<string, unknown>
+    ) =>
       executeReturnTool({
         name,
         args,
         repository,
         commerce,
         editor,
+        reviewNotes,
+        routePath,
         navigate: (path) => {
           navigatedTo = path
         },
@@ -193,7 +185,9 @@ describe("return WebMCP tools", () => {
     const result = search.items[0]
 
     expect(result).toMatchObject({ rmaId: result.id })
-    expect(await execute("get_return_detail", { rmaId: result.rmaId })).toMatchObject({
+    expect(
+      await execute("get_return_detail", { rmaId: result.rmaId })
+    ).toMatchObject({
       status: "OK",
       rma: { id: result.rmaId },
     })
@@ -224,13 +218,21 @@ describe("return WebMCP tools", () => {
       valid: true,
       calculation: { id: pending.calculationId },
     })
-    expect(await execute("list_refund_approvals", { status: "pending" })).toMatchObject({
+    expect(
+      await execute("list_refund_approvals", { status: "pending" })
+    ).toMatchObject({
       status: "OK",
-      items: [expect.objectContaining({ id: pending.id, rmaId: pending.rmaId })],
+      items: [
+        expect.objectContaining({ id: pending.id, rmaId: pending.rmaId }),
+      ],
     })
-    expect(await execute("list_refund_approvals", { status: "returned" })).toMatchObject({
+    expect(
+      await execute("list_refund_approvals", { status: "returned" })
+    ).toMatchObject({
       status: "OK",
-      items: [expect.objectContaining({ id: returned.id, rmaId: returned.rmaId })],
+      items: [
+        expect.objectContaining({ id: returned.id, rmaId: returned.rmaId }),
+      ],
     })
     expect(
       await execute("list_refund_approvals", {
@@ -239,7 +241,9 @@ describe("return WebMCP tools", () => {
       })
     ).toMatchObject({
       status: "OK",
-      items: [expect.objectContaining({ id: approved.id, rmaId: approved.rmaId })],
+      items: [
+        expect.objectContaining({ id: approved.id, rmaId: approved.rmaId }),
+      ],
     })
     const detail = await execute("get_refund_approval", {
       approvalId: approved.id,
@@ -307,53 +311,86 @@ describe("return WebMCP tools", () => {
     })
   })
 
-  it("binds review drafts to current RMA, policy, evidence, and editor versions", async () => {
+  it("binds note drafts to the signed-in user, current route stage, and expected version", async () => {
     const snapshot = await repository.getSnapshot()
-    const rma = snapshot.rmas.find((item) => item.status === "active")!
-    let state = createReturnReviewEditorState({
-      rmaId: rma.id,
-      rmaVersion: rma.version,
-      policyVersion: rma.eligibility.policyVersion,
+    const approval = snapshot.approvals.find(
+      (item) => item.status === "pending"
+    )!
+    routePath = `/refund-approvals/${approval.id}`
+    expect(await execute("get_my_return_note_draft", {})).toMatchObject({
+      status: "NOT_FOUND",
+      rmaId: approval.rmaId,
+      stage: "refund_approval",
     })
-    editor.attachReview(state, (next) => {
-      state = next
+    const result = await execute("apply_my_return_note_draft", {
+      rmaId: approval.rmaId,
+      stage: "refund_approval",
+      expectedVersion: 0,
+      category: "review_recommendation",
+      recommendation: "approve",
+      evidenceCodes: ["INSPECTION_ACCEPTED"],
+      content: "Inspection quantities match the fixed refund calculation.",
     })
-    const policy = (await execute("check_return_eligibility", {
-      rmaId: rma.id,
-      rmaVersion: rma.version,
-      facts: {
-        daysSinceDelivery: 5,
-        packageOpened: false,
-        condition: "unused",
-        finalSale: false,
+    expect(result).toMatchObject({
+      status: "OK",
+      draftVersion: 1,
+      saved: true,
+      published: false,
+    })
+    expect(await execute("get_my_return_note_draft", {})).toMatchObject({
+      status: "OK",
+      draft: {
+        category: "review_recommendation",
+        recommendation: "approve",
+        version: 1,
       },
-    })) as { eligibility: { matchedRules: string[] } }
-    const result = await execute("apply_return_review_draft", {
-      rmaId: rma.id,
-      rmaVersion: rma.version,
-      policyVersion: rma.eligibility.policyVersion,
-      editorVersion: state.version,
-      evidenceCodes: policy.eligibility.matchedRules,
-      operationalSummary: "Return policy evidence verified.",
-      nextStep: "User reviews the eligibility decision.",
-      supportDraft: "Return review is ready for user decision.",
+      permissions: {
+        canPublishInWebMcp: false,
+        canDiscardInWebMcp: false,
+      },
     })
-    expect(result).toMatchObject({ status: "OK", valid: true, version: 2 })
     expect(
-      await execute("apply_return_review_draft", {
-        rmaId: rma.id,
-        rmaVersion: rma.version,
-        policyVersion: rma.eligibility.policyVersion,
-        editorVersion: 1,
-        evidenceCodes: policy.eligibility.matchedRules,
-        operationalSummary: "Return policy evidence verified.",
-        nextStep: "User reviews the eligibility decision.",
-        supportDraft: "Return review is ready for user decision.",
+      await execute("apply_my_return_note_draft", {
+        rmaId: approval.rmaId,
+        stage: "refund_approval",
+        expectedVersion: 0,
+        category: "review_recommendation",
+        recommendation: "approve",
+        evidenceCodes: [],
+        content: "A stale edit must not overwrite the saved draft.",
       })
     ).toMatchObject({
-      status: "ARGUMENT_ERROR",
-      message: expect.stringMatching(/stale/),
+      status: "VERSION_CONFLICT",
+      nextStep: expect.stringMatching(/get_my_return_note_draft/),
     })
+    expect(
+      await execute("apply_my_return_note_draft", {
+        rmaId: approval.rmaId,
+        stage: "eligibility",
+        expectedVersion: 0,
+        category: "internal_note",
+        recommendation: null,
+        evidenceCodes: [],
+        content: "A different stage must not be writable from this page.",
+      })
+    ).toMatchObject({ status: "RE_DISCOVER_REQUIRED" })
+    expect(await reviewNotes.getDraft(approval.rmaId, "eligibility")).toBeNull()
+    routePath = "/returns/RMA-2007"
+    expect(
+      await execute("apply_my_return_note_draft", {
+        rmaId: approval.rmaId,
+        stage: "refund_approval",
+        expectedVersion: 1,
+        category: "internal_note",
+        recommendation: null,
+        evidenceCodes: [],
+        content: "This route no longer matches the draft.",
+      })
+    ).toMatchObject({ status: "RE_DISCOVER_REQUIRED" })
+    const otherUser = repository.reviewNotesForUser("operator-2")
+    expect(
+      await otherUser.getDraft(approval.rmaId, "refund_approval")
+    ).toBeNull()
   })
 
   it("marks RMA-2005 eligibility as a non-persisted simulation", async () => {
@@ -450,6 +487,33 @@ describe("return WebMCP tools", () => {
         "get_return_form_state",
         [] as unknown as Record<string, unknown>
       )
+    ).toMatchObject({ status: "ARGUMENT_ERROR" })
+    const target = (await execute("get_my_return_note_draft", {})) as {
+      rmaId: string
+      stage: string
+    }
+    expect(
+      await execute("apply_my_return_note_draft", {
+        rmaId: target.rmaId,
+        stage: target.stage,
+        expectedVersion: 0,
+        category: "internal_note",
+        recommendation: null,
+        evidenceCodes: [],
+        content: "Contact x@example.com before reviewing this note.",
+      })
+    ).toMatchObject({ status: "ARGUMENT_ERROR" })
+    expect(
+      await execute("apply_my_return_note_draft", {
+        rmaId: target.rmaId,
+        stage: target.stage,
+        expectedVersion: 0,
+        category: "internal_note",
+        recommendation: null,
+        evidenceCodes: [],
+        content: "Operational note.",
+        authorUserId: "operator-2",
+      })
     ).toMatchObject({ status: "ARGUMENT_ERROR" })
   })
 

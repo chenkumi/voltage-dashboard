@@ -179,6 +179,14 @@ describe("Voltage Admin skills", () => {
     expect(getVoltageAdminAgentInstructions("returns")).toMatch(
       /Returns[\s\S]*可逆[\s\S]*使用者操作/
     )
+    expect(
+      getVoltageAdminAgentInstructions(
+        "refund-approvals",
+        "目前頁面：退款核准 APR-2008，第 6 階段 refund_approval。"
+      )
+    ).toMatch(
+      /APR-2008[\s\S]*refund_approval[\s\S]*發布[\s\S]*rediscoveryRequired[\s\S]*RE_DISCOVER_REQUIRED/
+    )
   })
 
   it("documents verifier use, untrusted sources, and human final actions", () => {
@@ -194,8 +202,13 @@ describe("Voltage Admin skills", () => {
       /untrustedContentHint[\s\S]*get_product_editor_state[\s\S]*頁面按鈕/
     )
     expect(text).toMatch(/get_return_form_state[\s\S]*使用者/)
-    expect(text).toMatch(/get_return_review_state[\s\S]*不得承諾退款/)
+    expect(text).toMatch(
+      /get_my_return_note_draft[\s\S]*apply_my_return_note_draft[\s\S]*不得承諾退款/
+    )
     expect(text).toMatch(/get_refund_approval[\s\S]*不得修改退款金額/)
+    expect(text).not.toMatch(
+      /apply_return_review_draft|get_return_review_state|Agent 專屬|客服回覆|客服草稿/
+    )
     expect(text).not.toMatch(/payment_token|card_number|shipping_address/i)
   })
 

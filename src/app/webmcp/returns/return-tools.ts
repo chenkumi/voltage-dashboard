@@ -2,25 +2,33 @@ import { COMPLETION_VERIFIER_SCHEMA_KEY } from "../completion-policy"
 import type { CommerceDataSnapshot } from "../commerce-data/types"
 import { assertSafeOperationsText } from "../content-safety"
 import type { WebMcpRegisteredTool } from "../types"
-import type {
-  ReturnEditorController,
-  ReturnReviewDraft,
-} from "./return-editor-controller"
+import type { ReturnEditorController } from "./return-editor-controller"
 import { checkReturnEligibility } from "./return-policy"
 import type {
   ReturnOperationalRepository,
   ReturnOperationalSnapshot,
+  ReturnReviewNoteSession,
 } from "./return-repository"
 import {
   APPROVAL_STATUSES,
   ELIGIBILITY_STATUSES,
   REFUND_STATUSES,
   RETURN_REASONS,
+  RETURN_REVIEW_CATEGORIES,
+  RETURN_REVIEW_RECOMMENDATIONS,
+  RETURN_REVIEW_STAGES,
   RETURN_SOURCES,
   RMA_STATUSES,
+  type ReturnReviewCategory,
+  type ReturnReviewRecommendation,
+  type ReturnReviewStage,
   type ReturnReason,
   type ReturnSource,
 } from "./types"
+import {
+  createReturnWorkflow,
+  currentReturnWorkflowStage,
+} from "./return-workflow"
 
 const schema = (
   properties: Record<string, unknown>,
@@ -176,54 +184,6 @@ export const RETURN_DETAIL_TOOLS: readonly WebMcpRegisteredTool[] = [
     annotations: { readOnlyHint: true },
   },
   {
-    name: "apply_return_review_draft",
-    description:
-      "Purpose: fill a reversible safe review draft on the open RMA detail page. Call after policy calculation to add evidence codes, operational summary, next step, and support copy. It never decides eligibility, submits approval, records inspection, or performs a refund.",
-    inputSchema: schema(
-      {
-        rmaId: safeId("RMA ID bound to the open detail page."),
-        rmaVersion: { type: "integer", minimum: 1 },
-        policyVersion: { type: "string", minLength: 1, maxLength: 80 },
-        editorVersion: { type: "integer", minimum: 1 },
-        evidenceCodes: {
-          type: "array",
-          minItems: 1,
-          maxItems: 12,
-          uniqueItems: true,
-          items: safeId("Policy evidence code."),
-        },
-        operationalSummary: { type: "string", minLength: 1, maxLength: 600 },
-        nextStep: { type: "string", minLength: 1, maxLength: 300 },
-        supportDraft: { type: "string", minLength: 1, maxLength: 600 },
-      },
-      [
-        "rmaId",
-        "rmaVersion",
-        "policyVersion",
-        "editorVersion",
-        "evidenceCodes",
-        "operationalSummary",
-        "nextStep",
-        "supportDraft",
-      ],
-      { [COMPLETION_VERIFIER_SCHEMA_KEY]: "get_return_review_state" }
-    ),
-    annotations: {
-      readOnlyHint: false,
-      destructiveHint: false,
-      openWorldHint: false,
-      untrustedContentHint: true,
-      completionVerifier: "get_return_review_state",
-    },
-  },
-  {
-    name: "get_return_review_state",
-    description:
-      "Purpose: verify the current RMA review draft, policy/data versions, completeness, and editor version. Call after applying a review draft or before reporting completion. It cannot decide eligibility, submit approval, or perform a refund.",
-    inputSchema: noInput,
-    annotations: { readOnlyHint: true, untrustedContentHint: true },
-  },
-  {
     name: "get_refund_calculation",
     description:
       "Purpose: read the latest immutable refund calculation and validity for the open RMA. Call for ‘explain refund amount’, ‘check calculation version’, ‘show item subtotals’, or before opening approval. It cannot edit, submit, approve, or execute the refund.",
@@ -232,6 +192,57 @@ export const RETURN_DETAIL_TOOLS: readonly WebMcpRegisteredTool[] = [
       ["rmaId"]
     ),
     annotations: { readOnlyHint: true },
+  },
+]
+
+export const RETURN_NOTE_TOOLS: readonly WebMcpRegisteredTool[] = [
+  {
+    name: "get_my_return_note_draft",
+    description:
+      "Purpose: read only the signed-in user's note draft for the current return page and allowed stage. Call before editing, after VERSION_CONFLICT, or to check whether a draft exists. Examples: ‘read my note draft’, ‘check its version’, ‘reload the current note’, ‘is there a saved draft?’. It cannot read another user's draft, publish, discard, or decide the return.",
+    inputSchema: noInput,
+    annotations: { readOnlyHint: true, untrustedContentHint: true },
+  },
+  {
+    name: "apply_my_return_note_draft",
+    description:
+      "Purpose: create or update the signed-in user's reversible note draft for the current page stage. Call to fill a review recommendation, internal note, or handoff after reading the current draft version. Examples: ‘save this review note’, ‘draft a recommendation’, ‘add evidence codes’, ‘update my handoff’. It only autosaves; the user must publish or discard in the page and make every final decision there.",
+    inputSchema: schema(
+      {
+        rmaId: safeId("RMA ID bound to the current page."),
+        stage: { type: "string", enum: RETURN_REVIEW_STAGES },
+        expectedVersion: { type: "integer", minimum: 0 },
+        category: { type: "string", enum: RETURN_REVIEW_CATEGORIES },
+        recommendation: {
+          type: ["string", "null"],
+          enum: [...RETURN_REVIEW_RECOMMENDATIONS, null],
+        },
+        evidenceCodes: {
+          type: "array",
+          maxItems: 12,
+          uniqueItems: true,
+          items: safeId("Evidence code available for this RMA stage."),
+        },
+        content: { type: "string", minLength: 1, maxLength: 1000 },
+      },
+      [
+        "rmaId",
+        "stage",
+        "expectedVersion",
+        "category",
+        "recommendation",
+        "evidenceCodes",
+        "content",
+      ],
+      { [COMPLETION_VERIFIER_SCHEMA_KEY]: "get_my_return_note_draft" }
+    ),
+    annotations: {
+      readOnlyHint: false,
+      destructiveHint: false,
+      openWorldHint: false,
+      untrustedContentHint: true,
+      completionVerifier: "get_my_return_note_draft",
+    },
   },
 ]
 
@@ -253,6 +264,7 @@ export const RETURN_TOOLS = [
   ...RETURN_FORM_TOOLS,
   ...RETURN_DETAIL_TOOLS,
   ...REFUND_APPROVAL_DETAIL_TOOLS,
+  ...RETURN_NOTE_TOOLS,
 ] as const
 
 const isPlainRecord = (value: unknown): value is Record<string, unknown> =>
@@ -304,10 +316,22 @@ const bounded = (value: unknown) => {
   return value
 }
 
-const error = (cause: unknown) => ({
-  status: "ARGUMENT_ERROR",
-  message: cause instanceof Error ? cause.message : "Return tool failed.",
-})
+const error = (cause: unknown) => {
+  const code =
+    cause && typeof cause === "object" && "code" in cause
+      ? (cause as { code?: unknown }).code
+      : undefined
+  if (code === "VERSION_CONFLICT")
+    return {
+      status: "VERSION_CONFLICT",
+      message: "The note draft changed after it was read.",
+      nextStep: "Call get_my_return_note_draft once before editing again.",
+    }
+  return {
+    status: "ARGUMENT_ERROR",
+    message: cause instanceof Error ? cause.message : "Return tool failed.",
+  }
+}
 
 const projectItems = (
   snapshot: Awaited<ReturnType<ReturnOperationalRepository["getSnapshot"]>>,
@@ -423,37 +447,65 @@ const projectFormState = (
     : { status: "NOT_AVAILABLE", message: "Return form is not open." }
 }
 
-const projectSafeReviewDraft = (draft: ReturnReviewDraft) => ({
-  evidenceCodes: draft.evidenceCodes.map((code) =>
-    readId(code, "evidenceCode")
-  ),
-  operationalSummary: readSafeText(
-    draft.operationalSummary,
-    "operationalSummary",
-    600,
-    true
-  ),
-  nextStep: readSafeText(draft.nextStep, "nextStep", 300, true),
-  supportDraft: readSafeText(draft.supportDraft, "supportDraft", 600, true),
-})
+const resolveReturnNoteTarget = (
+  snapshot: ReturnOperationalSnapshot,
+  routePath: string
+): { rmaId: string; stage: ReturnReviewStage } | null => {
+  const rmaMatch = routePath.match(/^\/returns\/([^/]+)$/)
+  if (rmaMatch) {
+    const rmaId = decodeURIComponent(rmaMatch[1]!)
+    const rma = snapshot.rmas.find((item) => item.id === rmaId)
+    if (!rma) return null
+    return {
+      rmaId,
+      stage: currentReturnWorkflowStage(
+        createReturnWorkflow({
+          rma,
+          items: snapshot.items.filter((item) => item.rmaId === rmaId),
+          calculations: snapshot.calculations.filter(
+            (item) => item.rmaId === rmaId
+          ),
+          approvals: snapshot.approvals.filter((item) => item.rmaId === rmaId),
+        })
+      ).id,
+    }
+  }
+  const approvalMatch = routePath.match(/^\/refund-approvals\/([^/]+)$/)
+  if (approvalMatch) {
+    const approvalId = decodeURIComponent(approvalMatch[1]!)
+    const approval = snapshot.approvals.find((item) => item.id === approvalId)
+    return approval ? { rmaId: approval.rmaId, stage: "refund_approval" } : null
+  }
+  return null
+}
 
-const projectReviewState = (controller: ReturnEditorController) => {
-  const state = controller.getReviewState()
-  return state
+const projectMyReturnNoteDraft = (
+  target: { rmaId: string; stage: ReturnReviewStage },
+  draft: Awaited<ReturnType<ReturnReviewNoteSession["getDraft"]>>
+) =>
+  draft
     ? bounded({
         status: "OK",
-        route: state.route,
-        rmaId: state.rmaId,
-        rmaVersion: state.rmaVersion,
-        policyVersion: state.policyVersion,
-        dirty: state.dirty,
-        valid: state.valid,
-        missingFields: state.missingFields,
-        version: state.version,
-        draft: projectSafeReviewDraft(state.draft),
+        ...target,
+        draft: {
+          category: draft.category,
+          recommendation: draft.recommendation,
+          evidenceCodes: draft.evidenceCodes,
+          content: draft.content,
+          version: draft.version,
+          savedAt: draft.updatedAt,
+        },
+        permissions: {
+          canEdit: true,
+          canPublishInWebMcp: false,
+          canDiscardInWebMcp: false,
+        },
       })
-    : { status: "NOT_AVAILABLE", message: "Return review is not open." }
-}
+    : {
+        status: "NOT_FOUND",
+        ...target,
+        message: "The current user has no draft for this stage.",
+      }
 
 export const executeReturnTool = async ({
   name,
@@ -461,6 +513,8 @@ export const executeReturnTool = async ({
   repository,
   commerce,
   editor,
+  reviewNotes,
+  routePath,
   navigate,
 }: {
   name: string
@@ -468,6 +522,8 @@ export const executeReturnTool = async ({
   repository: ReturnOperationalRepository
   commerce: CommerceDataSnapshot
   editor: ReturnEditorController
+  reviewNotes: ReturnReviewNoteSession | null
+  routePath: string
   navigate: (path: string) => void
 }) => {
   try {
@@ -577,7 +633,6 @@ export const executeReturnTool = async ({
       const rmaId = readId(args.rmaId, "rmaId")
       if (!snapshot.rmas.some((item) => item.id === rmaId))
         throw new Error("RMA was not found.")
-      if (editor.getReviewState()?.rmaId !== rmaId) editor.detachReview()
       navigate(`/returns/${rmaId}`)
       return { status: "OK", page: "return-detail", rmaId }
     }
@@ -774,91 +829,92 @@ export const executeReturnTool = async ({
         policyVersion: rma.eligibility.policyVersion,
         eligibility: result,
         nextStep:
-          "Use this simulation as evidence for a reversible review draft; the user must make and save any final eligibility decision in the UI.",
+          "Use this simulation as evidence for the current user's reversible note draft; the user must make and save any final eligibility decision in the UI.",
       }
     }
-    if (name === "apply_return_review_draft") {
+    if (name === "get_my_return_note_draft") {
+      if (!hasOnlyKeys(args, [])) throw new Error("Arguments are invalid.")
+      const target = resolveReturnNoteTarget(snapshot, routePath)
+      if (!target || !reviewNotes)
+        return {
+          status: "RE_DISCOVER_REQUIRED",
+          message: "The available tools changed after navigation.",
+          nextStep:
+            "Run discovery once and continue with the current page tools.",
+        }
+      return projectMyReturnNoteDraft(
+        target,
+        await reviewNotes.getDraft(target.rmaId, target.stage)
+      )
+    }
+    if (name === "apply_my_return_note_draft") {
       const keys = [
         "rmaId",
-        "rmaVersion",
-        "policyVersion",
-        "editorVersion",
+        "stage",
+        "expectedVersion",
+        "category",
+        "recommendation",
         "evidenceCodes",
-        "operationalSummary",
-        "nextStep",
-        "supportDraft",
+        "content",
       ]
       if (!hasOnlyKeys(args, keys) || keys.some((key) => !(key in args)))
         throw new Error("Arguments are invalid.")
+      const target = resolveReturnNoteTarget(snapshot, routePath)
       const rmaId = readId(args.rmaId, "rmaId")
-      const rma = snapshot.rmas.find((item) => item.id === rmaId)
       if (
-        !rma ||
-        args.rmaVersion !== rma.version ||
-        args.policyVersion !== rma.eligibility.policyVersion
+        !target ||
+        !reviewNotes ||
+        target.rmaId !== rmaId ||
+        target.stage !== args.stage
       )
-        throw new Error("RMA or policy version is stale.")
+        return {
+          status: "RE_DISCOVER_REQUIRED",
+          message: "The available tools changed after navigation.",
+          nextStep:
+            "Run discovery once and continue with the current page tools.",
+        }
       if (
+        !Number.isInteger(args.expectedVersion) ||
+        Number(args.expectedVersion) < 0 ||
+        !RETURN_REVIEW_CATEGORIES.includes(
+          args.category as ReturnReviewCategory
+        ) ||
+        (args.recommendation !== null &&
+          !RETURN_REVIEW_RECOMMENDATIONS.includes(
+            args.recommendation as ReturnReviewRecommendation
+          )) ||
         !Array.isArray(args.evidenceCodes) ||
-        args.evidenceCodes.length < 1 ||
         args.evidenceCodes.length > 12
       )
-        throw new Error("evidenceCodes are invalid.")
-      const policyResult =
-        editor.getPolicyResult(
-          rma.id,
-          rma.version,
-          rma.eligibility.policyVersion
-        ) ?? rma.eligibility.systemResult
-      if (!policyResult)
-        throw new Error("Run the current policy calculation first.")
-      const allowedEvidence = new Set([
-        ...policyResult.matchedRules,
-        ...policyResult.missingEvidence,
-      ])
+        throw new Error("Return note arguments are invalid.")
       const evidenceCodes = args.evidenceCodes.map((value) =>
         readId(value, "evidenceCode")
       )
-      if (
-        new Set(evidenceCodes).size !== evidenceCodes.length ||
-        evidenceCodes.some((code) => !allowedEvidence.has(code))
-      )
+      if (new Set(evidenceCodes).size !== evidenceCodes.length)
         throw new Error("evidenceCodes are invalid.")
-      const draft: ReturnReviewDraft = {
-        evidenceCodes,
-        operationalSummary: readSafeText(
-          args.operationalSummary,
-          "operationalSummary",
-          600
-        ),
-        nextStep: readSafeText(args.nextStep, "nextStep", 300),
-        supportDraft: readSafeText(args.supportDraft, "supportDraft", 600),
-      }
-      editor.applyReviewDraft(
+      const saved = await reviewNotes.saveDraft(
         {
           rmaId,
-          rmaVersion: rma.version,
-          policyVersion: rma.eligibility.policyVersion,
-          editorVersion: args.editorVersion as number,
+          stage: target.stage,
+          category: args.category as ReturnReviewCategory,
+          recommendation:
+            args.recommendation as ReturnReviewRecommendation | null,
+          evidenceCodes,
+          content: readSafeText(args.content, "content", 1000),
+          supersedesNoteId: null,
         },
-        draft
+        Number(args.expectedVersion),
+        "webmcp"
       )
-      return projectReviewState(editor)
-    }
-    if (name === "get_return_review_state") {
-      if (!hasOnlyKeys(args, [])) throw new Error("Arguments are invalid.")
-      const state = editor.getReviewState()
-      const rma = state
-        ? snapshot.rmas.find((item) => item.id === state.rmaId)
-        : undefined
-      if (
-        state &&
-        (!rma ||
-          state.rmaVersion !== rma.version ||
-          state.policyVersion !== rma.eligibility.policyVersion)
-      )
-        return { status: "STALE_VERSION", message: "Return review is stale." }
-      return projectReviewState(editor)
+      return {
+        status: "OK",
+        rmaId,
+        stage: target.stage,
+        draftVersion: saved.version,
+        saved: true,
+        published: false,
+        nextStep: "Review, publish, or discard the draft in the page.",
+      }
     }
     if (name === "get_refund_calculation") {
       if (!hasOnlyKeys(args, ["rmaId"]))
@@ -930,9 +986,6 @@ export const executeReturnTool = async ({
           shippingAmount: calculation.shippingAmount,
           total: calculation.total,
         },
-        agentSafeSummary: editor.getReviewState(rma.id)
-          ? projectSafeReviewDraft(editor.getReviewState(rma.id)!.draft)
-          : null,
       })
     }
     throw new Error("Unknown return tool.")

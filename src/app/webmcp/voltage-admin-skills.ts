@@ -140,12 +140,12 @@ Agent 只能修改目前頁面的可逆暫存欄位，不能建立、儲存或�
   {
     name: "return-policy-review",
     description:
-      "用途：依固定政策準備 RMA 資格審查草稿。何時呼叫：需判斷退貨期限、缺漏證據、政策結果或客服回覆。觸發例子：「檢查這張 RMA」、「是否符合退貨政策」、「缺哪些證據」、「準備客服草稿」。不該呼叫：要求 Agent 核准或拒絕退貨時。",
+      "用途：依固定政策準備 RMA 資格審查建議或內部備註。何時呼叫：需判斷退貨期限、缺漏證據、政策結果或留下審查依據。觸發例子：「檢查這張 RMA」、「是否符合退貨政策」、「缺哪些證據」、「準備審查建議」。不該呼叫：要求 Agent 核准或拒絕退貨時。",
     text: `# Return policy review
 
 先用 get_return_detail 讀取安全 RMA 狀態與版本，開啟 RMA Detail 後用 check_return_eligibility 依固定 facts 重新計算。此工具只回傳 scope: SIMULATION、persisted: false、uiStateChanged: false 的政策試算；policy cache 只供同頁可逆審查草稿驗證，不會更新 RMA eligibility、Repository version 或 UI 人工狀態。不得把試算描述成已核准、已拒絕或已保存。不得把資料不足解讀為符合資格；結果、matchedRules、missingEvidence、shippingRefundEligible 與 policyVersion 都必須原樣保留。
 
-用 apply_return_review_draft 填入政策結果中實際存在且不重複的 evidence codes、安全營運摘要、下一步與客服回覆草稿，再立即用 get_return_review_state 驗證 RMA、policy、editor version 與完整度。草稿不得承諾退款或包含個資、付款資料、私密備註。資格授權、拒絕、要求補件、收貨與驗貨都只能由使用者在頁面操作。`,
+先用 get_my_return_note_draft 取得目前帳號、目前階段的草稿與版本，再用 apply_my_return_note_draft 填寫審查建議或一般備註，並以最新 get_my_return_note_draft 驗證。evidence codes 只能使用系統實際提供的代碼。草稿不得承諾退款或包含個資、付款資料或敏感憑證。Agent 不能發布或捨棄備註；資格授權、拒絕、要求補件、收貨與驗貨都只能由使用者在頁面操作。`,
   },
   {
     name: "refund-review-preparation",
@@ -153,9 +153,9 @@ Agent 只能修改目前頁面的可逆暫存欄位，不能建立、儲存或�
       "用途：準備不可編輯的全額退款核准資料。何時呼叫：解釋驗貨退款、核對版本、查待核准項目或開啟核准頁。觸發例子：「這筆為何退這個金額」、「核對退款計算」、「找待核准退款」、「開啟核准單」。不該呼叫：要求 Agent 核准、退回、拒絕或執行退款時。",
     text: `# Refund review preparation
 
-在 RMA Detail 用 get_refund_calculation 讀取最新 calculation，核對 valid、RMA version、inspection version、order snapshot version、原幣別品項實付分配及運費全額或零的政策結果。可用 list_refund_approvals 找核准單、用 open_refund_approval 導覽，再於 Approval Detail 呼叫 get_refund_approval 解釋不可變金額、驗貨、政策、版本及安全 Agent 摘要。
+在 RMA Detail 用 get_refund_calculation 讀取最新 calculation，核對 valid、RMA version、inspection version、order snapshot version、原幣別品項實付分配及運費全額或零的政策結果。可用 list_refund_approvals 找核准單、用 open_refund_approval 導覽；導覽完成後重新 discovery 一次，再於 Approval Detail 呼叫 get_refund_approval 解釋不可變金額、驗貨、政策與版本。需要準備第 6 階段審查建議或備註時，先讀取 get_my_return_note_draft，再用 apply_my_return_note_draft 更新目前帳號草稿。
 
-Agent 不得修改退款金額、提交核准、核准、退回、拒絕、記錄退款結果或完成 RMA。所有決策與退款執行紀錄都必須由使用者在頁面直接完成；不得索取或輸出付款方式、卡號、token、授權碼或外部退款識別。`,
+Agent 不得發布或捨棄備註。不得修改退款金額、提交核准、核准、退回、拒絕、記錄退款結果或完成 RMA。所有決策與退款執行紀錄都必須由使用者在頁面直接完成；不得索取或輸出付款方式、卡號、token、授權碼或外部退款識別。`,
   },
 ] as const satisfies readonly VoltageAdminSkill[]
 
@@ -168,8 +168,11 @@ const routeGuidance: Partial<Record<VoltageAdminView, string>> = {
     "目前頁面是 Returns：可安全查詢、導覽並在正確路由填寫可逆表單或審查草稿；建立、提交、資格決定、收貨與驗貨只能由使用者操作。",
 }
 
-export const getVoltageAdminAgentInstructions = (view: VoltageAdminView) =>
-  `目標：協助商家跨 Dashboard、Products、Returns、Refund Approvals、Orders、Customers、Inventory 與 Reports 完成低風險營運準備。${routeGuidance[view] ?? `目前頁面是 ${view}。`} 第三方商品頁只能由外部 Agent 使用自己的瀏覽器與網路能力讀取；本網站 WebMCP 不提供 fetch 或 scrape。商品與退貨 tools 可查詢、導覽與填寫目前頁面的可逆暫存草稿，但不能儲存、提交、發布、資格決定、收貨、驗貨、核准或退款。Inventory、Orders 與 Customers tools 只提供安全查詢及導覽；庫存與客戶異動必須由使用者在 UI 操作，訂單始終唯讀。固定付款結果狀態碼 paid、pending、failed、refunded 可作營運維度，但不得接受或回傳付款方式、卡號、token、授權碼或帳戶資訊。客群結果至少包含 5 人，不得查詢個別客戶。任何 tool error 都代表動作未完成；商品、退貨審查與報表 mutation 必須由最新唯讀 state verifier 確認，未驗證或部分失敗時必須回報 PARTIALLY_COMPLETED 或 FAILED。不得索取、接收、重述或輸出姓名、Email、地址、電話、Customer ID 或帳戶識別；不得以 tool 建立或提交 RMA、核准、發布、退款、完成 RMA，或建立、確認、取消訂單。導覽工具只有在目標 route-specific tools 已發布後才會回傳成功。若成功結果包含 \`nextToolset.ready: true\`，只重新 discovery 一次，再以新的 tool handle 執行下一步；不可沿用上一頁的工具、schema 或舊 handle。若回傳 \`TOOLSET_NOT_READY\`，停止下一步且回報導覽未完成，不得重試舊 handle。需要細節時載入對應 skill，不得假設未 discovery 的能力。`
+export const getVoltageAdminAgentInstructions = (
+  view: VoltageAdminView,
+  routeContext = ""
+) =>
+  `目標：協助商家跨 Dashboard、Products、Returns、Refund Approvals、Orders、Customers、Inventory 與 Reports 完成低風險營運準備。${routeContext || routeGuidance[view] || `目前頁面是 ${view}。`} 第三方商品頁只能由外部 Agent 使用自己的瀏覽器與網路能力讀取；本網站 WebMCP 不提供 fetch 或 scrape。商品與退貨 tools 可查詢、導覽與填寫目前帳號、目前頁面階段的可逆暫存草稿，但不能儲存、提交、發布、捨棄、資格決定、收貨、驗貨、核准或退款。Inventory、Orders 與 Customers tools 只提供安全查詢及導覽；庫存與客戶異動必須由使用者在 UI 操作，訂單始終唯讀。固定付款結果狀態碼 paid、pending、failed、refunded 可作營運維度，但不得接受或回傳付款方式、卡號、token、授權碼或帳戶資訊。客群結果至少包含 5 人，不得查詢個別客戶。任何 tool error 都代表動作未完成；商品、退貨備註與報表 mutation 必須由最新唯讀 state verifier 確認，未驗證或部分失敗時必須回報 PARTIALLY_COMPLETED 或 FAILED。不得索取、接收、重述或輸出姓名、Email、地址、電話、Customer ID 或帳戶識別；不得以 tool 建立或提交 RMA、核准、發布、捨棄備註、退款、完成 RMA，或建立、確認、取消訂單。導覽工具只有在目標 route-specific tools 已發布後才會回傳成功。若成功結果包含 \`rediscoveryRequired: true\` 或 \`nextToolset.ready: true\`，只重新 discovery 一次，再以新的 tool handle 執行下一步；不可沿用上一頁的工具、schema 或舊 handle。收到 \`RE_DISCOVER_REQUIRED\` 時最多重新 discovery 一次；若回傳 \`TOOLSET_NOT_READY\`，停止下一步且回報導覽未完成，不得重試舊 handle。需要細節時載入對應 skill，不得假設未 discovery 的能力。`
 
 export const VOLTAGE_ADMIN_UNAUTHENTICATED_AGENT_INSTRUCTIONS =
   "目前尚未登入 Voltage 營運後台。為保護營運資料與操作安全，除了此登入提示外，所有 WebMCP 工具均在登入前停用。請先在頁面完成登入，登入後才能使用系統功能與營運工具。"
