@@ -8,7 +8,12 @@ import {
   useRef,
   useState,
 } from "react"
-import { Outlet, useLocation, useNavigate } from "react-router-dom"
+import {
+  Outlet,
+  useLocation,
+  useNavigate,
+  useNavigationType,
+} from "react-router-dom"
 import type {
   WebMcpDocument,
   WebMcpRegisteredTool,
@@ -16,6 +21,10 @@ import type {
   WebMcpWindow,
 } from "./types"
 import { executeWebMcpToolWithDebugLog } from "./tool-debug"
+import {
+  createToolsetKey,
+  ToolsetReadinessCoordinator,
+} from "./toolset-readiness"
 import {
   getVoltageAdminDashboard,
   searchVoltageAdminProducts,
@@ -25,7 +34,9 @@ import {
   getVoltageAdminAgentInstructions,
   listVoltageAdminSkills,
   loadVoltageAdminSkill,
+  VOLTAGE_ADMIN_UNAUTHENTICATED_AGENT_INSTRUCTIONS,
 } from "./voltage-admin-skills"
+import { useDemoAuth } from "../auth/demo-auth"
 import {
   EXECUTE_READONLY_SQL_TOOL,
   EXECUTE_READONLY_SQL_TOOL_NAME,
@@ -51,6 +62,7 @@ import {
   type CommerceStoreSnapshot,
 } from "./commerce-data/commerce-store"
 import { ProductEditorController } from "./products/product-editor-controller"
+import { ProductDraftStore } from "./products/product-draft-store"
 import {
   executeProductTool,
   isProductTool,
@@ -104,6 +116,49 @@ const schema = (
 })
 
 const noInput = schema({})
+
+const rediscoveryRequired = () => ({
+  status: "RE_DISCOVER_REQUIRED",
+  retryable: true,
+  message:
+    "The available tools changed with navigation. Fetch the current page tools once, then retry only the intended tool.",
+})
+
+const NAVIGATION_TOOL_NAMES = new Set([
+  "open_voltage_admin_section",
+  "navigate_back",
+  "navigate_forward",
+  "open_product_create",
+  "open_product_detail",
+  "open_product_edit",
+  "open_return_create",
+  "open_return_detail",
+  "open_refund_approval",
+  "open_inventory_detail",
+  "open_order_detail",
+  "open_customer_analysis",
+])
+
+const isToolResult = (value: unknown): value is Record<string, unknown> =>
+  value !== null && typeof value === "object" && !Array.isArray(value)
+
+const withRediscoveryInstruction = (name: string, result: unknown) => {
+  if (
+    !NAVIGATION_TOOL_NAMES.has(name) ||
+    !isToolResult(result) ||
+    result.status !== "OK"
+  )
+    return result
+  return { ...result, nextToolset: rediscoveryRequired() }
+}
+
+const AGENT_INSTRUCTIONS_TOOL: WebMcpRegisteredTool = {
+  name: "agent_instructions",
+  description:
+    "Purpose: get the current admin scope, sign-in status, and safety limits. Call at the start of every conversation turn. Examples: a new conversation, switching to this page, checking whether sign-in is required, or starting an order summary. Do not use to modify orders or handle personal data.",
+  inputSchema: noInput,
+  annotations: { readOnlyHint: true },
+}
 
 const isAbortError = (error: unknown) =>
   error instanceof Error && error.name === "AbortError"
@@ -212,17 +267,11 @@ const VOLTAGE_ADMIN_COMMON_TOOLS: WebMcpRegisteredTool[] = [
       "Purpose: move to the next Voltage Dashboard section. Call when the user asks to go forward. Examples: ‘Next’, ‘Forward’, ‘Return to the section I moved forward from’. Do not call when no forward section is available.",
     inputSchema: noInput,
   },
-  {
-    name: "agent_instructions",
-    description:
-      "Purpose: get the current admin scope and safety limits. Call at the start of every conversation turn. Examples: a new conversation, switching to this page, starting inventory lookup, or starting an order summary. Do not use to modify orders or handle personal data.",
-    inputSchema: noInput,
-    annotations: { readOnlyHint: true },
-  },
+  AGENT_INSTRUCTIONS_TOOL,
   {
     name: "skill_list",
     description:
-      "Purpose: list on-demand admin operations and data-semantic guidance. Call at the start of every conversation turn. Examples: stocktaking, revenue analysis, report writing, or order review. Do not use to access personal data.",
+      "Purpose: list on-demand admin operations and data-semantic guidance. Returns { skills: [{ name, description }] }. Call at the start of every conversation turn. Examples: stocktaking, revenue analysis, report writing, or order review. Do not use to access personal data.",
     inputSchema: noInput,
     annotations: { readOnlyHint: true },
   },
@@ -256,6 +305,7 @@ type VoltageAdminContextValue = {
   dashboard: ReturnType<typeof getVoltageAdminDashboard>
   productRepository: ProductRepository
   productEditorController: ProductEditorController
+  productDraftStore: ProductDraftStore
   products: ProductStoreSnapshot
   reportingController: ReportingRuntimeController
   returnRepository: ReturnRepository
@@ -264,6 +314,11 @@ type VoltageAdminContextValue = {
 }
 
 const VoltageAdminContext = createContext<VoltageAdminContextValue | null>(null)
+
+type NativeToolRegistration = {
+  controller: AbortController
+  promise: Promise<void>
+}
 
 // eslint-disable-next-line react-refresh/only-export-components
 export const useVoltageAdmin = () => {
@@ -280,17 +335,43 @@ const useVoltageAdminWebMcpTools = (
     args: Record<string, unknown>
   ) => Promise<unknown>,
   prepareProvider: () => Promise<void>,
-  tools: readonly WebMcpRegisteredTool[]
+  tools: readonly WebMcpRegisteredTool[],
+  shouldPrepareProvider: boolean,
+  toolsetRoute: string,
+  readinessCoordinator: ToolsetReadinessCoordinator
 ) => {
   const executeRef = useRef(executeTool)
+  const publishedToolsRef = useRef(tools)
+  const registrationsRef = useRef(new Map<string, NativeToolRegistration>())
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     executeRef.current = executeTool
   }, [executeTool])
 
   useLayoutEffect(() => {
+    if (tools.length === 0) {
+      readinessCoordinator.cancelPending()
+      publishedToolsRef.current = []
+      for (const registration of registrationsRef.current.values()) {
+        registration.controller.abort()
+      }
+      registrationsRef.current.clear()
+      delete (window as WebMcpWindow).__webmcpReady
+      return
+    }
+
+    readinessCoordinator.activate()
+    if (!shouldPrepareProvider) readinessCoordinator.cancelPending()
+    const publication = readinessCoordinator.preparePublish(
+      toolsetRoute,
+      createToolsetKey(
+        toolsetRoute,
+        tools.map((tool) => tool.name)
+      )
+    )
+
     const modelContext = (document as WebMcpDocument).modelContext
-    const controller = new AbortController()
+    let active = true
     const executeWithDebugLog = (
       toolName: string,
       args: Record<string, unknown>
@@ -302,38 +383,73 @@ const useVoltageAdminWebMcpTools = (
         execute: () => executeRef.current(toolName, args),
       })
     const registerTools = async () => {
-      await prepareProvider()
-      if (controller.signal.aborted) return
+      if (shouldPrepareProvider) await prepareProvider()
+      if (!active) return
 
       if (modelContext?.registerTool) {
+        const desiredTools = new Map(tools.map((tool) => [tool.name, tool]))
+        for (const [toolName, registration] of registrationsRef.current) {
+          if (!desiredTools.has(toolName)) {
+            registration.controller.abort()
+            registrationsRef.current.delete(toolName)
+          }
+        }
         await Promise.all(
-          tools.map((tool) =>
-            modelContext.registerTool?.(
-              {
-                ...tool,
-                execute: (args: Record<string, unknown>) =>
-                  executeWithDebugLog(tool.name, args),
-              } as WebMcpRegisteredTool & {
-                execute: (args: Record<string, unknown>) => Promise<unknown>
-              },
-              { signal: controller.signal }
-            )
-          )
+          [...desiredTools.values()].map((tool) => {
+            const existing = registrationsRef.current.get(tool.name)
+            if (existing) return existing.promise
+
+            const controller = new AbortController()
+            const registration = {} as NativeToolRegistration
+            registration.controller = controller
+            registration.promise = Promise.resolve().then(async () => {
+              try {
+                await modelContext.registerTool?.(
+                  {
+                    ...tool,
+                    execute: (args: Record<string, unknown>) =>
+                      executeWithDebugLog(tool.name, args),
+                  } as WebMcpRegisteredTool & {
+                    execute: (
+                      args: Record<string, unknown>
+                    ) => Promise<unknown>
+                  },
+                  { signal: controller.signal }
+                )
+              } catch (error) {
+                if (registrationsRef.current.get(tool.name) === registration) {
+                  registrationsRef.current.delete(tool.name)
+                }
+                if (!controller.signal.aborted) throw error
+              }
+            })
+            registrationsRef.current.set(tool.name, registration)
+            return registration.promise
+          })
         )
+        if (active) {
+          publishedToolsRef.current = tools
+          readinessCoordinator.publish(publication)
+        }
         return
       }
 
+      publishedToolsRef.current = tools
       ;(window as WebMcpWindow).__webmcpTestProvider = {
-        getTools: () => [...tools],
+        // Keep the fallback discovery snapshot aligned with native registration:
+        // it changes only after the destination route and its editor controller
+        // have had a chance to finish mounting.
+        getTools: () => [...publishedToolsRef.current],
         executeTool: (tool, args) => executeWithDebugLog(tool.name, args),
       } satisfies WebMcpTestProvider
+      if (active) readinessCoordinator.publish(publication)
     }
 
     const currentWindow = window as WebMcpWindow
     const readyPromise = registerTools()
     currentWindow.__webmcpReady = readyPromise
     void readyPromise.catch((error) => {
-      if (!controller.signal.aborted && !isAbortError(error)) {
+      if (active && !isAbortError(error)) {
         console.error(
           "Voltage Dashboard WebMCP tool registration failed.",
           error
@@ -342,17 +458,38 @@ const useVoltageAdminWebMcpTools = (
     })
 
     return () => {
-      controller.abort()
+      active = false
+    }
+  }, [
+    prepareProvider,
+    readinessCoordinator,
+    shouldPrepareProvider,
+    tools,
+    toolsetRoute,
+  ])
+
+  useEffect(
+    () => () => {
+      for (const registration of registrationsRef.current.values()) {
+        registration.controller.abort()
+      }
+      registrationsRef.current.clear()
+      const currentWindow = window as WebMcpWindow
       delete currentWindow.__webmcpReady
       delete currentWindow.__webmcpTestProvider
-    }
-  }, [prepareProvider, tools])
+      readinessCoordinator.dispose()
+    },
+    [readinessCoordinator]
+  )
 }
 
 export const VoltageAdminProvider = () => {
+  const { isAuthenticated, status: authenticationStatus } = useDemoAuth()
   const navigate = useNavigate()
   const location = useLocation()
+  const navigationType = useNavigationType()
   const [reportingController] = useState(() => new ReportingRuntimeController())
+  const [toolsetReadiness] = useState(() => new ToolsetReadinessCoordinator())
   const [productRepository] = useState(() => new ProductRepository())
   const [commerceSeed] = useState(() => createCommerceSeed())
   const [commerceRepository] = useState(
@@ -369,6 +506,7 @@ export const VoltageAdminProvider = () => {
   const [productEditorController] = useState(
     () => new ProductEditorController()
   )
+  const [productDraftStore] = useState(() => new ProductDraftStore())
   const [productStore] = useState(() => new ProductStore(productRepository))
   const [commerceStore] = useState(() => new CommerceStore(commerceRepository))
   const [returnStore] = useState(() => new ReturnStore(returnRepository))
@@ -380,30 +518,59 @@ export const VoltageAdminProvider = () => {
     [commerce, products.products]
   )
   const sectionRef = useRef(voltageAdminViewFromPath(location.pathname))
+  const navigationHistoryRef = useRef([
+    {
+      key: location.key,
+      page: voltageAdminViewFromPath(location.pathname),
+    },
+  ])
+  const navigationIndexRef = useRef(0)
   const routeTools = useMemo(
-    () => [
-      ...VOLTAGE_ADMIN_TOOLS,
-      ...(/^\/products\/(?:add|edit\/\d+)$/.test(location.pathname)
-        ? PRODUCT_EDITOR_TOOLS
-        : []),
-      ...(location.pathname === "/returns/add" ? RETURN_FORM_TOOLS : []),
-      ...(location.pathname !== "/returns/add" &&
-      /^\/returns\/[^/]+$/.test(location.pathname)
-        ? RETURN_DETAIL_TOOLS
-        : []),
-      ...(/^\/refund-approvals\/[^/]+$/.test(location.pathname)
-        ? REFUND_APPROVAL_DETAIL_TOOLS
-        : []),
-    ],
-    [location.pathname]
+    () =>
+      authenticationStatus === "loading"
+        ? []
+        : isAuthenticated
+          ? [
+              ...VOLTAGE_ADMIN_TOOLS,
+              ...(/^\/products\/(?:add|edit\/\d+)$/.test(location.pathname)
+                ? PRODUCT_EDITOR_TOOLS
+                : []),
+              ...(location.pathname === "/returns/add"
+                ? RETURN_FORM_TOOLS
+                : []),
+              ...(location.pathname !== "/returns/add" &&
+              /^\/returns\/[^/]+$/.test(location.pathname)
+                ? RETURN_DETAIL_TOOLS
+                : []),
+              ...(/^\/refund-approvals\/[^/]+$/.test(location.pathname)
+                ? REFUND_APPROVAL_DETAIL_TOOLS
+                : []),
+            ]
+          : [AGENT_INSTRUCTIONS_TOOL],
+    [authenticationStatus, isAuthenticated, location.pathname]
   )
 
-  useEffect(() => {
-    sectionRef.current = voltageAdminViewFromPath(location.pathname)
-  }, [location.pathname])
+  useLayoutEffect(() => {
+    const page = voltageAdminViewFromPath(location.pathname)
+    const history = navigationHistoryRef.current
+    const knownIndex = history.findIndex(({ key }) => key === location.key)
+
+    if (knownIndex >= 0) {
+      navigationIndexRef.current = knownIndex
+      history[knownIndex] = { key: location.key, page }
+    } else if (navigationType === "REPLACE") {
+      history[navigationIndexRef.current] = { key: location.key, page }
+    } else {
+      history.splice(navigationIndexRef.current + 1)
+      history.push({ key: location.key, page })
+      navigationIndexRef.current = history.length - 1
+    }
+    sectionRef.current = page
+  }, [location.key, location.pathname, navigationType])
 
   useEffect(() => {
     if (
+      !isAuthenticated ||
       products.state !== "ready" ||
       commerce.state !== "ready" ||
       returns.state !== "ready"
@@ -435,9 +602,17 @@ export const VoltageAdminProvider = () => {
     return () => {
       cancelled = true
     }
-  }, [commerce, productRepository, products, reportingController, returns])
+  }, [
+    commerce,
+    isAuthenticated,
+    productRepository,
+    products,
+    reportingController,
+    returns,
+  ])
 
   useEffect(() => {
+    if (!isAuthenticated) return
     void productStore.initialize()
     void commerceStore.initialize()
     void returnStore.initialize()
@@ -446,7 +621,7 @@ export const VoltageAdminProvider = () => {
       commerceStore.dispose()
       returnStore.dispose()
     }
-  }, [commerceStore, productStore, returnStore])
+  }, [commerceStore, isAuthenticated, productStore, returnStore])
 
   useEffect(() => {
     return () => {
@@ -485,30 +660,46 @@ export const VoltageAdminProvider = () => {
     returnStore,
   ])
 
-  const getNavigationState = useCallback(() => {
-    const historyIndex = window.history.state?.idx
-    return {
-      page: sectionRef.current,
-      canGoBack: typeof historyIndex === "number" && historyIndex > 0,
-      canGoForward: false,
-    }
-  }, [])
+  const getNavigationState = useCallback(
+    (index = navigationIndexRef.current) => {
+      const history = navigationHistoryRef.current
+      const entry = history[index]
+      return {
+        page: entry?.page ?? sectionRef.current,
+        canGoBack: index > 0,
+        canGoForward: index < history.length - 1,
+      }
+    },
+    []
+  )
 
   const executeTool = async (name: string, args: Record<string, unknown>) => {
+    if (!isAuthenticated) {
+      return name === "agent_instructions"
+        ? { text: VOLTAGE_ADMIN_UNAUTHENTICATED_AGENT_INSTRUCTIONS }
+        : {
+            status: "NOT_FOUND",
+            message: "Sign in is required before this tool is available.",
+          }
+    }
     if (!routeTools.some((tool) => tool.name === name)) {
       return {
-        status: "NOT_FOUND",
-        message: "Tool is not available on this route.",
+        ...rediscoveryRequired(),
+        message:
+          "This tool is not available on the current route. Fetch the current page tools once before choosing the next tool.",
       }
     }
     if (isProductTool(name)) {
-      return executeProductTool({
+      return withRediscoveryInstruction(
         name,
-        args,
-        repository: productRepository,
-        editor: productEditorController,
-        navigate: (path) => navigate(path),
-      })
+        await executeProductTool({
+          name,
+          args,
+          repository: productRepository,
+          editor: productEditorController,
+          navigate: (path) => navigate(path),
+        })
+      )
     }
     if (name === EXECUTE_READONLY_SQL_TOOL_NAME) {
       return reportingController.execute(args)
@@ -517,23 +708,29 @@ export const VoltageAdminProvider = () => {
       return reportingController.executeReportTool(name, args)
     }
     if (isReturnTool(name)) {
-      return executeReturnTool({
+      return withRediscoveryInstruction(
         name,
-        args,
-        repository: returnRepository,
-        commerce: await commerceRepository.getSnapshot(),
-        editor: returnEditorController,
-        navigate: (path) => navigate(path),
-      })
+        await executeReturnTool({
+          name,
+          args,
+          repository: returnRepository,
+          commerce: await commerceRepository.getSnapshot(),
+          editor: returnEditorController,
+          navigate: (path) => navigate(path),
+        })
+      )
     }
     if (isOperationalTool(name)) {
-      return executeOperationalTool({
+      return withRediscoveryInstruction(
         name,
-        args,
-        productRepository,
-        commerce: await commerceRepository.getSnapshot(),
-        navigate: (path) => navigate(path),
-      })
+        await executeOperationalTool({
+          name,
+          args,
+          productRepository,
+          commerce: await commerceRepository.getSnapshot(),
+          navigate: (path) => navigate(path),
+        })
+      )
     }
     if (name === "agent_instructions") {
       return { text: getVoltageAdminAgentInstructions(sectionRef.current) }
@@ -571,23 +768,44 @@ export const VoltageAdminProvider = () => {
         return { status: "ARGUMENT_ERROR", message: "Unknown admin section." }
       }
       navigate(voltageAdminPath(args.section))
-      return { status: "OK", section: args.section }
+      return withRediscoveryInstruction(name, {
+        status: "OK",
+        section: args.section,
+      })
     }
     if (name === "navigate_state") {
       return { status: "OK", ...getNavigationState() }
     }
     if (name === "navigate_back") {
+      const current = getNavigationState()
+      if (!current.canGoBack)
+        return { status: "ARGUMENT_ERROR", message: "Cannot navigate back." }
+      const target = getNavigationState(navigationIndexRef.current - 1)
       navigate(-1)
-      return { status: "OK", ...getNavigationState() }
+      return withRediscoveryInstruction(name, { status: "OK", ...target })
     }
     if (name === "navigate_forward") {
+      const current = getNavigationState()
+      if (!current.canGoForward)
+        return {
+          status: "ARGUMENT_ERROR",
+          message: "Cannot navigate forward.",
+        }
+      const target = getNavigationState(navigationIndexRef.current + 1)
       navigate(1)
-      return { status: "OK", ...getNavigationState() }
+      return withRediscoveryInstruction(name, { status: "OK", ...target })
     }
     return { status: "NOT_FOUND", message: "Unknown tool." }
   }
 
-  useVoltageAdminWebMcpTools(executeTool, prepareProvider, routeTools)
+  useVoltageAdminWebMcpTools(
+    executeTool,
+    prepareProvider,
+    routeTools,
+    isAuthenticated,
+    `${location.pathname}${location.search}`,
+    toolsetReadiness
+  )
 
   const value = useMemo<VoltageAdminContextValue>(
     () => ({
@@ -596,6 +814,7 @@ export const VoltageAdminProvider = () => {
       dashboard,
       productRepository,
       productEditorController,
+      productDraftStore,
       products,
       reportingController,
       returnRepository,
@@ -608,6 +827,7 @@ export const VoltageAdminProvider = () => {
       dashboard,
       productRepository,
       productEditorController,
+      productDraftStore,
       products,
       reportingController,
       returnRepository,
