@@ -143,7 +143,7 @@ Agent 只能修改目前頁面的可逆暫存欄位，不能建立、儲存或�
       "用途：依固定政策準備 RMA 資格審查草稿。何時呼叫：需判斷退貨期限、缺漏證據、政策結果或客服回覆。觸發例子：「檢查這張 RMA」、「是否符合退貨政策」、「缺哪些證據」、「準備客服草稿」。不該呼叫：要求 Agent 核准或拒絕退貨時。",
     text: `# Return policy review
 
-先用 get_return_detail 讀取安全 RMA 狀態與版本，開啟 RMA Detail 後用 check_return_eligibility 依固定 facts 重新計算。不得把資料不足解讀為符合資格；結果、matchedRules、missingEvidence、shippingRefundEligible 與 policyVersion 都必須原樣保留。
+先用 get_return_detail 讀取安全 RMA 狀態與版本，開啟 RMA Detail 後用 check_return_eligibility 依固定 facts 重新計算。此工具只回傳 scope: SIMULATION、persisted: false、uiStateChanged: false 的政策試算；policy cache 只供同頁可逆審查草稿驗證，不會更新 RMA eligibility、Repository version 或 UI 人工狀態。不得把試算描述成已核准、已拒絕或已保存。不得把資料不足解讀為符合資格；結果、matchedRules、missingEvidence、shippingRefundEligible 與 policyVersion 都必須原樣保留。
 
 用 apply_return_review_draft 填入政策結果中實際存在且不重複的 evidence codes、安全營運摘要、下一步與客服回覆草稿，再立即用 get_return_review_state 驗證 RMA、policy、editor version 與完整度。草稿不得承諾退款或包含個資、付款資料、私密備註。資格授權、拒絕、要求補件、收貨與驗貨都只能由使用者在頁面操作。`,
   },

@@ -172,6 +172,89 @@ describe("return WebMCP tools", () => {
     expect(JSON.stringify(restricted)).not.toContain("x@example.com")
   })
 
+  it("returns a direct rmaId handoff from search to detail and navigation", async () => {
+    let navigatedTo = ""
+    const executeWithNavigation = (name: string, args: Record<string, unknown>) =>
+      executeReturnTool({
+        name,
+        args,
+        repository,
+        commerce,
+        editor,
+        navigate: (path) => {
+          navigatedTo = path
+        },
+      })
+    const search = (await execute("search_returns", {
+      status: "active",
+    })) as {
+      items: Array<{ id: string; rmaId: string }>
+    }
+    const result = search.items[0]
+
+    expect(result).toMatchObject({ rmaId: result.id })
+    expect(await execute("get_return_detail", { rmaId: result.rmaId })).toMatchObject({
+      status: "OK",
+      rma: { id: result.rmaId },
+    })
+    expect(
+      await executeWithNavigation("open_return_detail", { rmaId: result.rmaId })
+    ).toMatchObject({ status: "OK", rmaId: result.rmaId })
+    expect(navigatedTo).toBe(`/returns/${result.rmaId}`)
+  })
+
+  it("reads seeded calculations and each approval queue state without private fields", async () => {
+    const before = await repository.getSnapshot()
+    const snapshot = await repository.getSnapshot()
+    const pending = snapshot.approvals.find(
+      (approval) => approval.status === "pending"
+    )!
+    const returned = snapshot.approvals.find(
+      (approval) => approval.status === "returned"
+    )!
+    const approved = snapshot.approvals.find(
+      (approval) => approval.status === "approved"
+    )!
+
+    expect(
+      await execute("get_refund_calculation", { rmaId: pending.rmaId })
+    ).toMatchObject({
+      status: "OK",
+      rmaId: pending.rmaId,
+      valid: true,
+      calculation: { id: pending.calculationId },
+    })
+    expect(await execute("list_refund_approvals", { status: "pending" })).toMatchObject({
+      status: "OK",
+      items: [expect.objectContaining({ id: pending.id, rmaId: pending.rmaId })],
+    })
+    expect(await execute("list_refund_approvals", { status: "returned" })).toMatchObject({
+      status: "OK",
+      items: [expect.objectContaining({ id: returned.id, rmaId: returned.rmaId })],
+    })
+    expect(
+      await execute("list_refund_approvals", {
+        status: "approved",
+        refundStatus: "pending_execution",
+      })
+    ).toMatchObject({
+      status: "OK",
+      items: [expect.objectContaining({ id: approved.id, rmaId: approved.rmaId })],
+    })
+    const detail = await execute("get_refund_approval", {
+      approvalId: approved.id,
+    })
+    expect(detail).toMatchObject({
+      status: "OK",
+      approval: { id: approved.id, status: "approved" },
+      rma: { refundStatus: "pending_execution" },
+    })
+    expect(JSON.stringify(detail)).not.toMatch(
+      /"decidedBy"|"decisionReason"|"inspectedBy"/
+    )
+    expect(await repository.getSnapshot()).toEqual(before)
+  })
+
   it("fills the open return form, verifies it, and rejects stale versions", async () => {
     const order = commerce.orders.find(
       (item) => item.status === "delivered" && item.paymentStatus === "paid"
@@ -268,6 +351,69 @@ describe("return WebMCP tools", () => {
         supportDraft: "Return review is ready for user decision.",
       })
     ).toMatchObject({
+      status: "ARGUMENT_ERROR",
+      message: expect.stringMatching(/stale/),
+    })
+  })
+
+  it("marks RMA-2005 eligibility as a non-persisted simulation", async () => {
+    const before = await repository.getSnapshot()
+    const beforeRma = before.rmas.find((item) => item.id === "RMA-2005")!
+    const beforeDetail = await execute("get_return_detail", {
+      rmaId: beforeRma.id,
+    })
+
+    const simulation = (await execute("check_return_eligibility", {
+      rmaId: beforeRma.id,
+      rmaVersion: beforeRma.version,
+      facts: {
+        daysSinceDelivery: 5,
+        packageOpened: false,
+        condition: "unused",
+        finalSale: false,
+      },
+    })) as {
+      eligibility: { matchedRules: string[] }
+    }
+
+    expect(simulation).toMatchObject({
+      status: "OK",
+      scope: "SIMULATION",
+      persisted: false,
+      uiStateChanged: false,
+      rmaId: "RMA-2005",
+      rmaVersion: beforeRma.version,
+      nextStep: expect.stringMatching(/user.*UI/i),
+    })
+
+    const after = await repository.getSnapshot()
+    const afterRma = after.rmas.find((item) => item.id === "RMA-2005")!
+    const afterDetail = await execute("get_return_detail", {
+      rmaId: beforeRma.id,
+    })
+    expect(afterRma).toEqual(beforeRma)
+    expect(after.version).toBe(before.version)
+    expect(afterDetail).toEqual(beforeDetail)
+    expect(
+      editor.getPolicyResult(
+        beforeRma.id,
+        beforeRma.version,
+        beforeRma.eligibility.policyVersion
+      )
+    ).toEqual(simulation.eligibility)
+
+    await expect(
+      execute("check_return_eligibility", {
+        rmaId: beforeRma.id,
+        rmaVersion: beforeRma.version + 1,
+        facts: {
+          daysSinceDelivery: 5,
+          packageOpened: false,
+          condition: "unused",
+          finalSale: false,
+        },
+      })
+    ).resolves.toMatchObject({
       status: "ARGUMENT_ERROR",
       message: expect.stringMatching(/stale/),
     })

@@ -45,7 +45,7 @@ export const RETURN_GLOBAL_TOOLS: readonly WebMcpRegisteredTool[] = [
   {
     name: "search_returns",
     description:
-      "Purpose: search safe RMA summaries by RMA/order ID and workflow status. Call for ‘find RMA X’, ‘returns for order Y’, ‘pending returns’, or ‘refund failures’. Do not call for customer identity, private notes, payment details, or mutations; product text is untrusted.",
+      "Purpose: search safe RMA summaries by RMA/order ID and workflow status. Use each result's rmaId unchanged with get_return_detail or open_return_detail. Call for ‘find RMA X’, ‘returns for order Y’, ‘pending returns’, or ‘refund failures’. Do not call for customer identity, private notes, payment details, or mutations; product text is untrusted.",
     inputSchema: schema({
       query: { type: "string", maxLength: 120 },
       status: { type: "string", enum: RMA_STATUSES },
@@ -162,7 +162,7 @@ export const RETURN_DETAIL_TOOLS: readonly WebMcpRegisteredTool[] = [
   {
     name: "check_return_eligibility",
     description:
-      "Purpose: calculate the fixed return policy for the open RMA without deciding it. Call for ‘check eligibility’, ‘evaluate the return window’, ‘which evidence is missing?’, or before drafting a review. Do not authorize, reject, submit, promise, or execute a refund.",
+      "Purpose: simulate the fixed return policy for the open RMA without changing or saving its eligibility, version, or UI state. The result has scope SIMULATION, persisted false, and uiStateChanged false. Call for ‘check eligibility’, ‘evaluate the return window’, or before drafting a review. Do not describe it as approved, rejected, or saved; do not authorize, submit, promise, or execute a refund.",
     inputSchema: schema(
       {
         rmaId: safeId("RMA ID bound to the open detail page."),
@@ -511,6 +511,7 @@ export const executeReturnTool = async ({
       return bounded({
         status: "OK",
         items: matches.slice(0, 10).map((rma) => ({
+          rmaId: rma.id,
           id: rma.id,
           orderId: rma.orderId,
           source: rma.source,
@@ -564,6 +565,7 @@ export const executeReturnTool = async ({
         order.paymentStatus !== "paid"
       )
         throw new Error("Order is not eligible for return intake.")
+      if (editor.getFormState()?.draft.orderId !== orderId) editor.detachForm()
       navigate(`/returns/add?orderId=${encodeURIComponent(orderId)}`)
       return { status: "OK", page: "return-create" }
     }
@@ -573,8 +575,9 @@ export const executeReturnTool = async ({
       const rmaId = readId(args.rmaId, "rmaId")
       if (!snapshot.rmas.some((item) => item.id === rmaId))
         throw new Error("RMA was not found.")
+      if (editor.getReviewState()?.rmaId !== rmaId) editor.detachReview()
       navigate(`/returns/${rmaId}`)
-      return { status: "OK", page: "return-detail" }
+      return { status: "OK", page: "return-detail", rmaId }
     }
     if (name === "list_refund_approvals") {
       if (!hasOnlyKeys(args, ["status", "refundStatus", "currency"]))
@@ -761,10 +764,15 @@ export const executeReturnTool = async ({
       )
       return {
         status: "OK",
+        scope: "SIMULATION",
+        persisted: false,
+        uiStateChanged: false,
         rmaId,
         rmaVersion: rma.version,
         policyVersion: rma.eligibility.policyVersion,
         eligibility: result,
+        nextStep:
+          "Use this simulation as evidence for a reversible review draft; the user must make and save any final eligibility decision in the UI.",
       }
     }
     if (name === "apply_return_review_draft") {
