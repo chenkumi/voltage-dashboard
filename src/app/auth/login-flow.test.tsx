@@ -2,9 +2,10 @@
 
 import { cleanup, render, screen, waitFor } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
-import { afterEach, describe, expect, it, vi } from "vitest"
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import App from "../../App"
+import i18n from "../../i18n"
 import { DemoAuthProvider, useDemoAuth } from "./demo-auth"
 import { demoAuthDb, DEMO_AUTH_SESSION_ID } from "./demo-auth-db"
 import type { WebMcpTestProvider } from "../webmcp/types"
@@ -35,9 +36,33 @@ const webMcpWindow = () =>
     __webmcpTestProvider?: WebMcpTestProvider
   }
 
+beforeEach(async () => {
+  await i18n.changeLanguage("zh-TW")
+})
+
 afterEach(() => cleanup())
 
 describe("展示登入流程", () => {
+  it("可在登入前切換介面語言", async () => {
+    await demoAuthDb.sessions.delete(DEMO_AUTH_SESSION_ID)
+    const user = userEvent.setup()
+    const router = createMemoryRouter([{ path: "*", element: <App /> }], {
+      initialEntries: ["/login"],
+    })
+
+    render(<RouterProvider router={router} />)
+
+    await user.selectOptions(screen.getByLabelText("切換語言"), "en")
+
+    expect(
+      await screen.findByRole("heading", { name: "Sign in to operations" })
+    ).toBeTruthy()
+    expect(screen.getByLabelText("Username")).toBeTruthy()
+    expect(
+      screen.getByRole("button", { name: "Sign in to Voltage" })
+    ).toBeTruthy()
+  })
+
   it("向業務功能提供目前登入帳號識別", async () => {
     await demoAuthDb.sessions.put({
       id: DEMO_AUTH_SESSION_ID,
@@ -84,7 +109,7 @@ describe("展示登入流程", () => {
     })
   })
 
-  it("拒絕錯誤憑證，並在成功登入後啟用後台與 WebMCP", async () => {
+  it("拒絕錯誤憑證，單次點擊成功登入後啟用後台與 WebMCP", async () => {
     await demoAuthDb.sessions.delete(DEMO_AUTH_SESSION_ID)
     const user = userEvent.setup()
     const router = createMemoryRouter([{ path: "*", element: <App /> }], {
@@ -102,7 +127,9 @@ describe("展示登入流程", () => {
 
     await user.clear(screen.getByLabelText("帳號"))
     await user.type(screen.getByLabelText("帳號"), "guest")
-    await user.click(screen.getByRole("button", { name: "登入 Voltage" }))
+    const signInButton = screen.getByRole("button", { name: "登入 Voltage" })
+    await user.click(signInButton)
+    expect(signInButton.getAttribute("aria-busy")).toBe("true")
 
     await waitFor(() =>
       expect(router.state.location.pathname).toBe("/dashboard")

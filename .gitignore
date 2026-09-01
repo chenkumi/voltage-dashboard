@@ -24,6 +24,8 @@ refactor_*.diff
 .superpowers/
 .svn/
 .vite/
+.wrangler/
+.dev.vars*
 
 # Generated browser evidence and archived working copies
 .playwright-cli/

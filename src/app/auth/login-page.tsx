@@ -1,5 +1,6 @@
-import { LockKeyhole, ShieldCheck } from "lucide-react"
-import { useState, type FormEvent } from "react"
+import { Languages, LockKeyhole, ShieldCheck } from "lucide-react"
+import { useEffect, useState, type FormEvent } from "react"
+import { useTranslation } from "react-i18next"
 import { useLocation, useNavigate } from "react-router-dom"
 import { useDemoAuth } from "./demo-auth"
 import "../webmcp/voltage-admin.css"
@@ -20,20 +21,31 @@ const getRedirectPath = (state: unknown) => {
 }
 
 export const LoginPage = () => {
-  const { signIn } = useDemoAuth()
+  const { t, i18n } = useTranslation()
+  const { isAuthenticated, signIn } = useDemoAuth()
   const location = useLocation()
   const navigate = useNavigate()
+  const redirectPath = getRedirectPath(location.state)
   const [username, setUsername] = useState("guest")
   const [password, setPassword] = useState("123456")
-  const [error, setError] = useState("")
+  const [hasInvalidCredentials, setHasInvalidCredentials] = useState(false)
+  const [isSigningIn, setIsSigningIn] = useState(false)
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(redirectPath, { replace: true })
+    }
+  }, [isAuthenticated, navigate, redirectPath])
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
+    setHasInvalidCredentials(false)
+    setIsSigningIn(true)
     if (!(await signIn(username, password))) {
-      setError("帳號或密碼不正確，請使用展示帳號登入。")
+      setHasInvalidCredentials(true)
+      setIsSigningIn(false)
       return
     }
-    navigate(getRedirectPath(location.state), { replace: true })
   }
 
   return (
@@ -45,34 +57,54 @@ export const LoginPage = () => {
         <div className="demo-login-brand" aria-hidden="true">
           V
         </div>
-        <p className="demo-login-eyebrow">OPERATIONS CONTROL CENTER</p>
+        <p className="demo-login-eyebrow">
+          {t("OPERATIONS CONTROL CENTER")}
+        </p>
         <h1 id="login-product-name">Voltage</h1>
         <p>
-          統一管理商品、訂單、售後與營運報表，讓團隊與 Agent
-          在清楚的權限邊界中協作。
+          {t(
+            "Manage products, orders, after-sales service, and operational reports in one place, so teams and agents can collaborate within clear permission boundaries."
+          )}
         </p>
         <div className="demo-login-capabilities">
           <span>
             <ShieldCheck aria-hidden="true" />
-            僅於登入後啟用營運工具
+            {t("Operations tools are enabled only after sign-in")}
           </span>
           <span>
             <LockKeyhole aria-hidden="true" />
-            展示模式，不連接正式帳號系統
+            {t("Demo mode; no production account system is connected")}
           </span>
         </div>
       </section>
 
       <section className="demo-login-panel" aria-labelledby="login-heading">
         <div className="demo-login-panel-heading">
-          <p>DEMO ACCESS</p>
-          <h2 id="login-heading">登入營運後台</h2>
-          <span>請使用展示帳號繼續。</span>
+          <div className="demo-login-panel-kicker">
+            <p>{t("DEMO ACCESS")}</p>
+            <label className="demo-login-language" htmlFor="demo-language">
+              <Languages aria-hidden="true" />
+              <span className="sr-only">{t("Switch language")}</span>
+              <select
+                id="demo-language"
+                aria-label={t("Switch language")}
+                value={i18n.resolvedLanguage === "zh-TW" ? "zh-TW" : "en"}
+                onChange={(event) =>
+                  void i18n.changeLanguage(event.target.value)
+                }
+              >
+                <option value="en">{t("English")}</option>
+                <option value="zh-TW">{t("Traditional Chinese")}</option>
+              </select>
+            </label>
+          </div>
+          <h2 id="login-heading">{t("Sign in to operations")}</h2>
+          <span>{t("Use the demo account to continue.")}</span>
         </div>
 
         <form className="demo-login-form" onSubmit={submit}>
           <label htmlFor="demo-username">
-            帳號
+            {t("Username")}
             <input
               id="demo-username"
               name="username"
@@ -82,7 +114,7 @@ export const LoginPage = () => {
             />
           </label>
           <label htmlFor="demo-password">
-            密碼
+            {t("Password")}
             <input
               id="demo-password"
               name="password"
@@ -92,16 +124,20 @@ export const LoginPage = () => {
               onChange={(event) => setPassword(event.target.value)}
             />
           </label>
-          {error ? (
+          {hasInvalidCredentials ? (
             <p className="demo-login-error" role="alert">
-              {error}
+              {t(
+                "Incorrect username or password. Use the demo account to sign in."
+              )}
             </p>
           ) : null}
-          <button type="submit">登入 Voltage</button>
+          <button type="submit" disabled={isSigningIn} aria-busy={isSigningIn}>
+            {t(isSigningIn ? "Signing in…" : "Sign in to Voltage")}
+          </button>
         </form>
 
         <p className="demo-login-hint">
-          展示帳號：<strong>guest</strong>
+          {t("Demo account:")} <strong>guest</strong>
           <span aria-hidden="true"> / </span>
           <strong>123456</strong>
         </p>

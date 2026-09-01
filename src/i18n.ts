@@ -20,6 +20,23 @@ const zhTW = {
   English: "English",
   "Traditional Chinese": "繁體中文",
   "Switch language": "切換語言",
+  "OPERATIONS CONTROL CENTER": "營運控制中心",
+  "Manage products, orders, after-sales service, and operational reports in one place, so teams and agents can collaborate within clear permission boundaries.":
+    "統一管理商品、訂單、售後與營運報表，讓團隊與 Agent 在清楚的權限邊界中協作。",
+  "Operations tools are enabled only after sign-in":
+    "僅於登入後啟用營運工具",
+  "Demo mode; no production account system is connected":
+    "展示模式，不連接正式帳號系統",
+  "DEMO ACCESS": "展示存取",
+  "Sign in to operations": "登入營運後台",
+  "Use the demo account to continue.": "請使用展示帳號繼續。",
+  Username: "帳號",
+  Password: "密碼",
+  "Incorrect username or password. Use the demo account to sign in.":
+    "帳號或密碼不正確，請使用展示帳號登入。",
+  "Sign in to Voltage": "登入 Voltage",
+  "Signing in…": "登入中…",
+  "Demo account:": "展示帳號：",
   "Open navigation": "開啟導覽",
   "Close navigation": "關閉導覽",
   Notifications: "通知",

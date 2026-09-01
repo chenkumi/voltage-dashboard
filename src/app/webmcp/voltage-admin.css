@@ -51,7 +51,7 @@
 }
 
 .demo-login-eyebrow,
-.demo-login-panel-heading > p {
+.demo-login-panel-kicker > p {
   color: #5a765f;
   font-size: 0.68rem;
   font-weight: 750;
@@ -101,6 +101,58 @@
   justify-content: center;
   padding: clamp(2rem, 7vw, 6rem);
   background: var(--admin-surface);
+}
+
+.demo-login-panel-kicker {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.demo-login-language {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 2rem;
+  padding: 0 0.55rem;
+  border: 1px solid var(--admin-border);
+  border-radius: 0.55rem;
+  background: #eef0eb;
+  color: var(--admin-subtle);
+  transition:
+    border-color 180ms ease,
+    background 180ms ease;
+}
+
+.demo-login-language:hover {
+  border-color: #aeb6ad;
+  background: #e7ebe5;
+}
+
+.demo-login-language svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.demo-login-language select {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+.demo-login-language select:focus-visible {
+  outline: 0;
+}
+
+.demo-login-language:focus-within {
+  border-color: #617966;
+  outline: 2px solid #617966;
+  outline-offset: 2px;
 }
 
 .demo-login-panel-heading h2 {
@@ -162,6 +214,11 @@
 
 .demo-login-form button:hover {
   background: #405a47;
+}
+
+.demo-login-form button:disabled {
+  background: #637268;
+  cursor: wait;
 }
 
 .demo-login-form button:focus-visible {
