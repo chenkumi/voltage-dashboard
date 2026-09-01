@@ -14,7 +14,8 @@ import { RETURN_REVIEW_STAGES } from "./types"
 
 const fixture = () => {
   const snapshot = createReturnSeed(createCommerceSeed(), 3)
-  const rma = (id: string) => structuredClone(snapshot.rmas.find((item) => item.id === id)!)
+  const rma = (id: string) =>
+    structuredClone(snapshot.rmas.find((item) => item.id === id)!)
   return { snapshot, rma }
 }
 
@@ -91,9 +92,9 @@ describe("shared return workflow", () => {
       status: "completed" as const,
       refundStatus: "succeeded" as const,
     }
-    expect(stageState(completed).every((stage) => stage.state === "completed")).toBe(
-      true
-    )
+    expect(
+      stageState(completed).every((stage) => stage.state === "completed")
+    ).toBe(true)
   })
 
   it("projects supplementation, expiry, rejection, and no-refund terminals", () => {
@@ -106,7 +107,9 @@ describe("shared return workflow", () => {
     })
 
     const needsInformation = rma("RMA-2005")
-    expect(currentReturnWorkflowStage(stageState(needsInformation))).toMatchObject({
+    expect(
+      currentReturnWorkflowStage(stageState(needsInformation))
+    ).toMatchObject({
       id: "eligibility",
       state: "attention",
     })
@@ -131,7 +134,9 @@ describe("shared return workflow", () => {
     const approvalRejected = rma("RMA-2006")
     approvalRejected.status = "rejected"
     approvalRejected.approvalStatus = "rejected"
-    expect(currentReturnWorkflowStage(stageState(approvalRejected))).toMatchObject({
+    expect(
+      currentReturnWorkflowStage(stageState(approvalRejected))
+    ).toMatchObject({
       id: "refund_approval",
       state: "terminal",
     })

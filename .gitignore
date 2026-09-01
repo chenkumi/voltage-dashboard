@@ -21,8 +21,14 @@ refactor_*.diff
 !.agents/rules/
 !.agents/rules/*.md
 .codex/
+.superpowers/
 .svn/
 .vite/
+
+# Generated browser evidence and archived working copies
+.playwright-cli/
+.old/
+architecture_review_convergence_*.html
 
 # External skill repositories are maintained as separate repositories.
 skills/Numerologist_skills/

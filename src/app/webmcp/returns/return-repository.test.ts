@@ -278,9 +278,7 @@ describe("ReturnRepository", () => {
       authorUserId: "guest",
       inputSource: "ui",
     })
-    expect(
-      await guestNotes.getDraft(rmaId, "eligibility")
-    ).toBeNull()
+    expect(await guestNotes.getDraft(rmaId, "eligibility")).toBeNull()
     expect(await guestNotes.listPublished(rmaId)).toEqual([
       expect.objectContaining({ id: published.id, version: 2 }),
     ])
@@ -335,18 +333,10 @@ describe("ReturnRepository", () => {
     expect(correction.id).not.toBe(original.id)
     expect(correction.supersedesNoteId).toBe(original.id)
     await expect(
-      notes.discardDraft(
-        rmaId,
-        "inspection",
-        correction.version - 1
-      )
+      notes.discardDraft(rmaId, "inspection", correction.version - 1)
     ).rejects.toMatchObject({ code: "VERSION_CONFLICT" })
     await expect(
-      notes.discardDraft(
-        rmaId,
-        "inspection",
-        correction.version
-      )
+      notes.discardDraft(rmaId, "inspection", correction.version)
     ).resolves.toBe(true)
     expect(await notes.listPublished(rmaId)).toEqual([
       expect.objectContaining({ id: original.id, content: "原始驗貨備註。" }),
@@ -400,11 +390,7 @@ describe("ReturnRepository", () => {
 
     for (const input of invalidInputs) {
       await expect(
-        notes.saveDraft(
-          { rmaId, stage: "eligibility", ...input },
-          0,
-          "ui"
-        )
+        notes.saveDraft({ rmaId, stage: "eligibility", ...input }, 0, "ui")
       ).rejects.toMatchObject({ code: "INVALID_RETURN" })
     }
     await expect(
@@ -760,27 +746,23 @@ describe("ReturnRepository", () => {
     const legacy = new Dexie(databaseName)
     legacy.version(2).stores(RETURN_DATABASE_SCHEMA_V2)
     await legacy.open()
-    await legacy.transaction(
-      "rw",
-      legacy.tables,
-      async () => {
-        await Promise.all([
-          legacy.table("rmas").bulkAdd(legacyRmas),
-          legacy.table("items").bulkAdd(seed.items),
-          legacy.table("calculations").bulkAdd(seed.calculations),
-          legacy.table("approvals").bulkAdd(seed.approvals),
-          legacy.table("executionAttempts").bulkAdd(seed.executionAttempts),
-          legacy.table("timeline").bulkAdd(seed.timeline),
-          legacy.table("metadata").add({
-            key: "returns",
-            seedVersion: 3,
-            dataVersion: 7,
-            orderSnapshotVersion: 3,
-            initializedAt: "2026-08-30T08:00:00.000Z",
-          }),
-        ])
-      }
-    )
+    await legacy.transaction("rw", legacy.tables, async () => {
+      await Promise.all([
+        legacy.table("rmas").bulkAdd(legacyRmas),
+        legacy.table("items").bulkAdd(seed.items),
+        legacy.table("calculations").bulkAdd(seed.calculations),
+        legacy.table("approvals").bulkAdd(seed.approvals),
+        legacy.table("executionAttempts").bulkAdd(seed.executionAttempts),
+        legacy.table("timeline").bulkAdd(seed.timeline),
+        legacy.table("metadata").add({
+          key: "returns",
+          seedVersion: 3,
+          dataVersion: 7,
+          orderSnapshotVersion: 3,
+          initializedAt: "2026-08-30T08:00:00.000Z",
+        }),
+      ])
+    })
     legacy.close()
 
     const migrated = createRepository(databaseName, commerce)
@@ -877,7 +859,9 @@ describe("ReturnRepository", () => {
     await repaired.initialize()
     const snapshot = await repaired.getSnapshot()
     expect(snapshot.rmas.some((item) => item.id === "RMA-2006")).toBe(true)
-    expect(snapshot.calculations.some((item) => item.id === "CAL-2006")).toBe(true)
+    expect(snapshot.calculations.some((item) => item.id === "CAL-2006")).toBe(
+      true
+    )
     expect(snapshot.approvals.some((item) => item.id === "APR-2006")).toBe(true)
   })
 
@@ -964,7 +948,9 @@ describe("ReturnRepository", () => {
     await first.initialize()
     const snapshot = await first.getSnapshot()
     const currentRma = snapshot.rmas.find((item) => item.id === "RMA-2011")!
-    const currentItem = snapshot.items.find((item) => item.rmaId === currentRma.id)!
+    const currentItem = snapshot.items.find(
+      (item) => item.rmaId === currentRma.id
+    )!
     first.close()
 
     const database = new Dexie(databaseName)
@@ -987,7 +973,10 @@ describe("ReturnRepository", () => {
     const migratedSnapshot = await migrated.getSnapshot()
     expect(
       migratedSnapshot.rmas.find((item) => item.id === "RMA-2011")
-    ).toMatchObject({ orderId: "VM-25016", inspection: { status: "in_progress" } })
+    ).toMatchObject({
+      orderId: "VM-25016",
+      inspection: { status: "in_progress" },
+    })
     expect(
       migratedSnapshot.items.find((item) => item.rmaId === "RMA-2011")
     ).toMatchObject({ orderLineId: "VM-25016-L1" })

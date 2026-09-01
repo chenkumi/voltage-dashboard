@@ -1,6 +1,13 @@
 // @vitest-environment jsdom
 
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react"
 import { afterEach, describe, expect, it, vi } from "vitest"
 import type { ReturnReviewNoteSession } from "./return-repository"
 import { ReturnNoteEditor } from "./return-note-editor"
@@ -60,7 +67,9 @@ describe("ReturnNoteEditor", () => {
         session={api}
       />
     )
-    await waitFor(() => expect(screen.getByText("No note draft yet")).toBeTruthy())
+    await waitFor(() =>
+      expect(screen.getByText("No note draft yet")).toBeTruthy()
+    )
 
     current = note({ content: "由 WebMCP 寫入的備註。", version: 2 })
     view.rerender(
@@ -110,7 +119,9 @@ describe("ReturnNoteEditor", () => {
       "ui"
     )
     expect(
-      beforeUnload.mock.calls.some(([event]) => String(event) === "beforeunload")
+      beforeUnload.mock.calls.some(
+        ([event]) => String(event) === "beforeunload"
+      )
     ).toBe(false)
   })
 
@@ -126,9 +137,7 @@ describe("ReturnNoteEditor", () => {
         session={api}
       />
     )
-    await waitFor(() =>
-      expect(screen.getByText(/Draft restored/)).toBeTruthy()
-    )
+    await waitFor(() => expect(screen.getByText(/Draft restored/)).toBeTruthy())
     expect(
       screen.getByText(/unpublished note draft in return_request/)
     ).toBeTruthy()
@@ -149,7 +158,9 @@ describe("ReturnNoteEditor", () => {
     )
 
     fireEvent.click(screen.getByRole("button", { name: "Add to review notes" }))
-    await waitFor(() => expect(api.publishDraft).toHaveBeenCalledWith("RMA-1", "eligibility", 1))
+    await waitFor(() =>
+      expect(api.publishDraft).toHaveBeenCalledWith("RMA-1", "eligibility", 1)
+    )
     expect(api.discardDraft).toHaveBeenCalledTimes(1)
   })
 

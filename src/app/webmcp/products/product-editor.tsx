@@ -240,7 +240,11 @@ export const ProductEditor = ({
     let active = true
     void draftStore.get(draftKey).then((saved) => {
       if (!active) return
-      if (saved && saved.mode === mode && saved.productId === (product?.id ?? null)) {
+      if (
+        saved &&
+        saved.mode === mode &&
+        saved.productId === (product?.id ?? null)
+      ) {
         restoredDraftRef.current = true
         setState(saved)
         setHasSavedDraft(true)

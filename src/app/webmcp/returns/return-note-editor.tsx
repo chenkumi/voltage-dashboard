@@ -66,7 +66,9 @@ export const ReturnNoteEditor = ({
     () =>
       notes.filter(
         (note) =>
-          note.rmaId === rmaId && note.status === "draft" && note.stage !== stage
+          note.rmaId === rmaId &&
+          note.status === "draft" &&
+          note.stage !== stage
       ),
     [notes, rmaId, stage]
   )
@@ -80,9 +82,7 @@ export const ReturnNoteEditor = ({
   const currentDraftVersion =
     notes.find(
       (note) =>
-        note.rmaId === rmaId &&
-        note.stage === stage &&
-        note.status === "draft"
+        note.rmaId === rmaId && note.stage === stage && note.status === "draft"
     )?.version ?? 0
   const editableStages = useMemo(
     () =>
@@ -95,7 +95,8 @@ export const ReturnNoteEditor = ({
         ])
       ).sort(
         (left, right) =>
-          RETURN_REVIEW_STAGES.indexOf(left) - RETURN_REVIEW_STAGES.indexOf(right)
+          RETURN_REVIEW_STAGES.indexOf(left) -
+          RETURN_REVIEW_STAGES.indexOf(right)
       ),
     [currentStage, notes, rmaId]
   )
@@ -195,9 +196,9 @@ export const ReturnNoteEditor = ({
   const isVersionConflict = (error: unknown) =>
     Boolean(
       error &&
-        typeof error === "object" &&
-        "code" in error &&
-        error.code === "VERSION_CONFLICT"
+      typeof error === "object" &&
+      "code" in error &&
+      error.code === "VERSION_CONFLICT"
     )
   const discard = async () => {
     if (!saved) return
@@ -309,8 +310,8 @@ export const ReturnNoteEditor = ({
                 value={draft.recommendation ?? ""}
                 onChange={(event) =>
                   update({
-                    recommendation:
-                      event.target.value as ReturnReviewRecommendation,
+                    recommendation: event.target
+                      .value as ReturnReviewRecommendation,
                   })
                 }
               >
@@ -346,10 +347,17 @@ export const ReturnNoteEditor = ({
             {message}
           </p>
           <div className="flex gap-2">
-            <Button variant="outline" disabled={busy || !saved} onClick={() => void discard()}>
+            <Button
+              variant="outline"
+              disabled={busy || !saved}
+              onClick={() => void discard()}
+            >
               {t("Discard note draft")}
             </Button>
-            <Button disabled={busy || !saved || dirty} onClick={() => void publish()}>
+            <Button
+              disabled={busy || !saved || dirty}
+              onClick={() => void publish()}
+            >
               {t("Add to review notes")}
             </Button>
           </div>

@@ -239,11 +239,13 @@ describe("ProductEditor", () => {
     cleanup()
     renderEditor({ mode: "create", draftStore: store })
     await waitFor(() =>
-      expect((screen.getByRole("textbox", { name: /SKU/ }) as HTMLInputElement).value).toBe(
-        "SAVED-1"
-      )
+      expect(
+        (screen.getByRole("textbox", { name: /SKU/ }) as HTMLInputElement).value
+      ).toBe("SAVED-1")
     )
-    await user.click(screen.getByRole("button", { name: "Discard saved draft" }))
+    await user.click(
+      screen.getByRole("button", { name: "Discard saved draft" })
+    )
     await waitFor(async () => expect(await store.get("create")).toBeNull())
   })
 

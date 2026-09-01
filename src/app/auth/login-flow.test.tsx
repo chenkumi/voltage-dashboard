@@ -111,9 +111,7 @@ describe("展示登入流程", () => {
       expect(webMcpWindow().__webmcpTestProvider).toBeDefined()
     )
 
-    await waitFor(() =>
-      expect(screen.getByTitle("Sign out")).toBeTruthy()
-    )
+    await waitFor(() => expect(screen.getByTitle("Sign out")).toBeTruthy())
 
     await user.click(screen.getByTitle("Sign out"))
     await waitFor(() => expect(router.state.location.pathname).toBe("/login"))

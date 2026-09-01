@@ -283,7 +283,8 @@ describe("operational WebMCP tools", () => {
     const fourVipRegions = commerce.customers.map((customer, index) => ({
       ...customer,
       segment: index < 4 ? ("vip" as const) : ("returning" as const),
-      region: (["north", "central", "south", "east"] as const)[index] ??
+      region:
+        (["north", "central", "south", "east"] as const)[index] ??
         customer.region,
     }))
     const allSuppressed = await analytics(fourVipRegions, {

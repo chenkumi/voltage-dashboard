@@ -20,7 +20,9 @@ describe("executeReadonlySqlToolResult", () => {
     ["SQLITE_NOT_READY", "SQL_RUNTIME_ERROR"],
   ])("projects %s as %s", async (category, status) => {
     const result = await executeReadonlySqlToolResult(() =>
-      Promise.reject(new SqliteReportingRuntimeError(category, "raw sqlite detail"))
+      Promise.reject(
+        new SqliteReportingRuntimeError(category, "raw sqlite detail")
+      )
     )
 
     expect(result).toMatchObject({

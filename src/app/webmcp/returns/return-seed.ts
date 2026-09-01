@@ -85,11 +85,7 @@ const createSeedRma = (
 })
 
 type RefundFixtureStatus =
-  | "pending"
-  | "returned"
-  | "approved"
-  | "rejected"
-  | "invalidated"
+  "pending" | "returned" | "approved" | "rejected" | "invalidated"
 
 const createRefundFixtureRma = (
   id: string,
@@ -221,7 +217,9 @@ export const createReturnSeed = (
       calculationVersion: 1,
       orderTotal: order.amounts.total,
       orderShipping: order.amounts.shipping,
-      orderLines: commerce.orderLines.filter((item) => item.orderId === order.id),
+      orderLines: commerce.orderLines.filter(
+        (item) => item.orderId === order.id
+      ),
       items: [
         {
           returnItemId: item.id,

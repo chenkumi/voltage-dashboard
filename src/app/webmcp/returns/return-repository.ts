@@ -153,7 +153,10 @@ export type ReturnReviewNoteDraftInput = {
 }
 
 export type ReturnReviewNoteSession = {
-  getDraft: (rmaId: string, stage: ReturnReviewStage) => Promise<ReturnReviewNote | null>
+  getDraft: (
+    rmaId: string,
+    stage: ReturnReviewStage
+  ) => Promise<ReturnReviewNote | null>
   listPublished: (rmaId: string) => Promise<ReturnReviewNote[]>
   saveDraft: (
     input: ReturnReviewNoteDraftInput,
@@ -172,10 +175,7 @@ export type ReturnReviewNoteSession = {
   ) => Promise<ReturnReviewNote>
 }
 
-export type ReturnOperationalSnapshot = Omit<
-  ReturnRepositorySnapshot,
-  "notes"
->
+export type ReturnOperationalSnapshot = Omit<ReturnRepositorySnapshot, "notes">
 
 type ReturnOperationalMethod =
   | "createDraft"
@@ -219,8 +219,7 @@ export const createReturnOperationalRepository = (
   submitForApproval: repository.submitForApproval.bind(repository),
   decideApproval: repository.decideApproval.bind(repository),
   recordRefundResult: repository.recordRefundResult.bind(repository),
-  recordRestockCompletion:
-    repository.recordRestockCompletion.bind(repository),
+  recordRestockCompletion: repository.recordRestockCompletion.bind(repository),
   recordRestockFailure: repository.recordRestockFailure.bind(repository),
 })
 
@@ -346,7 +345,10 @@ export class ReturnRepository {
           const inserted = await Promise.all([
             this.insertMissing(this.database.rmas, this.seed.rmas),
             this.insertMissing(this.database.items, this.seed.items),
-            this.insertMissing(this.database.calculations, this.seed.calculations),
+            this.insertMissing(
+              this.database.calculations,
+              this.seed.calculations
+            ),
             this.insertMissing(this.database.approvals, this.seed.approvals),
             this.insertMissing(
               this.database.executionAttempts,
@@ -435,16 +437,23 @@ export class ReturnRepository {
       async () => {
         const metadata = await this.requireMetadata()
         await this.assertRepositoryCurrent(metadata)
-        const [rmas, items, calculations, approvals, attempts, timeline, notes] =
-          await Promise.all([
-            this.database.rmas.toArray(),
-            this.database.items.toArray(),
-            this.database.calculations.toArray(),
-            this.database.approvals.toArray(),
-            this.database.executionAttempts.toArray(),
-            this.database.timeline.toArray(),
-            this.database.notes.toArray(),
-          ])
+        const [
+          rmas,
+          items,
+          calculations,
+          approvals,
+          attempts,
+          timeline,
+          notes,
+        ] = await Promise.all([
+          this.database.rmas.toArray(),
+          this.database.items.toArray(),
+          this.database.calculations.toArray(),
+          this.database.approvals.toArray(),
+          this.database.executionAttempts.toArray(),
+          this.database.timeline.toArray(),
+          this.database.notes.toArray(),
+        ])
         return clone({
           version: metadata.dataVersion,
           operationalVersion: metadata.operationalVersion,
@@ -572,7 +581,9 @@ export class ReturnRepository {
         if (
           !Number.isInteger(expectedVersion) ||
           expectedVersion < 0 ||
-          (existing ? existing.version !== expectedVersion : expectedVersion !== 0)
+          (existing
+            ? existing.version !== expectedVersion
+            : expectedVersion !== 0)
         ) {
           throw new ReturnWorkflowError(
             "VERSION_CONFLICT",
@@ -2140,13 +2151,14 @@ export class ReturnRepository {
 
   private async removeMalformedV4Fixture() {
     const malformedRmaId = "RMA-20010"
-    const [malformed, item, calculation, approval, noteCount] = await Promise.all([
-      this.database.rmas.get(malformedRmaId),
-      this.database.items.get("RMA-20010-I1"),
-      this.database.calculations.get("CAL-20010"),
-      this.database.approvals.get("APR-20010"),
-      this.database.notes.where("rmaId").equals(malformedRmaId).count(),
-    ])
+    const [malformed, item, calculation, approval, noteCount] =
+      await Promise.all([
+        this.database.rmas.get(malformedRmaId),
+        this.database.items.get("RMA-20010-I1"),
+        this.database.calculations.get("CAL-20010"),
+        this.database.approvals.get("APR-20010"),
+        this.database.notes.where("rmaId").equals(malformedRmaId).count(),
+      ])
     if (
       !malformed ||
       malformed.source !== "external" ||
@@ -2564,7 +2576,10 @@ export class ReturnRepository {
       allowed.add(`RECEIPT_${rma.logistics.receiptResult.toUpperCase()}`)
     }
     if (stageIndex >= RETURN_REVIEW_STAGES.indexOf("inspection")) {
-      const items = await this.database.items.where("rmaId").equals(rma.id).toArray()
+      const items = await this.database.items
+        .where("rmaId")
+        .equals(rma.id)
+        .toArray()
       if (items.some((item) => (item.acceptedQuantity ?? 0) > 0))
         allowed.add("INSPECTION_ACCEPTED")
       if (items.some((item) => item.inspectionResult === "rejected"))
@@ -2595,22 +2610,19 @@ export class ReturnRepository {
       allowed.add("REFUND_CALCULATION_AVAILABLE")
     }
     const currentApproval = currentCalculation
-      ? (await this.database.approvals
-        .where("rmaId")
-        .equals(rma.id)
-        .toArray())
-        .filter(
-          (approval) =>
-            approval.calculationId === currentCalculation.id &&
-            approval.calculationVersion === currentCalculation.version &&
-            approval.status === rma.approvalStatus &&
-            approval.status !== "invalidated"
-        )
-        .sort(
-          (left, right) =>
-            right.createdAt.localeCompare(left.createdAt) ||
-            right.version - left.version
-        )[0]
+      ? (await this.database.approvals.where("rmaId").equals(rma.id).toArray())
+          .filter(
+            (approval) =>
+              approval.calculationId === currentCalculation.id &&
+              approval.calculationVersion === currentCalculation.version &&
+              approval.status === rma.approvalStatus &&
+              approval.status !== "invalidated"
+          )
+          .sort(
+            (left, right) =>
+              right.createdAt.localeCompare(left.createdAt) ||
+              right.version - left.version
+          )[0]
       : undefined
     if (
       stageIndex >= RETURN_REVIEW_STAGES.indexOf("refund_approval") &&

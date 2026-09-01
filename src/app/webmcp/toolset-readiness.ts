@@ -140,10 +140,7 @@ export class ToolsetReadinessCoordinator {
     }
 
     this.current = ready
-    if (
-      this.pending?.route === route &&
-      this.pending.revision === revision
-    ) {
+    if (this.pending?.route === route && this.pending.revision === revision) {
       const matchingPending = this.pending
       this.pending = null
       clearTimeout(matchingPending.timeoutId)

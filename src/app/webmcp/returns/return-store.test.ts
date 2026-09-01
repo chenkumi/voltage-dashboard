@@ -1,10 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
 import { createCommerceSeed } from "../commerce-data/commerce-seed"
 import { ReturnRepository } from "./return-repository"
-import {
-  projectReturnStoreSnapshotForUser,
-  ReturnStore,
-} from "./return-store"
+import { projectReturnStoreSnapshotForUser, ReturnStore } from "./return-store"
 
 const repositories: ReturnRepository[] = []
 

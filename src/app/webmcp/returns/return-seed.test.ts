@@ -17,9 +17,9 @@ describe("return seed", () => {
       ])
     )
     expect(seed.calculations).toHaveLength(5)
-    expect(
-      new Set(seed.items.map((item) => item.orderLineId)).size
-    ).toBe(seed.items.length)
+    expect(new Set(seed.items.map((item) => item.orderLineId)).size).toBe(
+      seed.items.length
+    )
 
     const pendingApproval = seed.approvals.find(
       (approval) => approval.status === "pending"

@@ -515,8 +515,7 @@ export const RefundApprovalDetailPage = () => {
   const items = returns.items.filter((item) => item.rmaId === rma.id)
   const order = commerce.orders.find((item) => item.id === rma.orderId)
   const submittedEvent = returns.timeline.find(
-    (event) =>
-      event.rmaId === rma.id && event.action === "refund_submitted"
+    (event) => event.rmaId === rma.id && event.action === "refund_submitted"
   )
   const workflow = createReturnWorkflow({
     rma,

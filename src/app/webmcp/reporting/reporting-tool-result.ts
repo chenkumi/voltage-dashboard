@@ -15,8 +15,7 @@ export type ReportingToolErrorResult = {
 }
 
 export type ReportingToolResult =
-  | SqlQueryResultWithId
-  | ReportingToolErrorResult
+  SqlQueryResultWithId | ReportingToolErrorResult
 
 type CategorizedError = { category: string }
 
@@ -56,7 +55,8 @@ export function projectReportingToolError(
       status: "SQL_PARAMETER_ERROR",
       reasonCode,
       retryable: true,
-      nextStep: "Inspect the tool input schema and retry with valid sql and parameters.",
+      nextStep:
+        "Inspect the tool input schema and retry with valid sql and parameters.",
       message: "The SQL tool input is invalid.",
     }
   }

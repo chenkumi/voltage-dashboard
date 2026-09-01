@@ -842,12 +842,8 @@ export const ReturnDetailPage = () => {
   const { returnId } = useParams()
   const { t, i18n } = useTranslation()
   const navigate = useNavigate()
-  const {
-    productRepository,
-    returnRepository,
-    returnReviewNotes,
-    returns,
-  } = useVoltageAdmin()
+  const { productRepository, returnRepository, returnReviewNotes, returns } =
+    useVoltageAdmin()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState("")
   const [packageCount, setPackageCount] = useState(1)
@@ -1083,9 +1079,7 @@ export const ReturnDetailPage = () => {
                 setFacts((current) => ({
                   ...current,
                   condition: event.target.value as
-                    | "unused"
-                    | "used"
-                    | "damaged",
+                    "unused" | "used" | "damaged",
                 }))
               }
             >
@@ -1210,7 +1204,9 @@ export const ReturnDetailPage = () => {
               const result = event.target.value as "succeeded" | "failed"
               setExecutionResult(result)
               setResultCode(
-                result === "succeeded" ? "recorded_success" : "provider_declined"
+                result === "succeeded"
+                  ? "recorded_success"
+                  : "provider_declined"
               )
             }}
           >
@@ -1306,9 +1302,7 @@ export const ReturnDetailPage = () => {
             <CardTitle>{t("Current task")}</CardTitle>
           </CardHeader>
           <CardContent className="grid gap-3 text-sm">
-            <p>
-              {t(`current_task_${currentWorkflowStage.id}`)}
-            </p>
+            <p>{t(`current_task_${currentWorkflowStage.id}`)}</p>
             {currentTaskControl}
           </CardContent>
         </Card>
@@ -1317,16 +1311,12 @@ export const ReturnDetailPage = () => {
         <DetailCard title={t("Case summary")}>
           <p>{t(rma.reason)}</p>
           <p>
-            {t("Requested quantity")}: {items.reduce(
-              (sum, item) => sum + item.requestedQuantity,
-              0
-            )}
+            {t("Requested quantity")}:{" "}
+            {items.reduce((sum, item) => sum + item.requestedQuantity, 0)}
           </p>
           <p>
-            {t("Updated")}: {formatDate(
-              rma.updatedAt,
-              i18n.resolvedLanguage ?? "en"
-            )}
+            {t("Updated")}:{" "}
+            {formatDate(rma.updatedAt, i18n.resolvedLanguage ?? "en")}
           </p>
         </DetailCard>
       </GridBlock>

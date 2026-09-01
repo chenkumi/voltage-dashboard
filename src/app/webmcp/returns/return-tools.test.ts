@@ -196,18 +196,22 @@ describe("return WebMCP tools", () => {
   })
 
   it("bounds broad return searches and reports truncation", async () => {
-    expect(await execute("search_returns", { status: "active" })).toMatchObject({
-      status: "OK",
-      items: expect.arrayContaining([
-        expect.objectContaining({ rmaId: expect.any(String) }),
-      ]),
-      total: 8,
-      truncated: true,
-    })
+    expect(await execute("search_returns", { status: "active" })).toMatchObject(
+      {
+        status: "OK",
+        items: expect.arrayContaining([
+          expect.objectContaining({ rmaId: expect.any(String) }),
+        ]),
+        total: 8,
+        truncated: true,
+      }
+    )
     expect(
-      (await execute("search_returns", { status: "active" }) as {
-        items: unknown[]
-      }).items
+      (
+        (await execute("search_returns", { status: "active" })) as {
+          items: unknown[]
+        }
+      ).items
     ).toHaveLength(5)
   })
 

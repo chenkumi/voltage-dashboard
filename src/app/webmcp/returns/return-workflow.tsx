@@ -18,8 +18,7 @@ export type ReturnWorkflowStageState =
   | "not_applicable"
 
 export type ReturnWorkflowDetail =
-  | "calculation_invalidated"
-  | "approval_invalidated"
+  "calculation_invalidated" | "approval_invalidated"
 
 export type ReturnWorkflowStage = {
   id: ReturnReviewStage
@@ -113,7 +112,8 @@ export const createReturnWorkflow = ({
     (total, item) => total + (item.acceptedQuantity ?? 0),
     0
   )
-  if (items.length > 0 && acceptedQuantity === 0) return stoppedAt(3, "terminal")
+  if (items.length > 0 && acceptedQuantity === 0)
+    return stoppedAt(3, "terminal")
 
   const currentCalculation = calculations
     .filter(
@@ -164,7 +164,10 @@ export const createReturnWorkflow = ({
     ])
   if (rma.approvalStatus === "rejected") return stoppedAt(5, "terminal")
 
-  if (rma.approvalStatus === "approved" || currentApproval?.status === "approved") {
+  if (
+    rma.approvalStatus === "approved" ||
+    currentApproval?.status === "approved"
+  ) {
     if (rma.refundStatus === "succeeded" || rma.status === "completed")
       return stagesWith(Array(7).fill("completed"))
     return stagesWith([
@@ -214,33 +217,33 @@ export const ReturnWorkflowProgress = ({
   return (
     <ol className="grid gap-2 sm:grid-cols-4 xl:grid-cols-7">
       {workflow.map((stage) => (
-      <li
-        key={stage.id}
-        data-stage={stage.id}
-        data-state={stage.state}
-        aria-current={active.id === stage.id ? "step" : undefined}
-        className={`rounded-md border p-2 text-sm ${tone[stage.state]}`}
-      >
-        <span className="block text-xs">
-          {stage.state === "completed"
-            ? "✓"
-            : active.id === stage.id
-              ? "●"
-              : stage.number}{" "}
-          {active.id === stage.id ? t("Current") : t(stage.state)}
-        </span>
-        <strong>{labelFor(stage.id)}</strong>
-        {stage.detail ? (
-          <small className="block text-xs text-muted-foreground">
-            {labelFor(stage.detail)}
-          </small>
-        ) : null}
-        {stage.state === "upcoming" ? (
-          <small className="block text-xs">
-            {t("Complete prior stages to unlock.")}
-          </small>
-        ) : null}
-      </li>
+        <li
+          key={stage.id}
+          data-stage={stage.id}
+          data-state={stage.state}
+          aria-current={active.id === stage.id ? "step" : undefined}
+          className={`rounded-md border p-2 text-sm ${tone[stage.state]}`}
+        >
+          <span className="block text-xs">
+            {stage.state === "completed"
+              ? "✓"
+              : active.id === stage.id
+                ? "●"
+                : stage.number}{" "}
+            {active.id === stage.id ? t("Current") : t(stage.state)}
+          </span>
+          <strong>{labelFor(stage.id)}</strong>
+          {stage.detail ? (
+            <small className="block text-xs text-muted-foreground">
+              {labelFor(stage.detail)}
+            </small>
+          ) : null}
+          {stage.state === "upcoming" ? (
+            <small className="block text-xs">
+              {t("Complete prior stages to unlock.")}
+            </small>
+          ) : null}
+        </li>
       ))}
     </ol>
   )

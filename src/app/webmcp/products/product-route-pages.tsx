@@ -22,8 +22,12 @@ const ProductEditorUnavailable = ({ message }: { message: string }) => {
 
 export const ProductAddRoute = () => {
   const { t } = useTranslation()
-  const { productDraftStore, productEditorController, productRepository, products } =
-    useVoltageAdmin()
+  const {
+    productDraftStore,
+    productEditorController,
+    productRepository,
+    products,
+  } = useVoltageAdmin()
   const [searchParams] = useSearchParams()
   const sourceId = Number(searchParams.get("copyFrom"))
   const sourceProduct = Number.isInteger(sourceId)
@@ -47,8 +51,12 @@ export const ProductAddRoute = () => {
 export const ProductEditRoute = () => {
   const { t } = useTranslation()
   const { productId = "" } = useParams()
-  const { productDraftStore, productEditorController, productRepository, products } =
-    useVoltageAdmin()
+  const {
+    productDraftStore,
+    productEditorController,
+    productRepository,
+    products,
+  } = useVoltageAdmin()
   const numericId = Number(productId)
   if (products.state !== "ready") {
     return <ProductEditorUnavailable message={t("Loading products…")} />
