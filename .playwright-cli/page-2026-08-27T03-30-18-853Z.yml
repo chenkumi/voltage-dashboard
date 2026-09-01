@@ -1,0 +1,38 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - button "前往 Cinder Store 商品目錄" [ref=e7] [cursor=pointer]:
+        - generic [ref=e12]:
+          - generic [ref=e13]: Cinder Store
+          - generic [ref=e14]: 日常的好設計
+      - navigation "商店導覽" [ref=e15]:
+        - button "商品" [ref=e16] [cursor=pointer]
+        - button "購物車" [ref=e17] [cursor=pointer]
+        - button "訂單" [ref=e18] [cursor=pointer]
+      - generic [ref=e19]: 模擬結帳環境
+    - region "商品目錄" [ref=e20]:
+      - generic [ref=e21]:
+        - generic [ref=e22]:
+          - paragraph [ref=e23]: Curated from Platzi Fake Store
+          - heading "把日常用品，選得更有意思。" [level=1] [ref=e24]
+          - paragraph [ref=e25]: 從商品探索、購物車到模擬結帳，完整體驗可由 WebMCP Agent 操作的購物流程。
+        - generic [ref=e26]:
+          - generic [ref=e27]:
+            - generic [ref=e28]: —
+            - text: 可探索商品
+          - generic [ref=e29]:
+            - generic [ref=e30]: —
+            - text: 可用分類
+      - generic [ref=e31]:
+        - generic [ref=e32]:
+          - text: 搜尋商品
+          - textbox "搜尋商品" [ref=e34]:
+            - /placeholder: 名稱、描述或分類
+        - generic [ref=e35]:
+          - text: 分類
+          - combobox "分類" [ref=e36]:
+            - option "所有分類" [selected]
+        - generic [ref=e37]:
+          - text: 最高價格（USD）
+          - spinbutton "最高價格（USD）" [ref=e38]
+      - generic [ref=e39]: 載入商品資料中…

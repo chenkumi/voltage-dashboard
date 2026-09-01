@@ -1,0 +1,92 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - paragraph [ref=e12]: WebMCP workspace
+          - heading "Embedded web surface" [level=2] [ref=e13]
+      - generic [ref=e14]:
+        - generic [ref=e15]: Embedded website
+        - combobox "Embedded website" [ref=e16]:
+          - option "Cinder Studio" [selected]
+          - option "Field Market"
+        - generic [ref=e17]: Connected
+        - button "Refresh WebMCP tools" [active] [ref=e19]:
+          - img
+    - generic [ref=e20]:
+      - iframe [ref=e22]:
+        - main [ref=f4e3]:
+          - generic [ref=f4e4]:
+            - generic [ref=f4e5]:
+              - generic [ref=f4e6]:
+                - generic [ref=f4e7]:
+                  - img [ref=f4e8]
+                  - text: Cinder Studio · Ceramics and paper goods
+                - heading "Small rituals, better tools." [level=1] [ref=f4e11]
+                - paragraph [ref=f4e12]: 這是 Cinder Studio 同源測試網站。右側 Agent 可以搜尋陶器與紙品、加入購物車並讀取摘要。
+              - generic [ref=f4e13]:
+                - img [ref=f4e14]
+                - text: 0 reserved
+            - generic [ref=f4e17]:
+              - generic [ref=f4e18]:
+                - paragraph [ref=f4e19]: Catalog
+                - paragraph [ref=f4e20]: Ready for a WebMCP tool call
+              - generic [ref=f4e21]: Cinder Studio WebMCP
+            - generic [ref=f4e22]:
+              - generic [ref=f4e23]:
+                - generic [ref=f4e26]: Cinder mug
+                - generic [ref=f4e27]:
+                  - generic [ref=f4e28]:
+                    - generic [ref=f4e29]: Stoneware
+                    - generic [ref=f4e30]: $28
+                  - button "Add to studio cart" [ref=f4e31]
+              - generic [ref=f4e32]:
+                - generic [ref=f4e35]: Field notebook
+                - generic [ref=f4e36]:
+                  - generic [ref=f4e37]:
+                    - generic [ref=f4e38]: Paper goods
+                    - generic [ref=f4e39]: $16
+                  - button "Add to studio cart" [ref=f4e40]
+              - generic [ref=f4e41]:
+                - generic [ref=f4e44]: Night tea
+                - generic [ref=f4e45]:
+                  - generic [ref=f4e46]:
+                    - generic [ref=f4e47]: Small batch
+                    - generic [ref=f4e48]: $22
+                  - button "Add to studio cart" [ref=f4e49]
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]:
+            - generic [ref=e26]:
+              - img [ref=e27]
+              - heading "Tools from iframe" [level=3] [ref=e29]
+            - generic [ref=e30]: 6 available
+          - generic [ref=e53]:
+            - generic [ref=e54]: search_studio_catalog
+            - generic [ref=e55]: add_to_studio_cart
+            - generic [ref=e56]: get_studio_cart_summary
+            - generic [ref=e57]: agent_instructions
+            - generic [ref=e58]: skill_list
+            - generic [ref=e59]: load_skill
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - img [ref=e34]
+            - generic [ref=e37]: Scoped tool access
+          - text: 右側 Chat Room 僅會收到這個 iframe 暴露的 tools；目前使用同源 demo，方便驗證 discovery 與 execution flow。
+  - generic [ref=e39]:
+    - generic [ref=e40]:
+      - img [ref=e42]
+      - heading "New Chat" [level=1] [ref=e45]
+      - button "New Thread" [ref=e46]:
+        - img
+        - generic [ref=e47]: New Thread
+    - region "Chat history" [ref=e48]:
+      - generic [ref=e49]: Hi, how can I help you?
+    - generic [ref=e50]:
+      - textbox "Send Message" [ref=e51]:
+        - /placeholder: "You say: Shift+Enter for a new line"
+      - button "Send message" [disabled]:
+        - img
+        - generic: Send
+  - region "Notifications alt+T"

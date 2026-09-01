@@ -363,21 +363,30 @@ const SavedReportLibrary = ({
     readonly SavedReportSummary[]
   >([])
   const [error, setError] = useState("")
+  const contextId = controller.getCurrentContextId()
 
   const refresh = useCallback(async () => {
+    if (!contextId) {
+      setSavedReports([])
+      return
+    }
     try {
-      setSavedReports(await listSavedReports())
+      setSavedReports(await listSavedReports(contextId))
       setError("")
     } catch {
       setError(t("Saved reports are unavailable in this browser."))
     }
-  }, [t])
+  }, [contextId, t])
 
   useEffect(() => {
     let cancelled = false
     const loadSavedReports = async () => {
+      if (!contextId) {
+        setSavedReports([])
+        return
+      }
       try {
-        const saved = await listSavedReports()
+        const saved = await listSavedReports(contextId)
         if (!cancelled) {
           setSavedReports(saved)
           setError("")
@@ -391,7 +400,7 @@ const SavedReportLibrary = ({
     return () => {
       cancelled = true
     }
-  }, [t])
+  }, [contextId, t])
 
   useEffect(() => {
     const snapshot = controller.createSavedReportSnapshot()
@@ -433,7 +442,7 @@ const SavedReportLibrary = ({
       <div className="report-library-heading">
         <div>
           <p>{t("Report library")}</p>
-          <strong>{t("Saved locally in this browser")}</strong>
+          <strong>{t("Saved in this page session")}</strong>
         </div>
         <Button
           className="cursor-pointer"

@@ -1,0 +1,55 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "Voltage Market Voltage Dashboard" [ref=e6] [cursor=pointer]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - generic [ref=e12]: Voltage Market
+          - strong [ref=e13]: Voltage Dashboard
+      - generic [ref=e14]: Demo workspace · local data
+    - generic [ref=e15]:
+      - navigation "Voltage Dashboard navigation" [ref=e16]:
+        - paragraph [ref=e17]: Workspace
+        - generic [ref=e18]:
+          - button "Dashboard" [ref=e19] [cursor=pointer]:
+            - img [ref=e20]
+            - text: Dashboard
+          - button "Products" [ref=e25] [cursor=pointer]:
+            - img [ref=e26]
+            - text: Products
+          - button "Orders" [ref=e32] [cursor=pointer]:
+            - img [ref=e33]
+            - text: Orders
+          - button "Customers" [ref=e36] [cursor=pointer]:
+            - img [ref=e37]
+            - text: Customers
+          - button "Inventory 29" [ref=e42] [cursor=pointer]:
+            - img [ref=e43]
+            - text: Inventory
+            - generic [ref=e53]: "29"
+          - button "Reports" [ref=e54] [cursor=pointer]:
+            - img [ref=e55]
+            - text: Reports
+        - complementary [ref=e58]:
+          - img [ref=e59]
+          - paragraph [ref=e61]: Data is shared in spirit with Voltage Market’s embedded catalog.
+      - region "Voltage Dashboard Reports" [ref=e63]:
+        - generic [ref=e64]:
+          - paragraph [ref=e65]: Smart Dashboard · shared workspace
+          - heading "Shape the report together." [level=1] [ref=e66]
+          - generic [ref=e67]: Agent tools and your direct edits update the same in-memory report. Query evidence stays inside this Admin iframe.
+        - generic [ref=e68]:
+          - region "Saved reports" [ref=e69]:
+            - generic [ref=e70]:
+              - generic [ref=e71]:
+                - paragraph [ref=e72]: Report library
+                - strong [ref=e73]: Saved locally in this browser
+              - button "New report" [ref=e74] [cursor=pointer]:
+                - img
+                - text: New report
+            - paragraph [ref=e75]: No saved reports yet.
+          - region "Empty report canvas" [ref=e76]:
+            - img [ref=e78]
+            - paragraph [ref=e81]: Editable report canvas
+            - heading "Start with a question, not a template." [level=2] [ref=e82]
+            - generic [ref=e83]: Ask the Agent to inspect dataset status, explore the curated data with SQL, and build a report from verified query evidence. No fixed widgets are added in advance.

@@ -265,7 +265,7 @@ describe("product list page", () => {
     await user.click(within(popover!).getByRole("combobox", { name: "Stock" }))
     await user.keyboard("{ArrowDown}{Enter}")
     await user.click(within(popover!).getByRole("combobox", { name: "Sort" }))
-    await user.keyboard("{ArrowDown}{Enter}")
+    await user.click(screen.getByRole("option", { name: "Name A–Z" }))
     await user.click(within(popover!).getByRole("button", { name: "Apply" }))
 
     expect(screen.getByRole("link", { name: "Product 2" })).toBeTruthy()

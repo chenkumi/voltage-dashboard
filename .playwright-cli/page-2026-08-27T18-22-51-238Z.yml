@@ -1,0 +1,56 @@
+- main [ref=e305]:
+  - generic [ref=e306]:
+    - generic [ref=e307]:
+      - button "Voltage Market Merchant Console" [ref=e308] [cursor=pointer]:
+        - img [ref=e310]
+        - generic [ref=e313]:
+          - generic [ref=e314]: Voltage Market
+          - strong [ref=e315]: Merchant Console
+      - generic [ref=e316]: Demo workspace · local data
+    - generic [ref=e317]:
+      - navigation "Voltage Market Admin 導覽" [ref=e318]:
+        - paragraph [ref=e319]: Workspace
+        - generic [ref=e320]:
+          - button "Dashboard" [ref=e321] [cursor=pointer]:
+            - img [ref=e322]
+            - text: Dashboard
+          - button "Products" [ref=e327] [cursor=pointer]:
+            - img [ref=e328]
+            - text: Products
+          - button "Orders" [ref=e334] [cursor=pointer]:
+            - img [ref=e335]
+            - text: Orders
+          - button "Customers" [ref=e338] [cursor=pointer]:
+            - img [ref=e339]
+            - text: Customers
+          - button "Inventory 29" [ref=e344] [cursor=pointer]:
+            - img [ref=e345]
+            - text: Inventory
+            - generic [ref=e355]: "29"
+          - button "Reports" [active] [ref=e356] [cursor=pointer]:
+            - img [ref=e357]
+            - text: Reports
+        - complementary [ref=e360]:
+          - img [ref=e361]
+          - paragraph [ref=e363]: Data is shared in spirit with Voltage Market’s embedded catalog.
+      - region "Voltage Market Admin Reports" [ref=e443]:
+        - generic [ref=e444]:
+          - paragraph [ref=e445]: Smart Dashboard · shared workspace
+          - heading "Shape the report together." [level=1] [ref=e446]
+          - generic [ref=e447]: Agent tools and your direct edits update the same in-memory report. Query evidence stays inside this Admin iframe.
+        - region "Editable report canvas" [ref=e448]:
+          - generic [ref=e449]:
+            - generic [ref=e450]:
+              - paragraph [ref=e451]: Active report · editable by you and the Agent
+              - textbox "Report title" [ref=e453]: Escape regression report
+            - generic [ref=e454]:
+              - generic [ref=e455]:
+                - term [ref=e456]: Period
+                - definition [ref=e457]: Not specified
+              - generic [ref=e458]:
+                - term [ref=e459]: Time zone
+                - definition [ref=e460]: Not specified
+              - generic [ref=e461]:
+                - term [ref=e462]: Updated
+                - definition [ref=e463]: 8/28/2026, 2:22:49 AM
+          - generic [ref=e464]: The report exists, but it has no widgets yet. Ask the Agent to add a KPI, table, evidence note, or bar chart.

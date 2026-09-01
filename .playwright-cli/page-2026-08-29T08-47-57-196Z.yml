@@ -1,0 +1,144 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "營運工作區 Voltage Dashboard" [ref=e184] [cursor=pointer]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - generic [ref=e12]: 營運工作區
+          - strong [ref=e13]: Voltage Dashboard
+      - generic [ref=e16]:
+        - img [ref=e17]
+        - generic [ref=e21]: 切換語言
+        - combobox "切換語言" [ref=e185]:
+          - option "English"
+          - option "繁體中文" [selected]
+    - generic [ref=e23]:
+      - navigation "Voltage Dashboard 導覽" [ref=e186]:
+        - generic [ref=e26]:
+          - button "儀表板" [ref=e187] [cursor=pointer]:
+            - img [ref=e28]
+            - text: 儀表板
+          - button "商品" [ref=e188] [cursor=pointer]:
+            - img [ref=e34]
+            - text: 商品
+          - button "訂單" [ref=e189] [cursor=pointer]:
+            - img [ref=e41]
+            - text: 訂單
+          - button "顧客" [ref=e190] [cursor=pointer]:
+            - img [ref=e45]
+            - text: 顧客
+          - button "庫存 29" [ref=e191] [cursor=pointer]:
+            - img [ref=e51]
+            - text: 庫存
+            - generic [ref=e61]: "29"
+          - button "報表" [ref=e192] [cursor=pointer]:
+            - img [ref=e63]
+            - text: 報表
+          - button "商品建檔 2" [active] [ref=e193] [cursor=pointer]:
+            - img [ref=e67]
+            - text: 商品建檔
+            - generic [ref=e71]: "2"
+          - button "營運案件 5" [ref=e194] [cursor=pointer]:
+            - img [ref=e73]
+            - text: 營運案件
+            - generic [ref=e75]: "5"
+          - button "核准收件匣" [ref=e195] [cursor=pointer]:
+            - img [ref=e77]
+            - text: 核准收件匣
+      - region "商品建檔" [ref=e202]:
+        - generic [ref=e204]:
+          - paragraph [ref=e205]: 商品建檔營運
+          - heading "準備商品草稿供人工審查。" [level=1] [ref=e206]
+          - generic [ref=e207]: 尚有 2 個候選商品需要完整草稿。
+        - generic [ref=e208]:
+          - region "候選商品" [ref=e210]:
+            - generic [ref=e211]:
+              - generic [ref=e212]:
+                - paragraph [ref=e213]: 來源佇列
+                - heading "候選商品" [level=2] [ref=e214]
+              - generic [ref=e215]: "2"
+            - generic [ref=e216]:
+              - button "CAT-1001 AeroPress Clear Coffee Maker 已驗證 Verified manufacturer feed · 2026-08-27 缺少描述" [pressed] [ref=e217] [cursor=pointer]:
+                - generic [ref=e218]:
+                  - generic [ref=e219]:
+                    - generic [ref=e220]: CAT-1001
+                    - strong [ref=e221]: AeroPress Clear Coffee Maker
+                  - generic [ref=e222]: 已驗證
+                - generic [ref=e223]: Verified manufacturer feed · 2026-08-27
+                - generic [ref=e225]: 缺少描述
+              - button "CAT-1002 Portable LED Task Light 需檢查來源 Distributor catalog snapshot · 2026-08-26 缺少分類 缺少描述 缺少規格" [ref=e226] [cursor=pointer]:
+                - generic [ref=e227]:
+                  - generic [ref=e228]:
+                    - generic [ref=e229]: CAT-1002
+                    - strong [ref=e230]: Portable LED Task Light
+                  - generic [ref=e231]: 需檢查來源
+                - generic [ref=e232]: Distributor catalog snapshot · 2026-08-26
+                - generic [ref=e233]:
+                  - generic [ref=e234]: 缺少分類
+                  - generic [ref=e235]: 缺少描述
+                  - generic [ref=e236]: 缺少規格
+          - article [ref=e238]:
+            - generic [ref=e239]:
+              - generic [ref=e240]:
+                - paragraph [ref=e241]: 商品草稿
+                - heading "準備人工審查" [level=2] [ref=e242]
+              - generic [ref=e243]: 尚未儲存
+            - generic [ref=e244]:
+              - generic [ref=e245]:
+                - generic [ref=e246]: 商品標題
+                - textbox "商品標題" [ref=e247]: AeroPress Clear Coffee Maker
+              - generic [ref=e248]:
+                - generic [ref=e249]: 分類
+                - combobox "分類" [ref=e250]:
+                  - option "廚房 > 咖啡" [selected]
+                  - option "居家 > 照明"
+                  - option "居家 > 收納"
+                  - option "電子產品 > 配件"
+              - generic [ref=e251]:
+                - generic [ref=e252]: 描述
+                - textbox "描述 76/600 字元" [ref=e253]: Compact manual coffee maker with a transparent chamber and reusable stirrer.
+                - generic [ref=e254]: 76/600 字元
+              - generic [ref=e255]:
+                - generic [ref=e256]: 材質
+                - textbox "材質" [ref=e257]: Tritan
+              - generic [ref=e258]:
+                - generic [ref=e259]: 容量
+                - textbox "容量" [ref=e260]: 300 ml
+              - generic [ref=e261]:
+                - generic [ref=e262]: 產地
+                - textbox "產地" [ref=e263]: United States
+              - generic [ref=e264]:
+                - generic [ref=e265]: 功率
+                - textbox "功率" [ref=e266]
+              - generic [ref=e267]:
+                - generic [ref=e268]: 續航時間
+                - textbox "續航時間" [ref=e269]
+              - generic [ref=e270]:
+                - generic [ref=e271]: 保固
+                - textbox "保固" [ref=e272]
+            - generic [ref=e273]:
+              - status
+              - generic [ref=e274]:
+                - button "儲存草稿" [ref=e275] [cursor=pointer]:
+                  - img
+                  - text: 儲存草稿
+                - button "預覽" [ref=e276] [cursor=pointer]:
+                  - img
+                  - text: 預覽
+          - article [ref=e278]:
+            - generic [ref=e279]:
+              - generic [ref=e280]:
+                - paragraph [ref=e281]: 不可信來源 · 僅供顯示
+                - heading "原廠資料" [level=2] [ref=e282]
+              - generic [ref=e283]: 絕不渲染為 HTML
+            - paragraph [ref=e284]: Compact manual coffee maker with a transparent chamber and reusable stirrer.
+            - generic [ref=e285]:
+              - generic [ref=e286]:
+                - term [ref=e287]: 材質
+                - definition [ref=e288]: Tritan
+              - generic [ref=e289]:
+                - term [ref=e290]: 容量
+                - definition [ref=e291]: 300 ml
+              - generic [ref=e292]:
+                - term [ref=e293]: 產地
+                - definition [ref=e294]: United States

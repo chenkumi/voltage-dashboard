@@ -1,0 +1,354 @@
+- generic [ref=e122]:
+  - generic [ref=e123]:
+    - generic [ref=e124]:
+      - generic [ref=e125]:
+        - img [ref=e127]
+        - paragraph [ref=e131]: WebMCP workspace
+      - tablist "Demo pages" [ref=e132]:
+        - tab "Voltage Market" [selected] [ref=e133] [cursor=pointer]:
+          - img [ref=e134]
+          - text: Voltage Market
+        - tab "Voltage Market Admin" [ref=e137] [cursor=pointer]:
+          - img [ref=e138]
+          - text: Voltage Market Admin
+      - generic [ref=e143]:
+        - button "上一頁（目前：catalog）" [ref=e144]:
+          - img
+        - button "下一頁（目前：catalog）" [ref=e145]:
+          - img
+        - generic [ref=e146]: Connected
+        - button "Refresh WebMCP tools" [ref=e148]:
+          - img
+    - iframe [ref=e151]:
+      - main [ref=f5e3]:
+        - generic [ref=f5e4]:
+          - generic [ref=f5e6]:
+            - button "前往 Voltage Market 商品目錄" [ref=f5e7] [cursor=pointer]:
+              - img [ref=f5e9]
+              - generic [ref=f5e12]:
+                - generic [ref=f5e13]: Voltage Market
+                - generic [ref=f5e14]: 大膽選物，立即上線
+            - navigation "Voltage Market 導覽" [ref=f5e15]:
+              - button "商品" [ref=f5e16] [cursor=pointer]
+              - button "購物車" [ref=f5e17] [cursor=pointer]
+              - button "訂單" [ref=f5e18] [cursor=pointer]
+            - generic [ref=f5e19]: 模擬結帳 · 無真實付款
+          - region "Voltage Market 商品目錄" [ref=f5e21]:
+            - generic [ref=f5e22]:
+              - generic [ref=f5e23]:
+                - paragraph [ref=f5e24]: Drop 02 · DummyJSON catalog
+                - heading "找到下一件 讓你心跳加速的東西。" [level=1] [ref=f5e25]:
+                  - text: 找到下一件
+                  - generic [ref=f5e26]: 讓你心跳加速的東西。
+                - paragraph [ref=f5e27]: 這是一個高對比、模組化的選物宇宙， 內含 194 筆可搜尋、可結帳的靜態商品資料。
+                - paragraph [ref=f5e28]:
+                  - text: 測試資料來源：
+                  - link "DummyJSON" [ref=f5e29] [cursor=pointer]:
+                    - /url: https://dummyjson.com/
+                    - text: DummyJSON
+                    - img [ref=f5e30]
+              - generic [ref=f5e34]:
+                - generic [ref=f5e35]:
+                  - generic [ref=f5e36]: "194"
+                  - text: 嵌入式商品
+                - generic [ref=f5e37]:
+                  - generic [ref=f5e38]: "24"
+                  - text: 商品分類
+                - paragraph [ref=f5e39]: 免費配送門檻：$75.00。所有訂單都只存在此瀏覽器。
+            - generic [ref=f5e40]:
+              - generic [ref=f5e41]:
+                - text: 搜尋商品
+                - generic [ref=f5e42]:
+                  - img
+                  - textbox "搜尋商品" [ref=f5e43]:
+                    - /placeholder: 名稱、品牌、標籤…
+              - generic [ref=f5e44]:
+                - text: 分類
+                - combobox "分類" [ref=f5e45]:
+                  - option "全部分類" [selected]
+                  - option "Beauty"
+                  - option "Fragrances"
+                  - option "Furniture"
+                  - option "Groceries"
+                  - option "Home Decoration"
+                  - option "Kitchen Accessories"
+                  - option "Laptops"
+                  - option "Mens Shirts"
+                  - option "Mens Shoes"
+                  - option "Mens Watches"
+                  - option "Mobile Accessories"
+                  - option "Motorcycle"
+                  - option "Skin Care"
+                  - option "Smartphones"
+                  - option "Sports Accessories"
+                  - option "Sunglasses"
+                  - option "Tablets"
+                  - option "Tops"
+                  - option "Vehicle"
+                  - option "Womens Bags"
+                  - option "Womens Dresses"
+                  - option "Womens Jewellery"
+                  - option "Womens Shoes"
+                  - option "Womens Watches"
+              - generic [ref=f5e46]:
+                - text: 最高售價
+                - spinbutton "最高售價" [ref=f5e47]
+              - generic [ref=f5e48]:
+                - text: 排序
+                - combobox "排序" [ref=f5e49]:
+                  - option "精選折扣" [selected]
+                  - option "價格：低至高"
+                  - option "價格：高至低"
+                  - option "評分最高"
+            - paragraph [ref=f5e51]: 顯示 1–12 / 194 件
+            - generic [ref=f5e52]:
+              - article [ref=f5e53]:
+                - img "Tennis Racket" [ref=f5e55]
+                - generic [ref=f5e56]:
+                  - generic [ref=f5e57]:
+                    - generic [ref=f5e58]:
+                      - paragraph [ref=f5e59]: Sports Accessories
+                      - heading "Tennis Racket" [level=2] [ref=f5e60]
+                    - generic [ref=f5e61]: 4.0 / 5
+                  - paragraph [ref=f5e62]: The Tennis Racket is an essential piece of equipment used in the sport of tennis. It features a …
+                  - generic [ref=f5e63]:
+                    - generic [ref=f5e64]:
+                      - generic [ref=f5e65]: $40.19
+                      - text: $49.99
+                    - generic [ref=f5e66]:
+                      - generic [ref=f5e67]: "-20%"
+                      - button "加入" [ref=f5e68] [cursor=pointer]:
+                        - img
+                        - text: 加入
+              - article [ref=f5e69]:
+                - img "iPhone X" [ref=f5e71]
+                - generic [ref=f5e72]:
+                  - generic [ref=f5e73]:
+                    - generic [ref=f5e74]:
+                      - paragraph [ref=f5e75]: Smartphones
+                      - heading "iPhone X" [level=2] [ref=f5e76]
+                    - generic [ref=f5e77]: 2.5 / 5
+                  - paragraph [ref=f5e78]: The iPhone X is a flagship smartphone featuring a bezel-less OLED display, facial recognition te…
+                  - generic [ref=f5e79]:
+                    - generic [ref=f5e80]:
+                      - generic [ref=f5e81]: $723.68
+                      - text: $899.99
+                    - generic [ref=f5e82]:
+                      - generic [ref=f5e83]: "-20%"
+                      - button "加入" [ref=f5e84] [cursor=pointer]:
+                        - img
+                        - text: 加入
+              - article [ref=f5e85]:
+                - img "Samsung Galaxy S7" [ref=f5e87]
+                - generic [ref=f5e88]:
+                  - generic [ref=f5e89]:
+                    - generic [ref=f5e90]:
+                      - paragraph [ref=f5e91]: Smartphones
+                      - heading "Samsung Galaxy S7" [level=2] [ref=f5e92]
+                    - generic [ref=f5e93]: 3.3 / 5
+                  - paragraph [ref=f5e94]: The Samsung Galaxy S7 is a flagship smartphone known for its sleek design and advanced features.…
+                  - generic [ref=f5e95]:
+                    - generic [ref=f5e96]:
+                      - generic [ref=f5e97]: $241.34
+                      - text: $299.99
+                    - generic [ref=f5e98]:
+                      - generic [ref=f5e99]: "-20%"
+                      - button "加入" [ref=f5e100] [cursor=pointer]:
+                        - img
+                        - text: 加入
+              - article [ref=f5e101]:
+                - img "Metal Baseball Bat" [ref=f5e103]
+                - generic [ref=f5e104]:
+                  - generic [ref=f5e105]:
+                    - generic [ref=f5e106]:
+                      - paragraph [ref=f5e107]: Sports Accessories
+                      - heading "Metal Baseball Bat" [level=2] [ref=f5e108]
+                    - generic [ref=f5e109]: 4.7 / 5
+                  - paragraph [ref=f5e110]: The Metal Baseball Bat is a durable and lightweight baseball bat made from metal alloys. It is c…
+                  - generic [ref=f5e111]:
+                    - generic [ref=f5e112]:
+                      - generic [ref=f5e113]: $24.14
+                      - text: $29.99
+                    - generic [ref=f5e114]:
+                      - generic [ref=f5e115]: "-20%"
+                      - button "加入" [ref=f5e116] [cursor=pointer]:
+                        - img
+                        - text: 加入
+              - article [ref=f5e117]:
+                - img "Man Plaid Shirt" [ref=f5e119]
+                - generic [ref=f5e120]:
+                  - generic [ref=f5e121]:
+                    - generic [ref=f5e122]:
+                      - paragraph [ref=f5e123]: Mens Shirts
+                      - heading "Man Plaid Shirt" [level=2] [ref=f5e124]
+                    - generic [ref=f5e125]: 3.5 / 5
+                  - paragraph [ref=f5e126]: The Man Plaid Shirt is a timeless and versatile men's shirt with a classic plaid pattern. Its co…
+                  - generic [ref=f5e127]:
+                    - generic [ref=f5e128]:
+                      - generic [ref=f5e129]: $28.17
+                      - text: $34.99
+                    - generic [ref=f5e130]:
+                      - generic [ref=f5e131]: "-20%"
+                      - button "加入" [ref=f5e132] [cursor=pointer]:
+                        - img
+                        - text: 加入
+              - article [ref=f5e133]:
+                - img "Samsung Galaxy S8" [ref=f5e135]
+                - generic [ref=f5e136]:
+                  - generic [ref=f5e137]:
+                    - generic [ref=f5e138]:
+                      - paragraph [ref=f5e139]: Smartphones
+                      - heading "Samsung Galaxy S8" [level=2] [ref=f5e140]
+                    - generic [ref=f5e141]: 4.4 / 5
+                  - paragraph [ref=f5e142]: The Samsung Galaxy S8 is a premium smartphone with an Infinity Display, offering a stunning visu…
+                  - generic [ref=f5e143]:
+                    - generic [ref=f5e144]:
+                      - generic [ref=f5e145]: $402.74
+                      - text: $499.99
+                    - generic [ref=f5e146]:
+                      - generic [ref=f5e147]: "-19%"
+                      - generic [ref=f5e148]: 已售完
+                      - button "加入" [disabled]:
+                        - img
+                        - text: 加入
+              - article [ref=f5e149]:
+                - img "Selfie Lamp with iPhone" [ref=f5e151]
+                - generic [ref=f5e152]:
+                  - generic [ref=f5e153]:
+                    - generic [ref=f5e154]:
+                      - paragraph [ref=f5e155]: Mobile Accessories
+                      - heading "Selfie Lamp with iPhone" [level=2] [ref=f5e156]
+                    - generic [ref=f5e157]: 3.5 / 5
+                  - paragraph [ref=f5e158]: The Selfie Lamp with iPhone is a portable and adjustable LED light designed to enhance your self…
+                  - generic [ref=f5e159]:
+                    - generic [ref=f5e160]:
+                      - generic [ref=f5e161]: $12.08
+                      - text: $14.99
+                    - generic [ref=f5e162]:
+                      - generic [ref=f5e163]: "-19%"
+                      - button "加入" [ref=f5e164] [cursor=pointer]:
+                        - img
+                        - text: 加入
+              - article [ref=f5e165]:
+                - img "Girl Summer Dress" [ref=f5e167]
+                - generic [ref=f5e168]:
+                  - generic [ref=f5e169]:
+                    - generic [ref=f5e170]:
+                      - paragraph [ref=f5e171]: Tops
+                      - heading "Girl Summer Dress" [level=2] [ref=f5e172]
+                    - generic [ref=f5e173]: 4.8 / 5
+                  - paragraph [ref=f5e174]: The Girl Summer Dress is a cute and breezy dress designed for warm weather. With playful pattern…
+                  - generic [ref=f5e175]:
+                    - generic [ref=f5e176]:
+                      - generic [ref=f5e177]: $16.15
+                      - text: $19.99
+                    - generic [ref=f5e178]:
+                      - generic [ref=f5e179]: "-19%"
+                      - button "加入" [ref=f5e180] [cursor=pointer]:
+                        - img
+                        - text: 加入
+              - article [ref=f5e181]:
+                - img "Selfie Stick Monopod" [ref=f5e183]
+                - generic [ref=f5e184]:
+                  - generic [ref=f5e185]:
+                    - generic [ref=f5e186]:
+                      - paragraph [ref=f5e187]: Mobile Accessories
+                      - heading "Selfie Stick Monopod" [level=2] [ref=f5e188]
+                    - generic [ref=f5e189]: 3.9 / 5
+                  - paragraph [ref=f5e190]: The Selfie Stick Monopod is a extendable and foldable device for capturing the perfect selfie or…
+                  - generic [ref=f5e191]:
+                    - generic [ref=f5e192]:
+                      - generic [ref=f5e193]: $10.51
+                      - text: $12.99
+                    - generic [ref=f5e194]:
+                      - generic [ref=f5e195]: "-19%"
+                      - button "加入" [ref=f5e196] [cursor=pointer]:
+                        - img
+                        - text: 加入
+              - article [ref=f5e197]:
+                - img "Bedside Table African Cherry" [ref=f5e199]
+                - generic [ref=f5e200]:
+                  - generic [ref=f5e201]:
+                    - generic [ref=f5e202]:
+                      - paragraph [ref=f5e203]: Furniture
+                      - heading "Bedside Table African Cherry" [level=2] [ref=f5e204]
+                    - generic [ref=f5e205]: 2.9 / 5
+                  - paragraph [ref=f5e206]: The Bedside Table in African Cherry is a stylish and functional addition to your bedroom, provid…
+                  - generic [ref=f5e207]:
+                    - generic [ref=f5e208]:
+                      - generic [ref=f5e209]: $242.72
+                      - text: $299.99
+                    - generic [ref=f5e210]:
+                      - generic [ref=f5e211]: "-19%"
+                      - button "加入" [ref=f5e212] [cursor=pointer]:
+                        - img
+                        - text: 加入
+              - article [ref=f5e213]:
+                - img "Marni Red & Black Suit" [ref=f5e215]
+                - generic [ref=f5e216]:
+                  - generic [ref=f5e217]:
+                    - generic [ref=f5e218]:
+                      - paragraph [ref=f5e219]: Womens Dresses
+                      - heading "Marni Red & Black Suit" [level=2] [ref=f5e220]
+                    - generic [ref=f5e221]: 4.5 / 5
+                  - paragraph [ref=f5e222]: The Marni Red & Black Suit is a sophisticated and fashion-forward suit ensemble. With a combinat…
+                  - generic [ref=f5e223]:
+                    - generic [ref=f5e224]:
+                      - generic [ref=f5e225]: $145.76
+                      - text: $179.99
+                    - generic [ref=f5e226]:
+                      - generic [ref=f5e227]: "-19%"
+                      - button "加入" [ref=f5e228] [cursor=pointer]:
+                        - img
+                        - text: 加入
+              - article [ref=f5e229]:
+                - img "Kitchen Sieve" [ref=f5e231]
+                - generic [ref=f5e232]:
+                  - generic [ref=f5e233]:
+                    - generic [ref=f5e234]:
+                      - paragraph [ref=f5e235]: Kitchen Accessories
+                      - heading "Kitchen Sieve" [level=2] [ref=f5e236]
+                    - generic [ref=f5e237]: 3.1 / 5
+                  - paragraph [ref=f5e238]: The Kitchen Sieve is a versatile tool for sifting and straining dry and wet ingredients. Its fin…
+                  - generic [ref=f5e239]:
+                    - generic [ref=f5e240]:
+                      - generic [ref=f5e241]: $6.48
+                      - text: $7.99
+                    - generic [ref=f5e242]:
+                      - generic [ref=f5e243]: "-19%"
+                      - button "加入" [ref=f5e244] [cursor=pointer]:
+                        - img
+                        - text: 加入
+            - navigation "商品分頁" [ref=f5e245]:
+              - button "上一頁" [disabled]:
+                - img
+                - text: 上一頁
+              - generic [ref=f5e246]: 1 / 17
+              - button "下一頁" [ref=f5e247] [cursor=pointer]:
+                - text: 下一頁
+                - img
+  - generic [ref=e152]:
+    - generic [ref=e153]:
+      - img [ref=e155]
+      - generic [ref=e158]:
+        - paragraph [ref=e159]: Agent chat
+        - heading "New Chat" [level=1] [ref=e160]
+      - button "Start new chat" [ref=e162]:
+        - img
+    - generic [ref=e163]:
+      - region "Chat history" [ref=e164]:
+        - generic [ref=e165]:
+          - img [ref=e167]
+          - heading "Ready to explore" [level=2] [ref=e170]
+          - paragraph [ref=e171]: Ask the agent to use the tools available in the workspace.
+      - generic [ref=e173]:
+        - textbox "Send Message" [ref=e174]:
+          - /placeholder: Ask the agent to work with this page…
+        - generic [ref=e175]:
+          - generic [ref=e176]:
+            - img [ref=e177]
+            - text: Enter to send
+          - button "Send message" [disabled]:
+            - img
+            - generic: Send
+  - region "Notifications alt+T"

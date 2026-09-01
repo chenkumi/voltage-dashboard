@@ -1,0 +1,139 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "Operations workspace Voltage Dashboard" [ref=e6] [cursor=pointer]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - generic [ref=e12]: Operations workspace
+          - strong [ref=e13]: Voltage Dashboard
+      - generic [ref=e14]: Demo workspace · local data
+    - generic [ref=e15]:
+      - navigation "Voltage Dashboard navigation" [ref=e16]:
+        - generic [ref=e17]:
+          - button "Dashboard" [ref=e18] [cursor=pointer]:
+            - img [ref=e19]
+            - text: Dashboard
+          - button "Products" [ref=e24] [cursor=pointer]:
+            - img [ref=e25]
+            - text: Products
+          - button "Orders" [ref=e31] [cursor=pointer]:
+            - img [ref=e32]
+            - text: Orders
+          - button "Customers" [ref=e35] [cursor=pointer]:
+            - img [ref=e36]
+            - text: Customers
+          - button "Inventory 29" [ref=e41] [cursor=pointer]:
+            - img [ref=e42]
+            - text: Inventory
+            - generic [ref=e52]: "29"
+          - button "Reports" [ref=e53] [cursor=pointer]:
+            - img [ref=e54]
+            - text: Reports
+          - button "Catalog Intake 2" [ref=e57] [cursor=pointer]:
+            - img [ref=e58]
+            - text: Catalog Intake
+            - generic [ref=e62]: "2"
+          - button "Operations Cases 5" [ref=e63] [cursor=pointer]:
+            - img [ref=e64]
+            - text: Operations Cases
+            - generic [ref=e66]: "5"
+          - button "Approval Inbox" [ref=e67] [cursor=pointer]:
+            - img [ref=e68]
+            - text: Approval Inbox
+      - region "Catalog Intake" [ref=e72]:
+        - generic [ref=e74]:
+          - paragraph [ref=e75]: Catalog operations
+          - heading "Prepare product drafts for review." [level=1] [ref=e76]
+          - generic [ref=e77]: 2 catalog candidates still need a complete draft.
+        - generic [ref=e78]:
+          - region "Catalog candidates" [ref=e80]:
+            - generic [ref=e81]:
+              - generic [ref=e82]:
+                - paragraph [ref=e83]: Source queue
+                - heading "Catalog candidates" [level=2] [ref=e84]
+              - generic [ref=e85]: "2"
+            - generic [ref=e86]:
+              - button "CAT-1001 AeroPress Clear Coffee Maker Verified Verified manufacturer feed · 2026-08-27 Description missing" [pressed] [ref=e87] [cursor=pointer]:
+                - generic [ref=e88]:
+                  - generic [ref=e89]:
+                    - generic [ref=e90]: CAT-1001
+                    - strong [ref=e91]: AeroPress Clear Coffee Maker
+                  - generic [ref=e92]: Verified
+                - generic [ref=e93]: Verified manufacturer feed · 2026-08-27
+                - generic [ref=e95]: Description missing
+              - button "CAT-1002 Portable LED Task Light Review source Distributor catalog snapshot · 2026-08-26 Category missing Description missing Specifications missing" [ref=e96] [cursor=pointer]:
+                - generic [ref=e97]:
+                  - generic [ref=e98]:
+                    - generic [ref=e99]: CAT-1002
+                    - strong [ref=e100]: Portable LED Task Light
+                  - generic [ref=e101]: Review source
+                - generic [ref=e102]: Distributor catalog snapshot · 2026-08-26
+                - generic [ref=e103]:
+                  - generic [ref=e104]: Category missing
+                  - generic [ref=e105]: Description missing
+                  - generic [ref=e106]: Specifications missing
+          - article [ref=e108]:
+            - generic [ref=e109]:
+              - generic [ref=e110]:
+                - paragraph [ref=e111]: Product draft
+                - heading "Prepare for human review" [level=2] [ref=e112]
+              - generic [ref=e113]: Not saved
+            - generic [ref=e114]:
+              - generic [ref=e115]:
+                - generic [ref=e116]: Product title
+                - textbox "Product title" [ref=e117]: AeroPress Clear Coffee Maker
+              - generic [ref=e118]:
+                - generic [ref=e119]: Category
+                - combobox "Category" [ref=e120]:
+                  - option "Kitchen > Coffee" [selected]
+                  - option "Home > Lighting"
+                  - option "Home > Storage"
+                  - option "Electronics > Accessories"
+              - generic [ref=e121]:
+                - generic [ref=e122]: Description
+                - textbox "Description 76/600 characters" [ref=e123]: Compact manual coffee maker with a transparent chamber and reusable stirrer.
+                - generic [ref=e124]: 76/600 characters
+              - generic [ref=e125]:
+                - generic [ref=e126]: Material
+                - textbox "Material" [ref=e127]: Tritan
+              - generic [ref=e128]:
+                - generic [ref=e129]: Capacity
+                - textbox "Capacity" [ref=e130]: 300 ml
+              - generic [ref=e131]:
+                - generic [ref=e132]: Origin
+                - textbox "Origin" [ref=e133]: United States
+              - generic [ref=e134]:
+                - generic [ref=e135]: Power
+                - textbox "Power" [ref=e136]
+              - generic [ref=e137]:
+                - generic [ref=e138]: Runtime
+                - textbox "Runtime" [ref=e139]
+              - generic [ref=e140]:
+                - generic [ref=e141]: Warranty
+                - textbox "Warranty" [ref=e142]
+            - generic [ref=e143]:
+              - status
+              - generic [ref=e144]:
+                - button "Save draft" [ref=e145] [cursor=pointer]:
+                  - img
+                  - text: Save draft
+                - button "Preview" [ref=e146] [cursor=pointer]:
+                  - img
+                  - text: Preview
+          - article [ref=e148]:
+            - generic [ref=e149]:
+              - generic [ref=e150]:
+                - paragraph [ref=e151]: Untrusted source · display only
+                - heading "Manufacturer data" [level=2] [ref=e152]
+              - generic [ref=e153]: Never rendered as HTML
+            - paragraph [ref=e154]: Compact manual coffee maker with a transparent chamber and reusable stirrer.
+            - generic [ref=e155]:
+              - generic [ref=e156]:
+                - term [ref=e157]: material
+                - definition [ref=e158]: Tritan
+              - generic [ref=e159]:
+                - term [ref=e160]: capacity
+                - definition [ref=e161]: 300 ml
+              - generic [ref=e162]:
+                - term [ref=e163]: origin
+                - definition [ref=e164]: United States

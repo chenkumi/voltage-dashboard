@@ -156,6 +156,27 @@ describe("report authoring WebMCP tools", () => {
     })
   })
 
+  it.each(["2026-02-30", "2026-99-99"])(
+    "rejects an impossible report period date: %s",
+    (date) => {
+      const { cache, state } = createWorkspace()
+
+      expect(() =>
+        executeReportAuthoringTool(cache, state, "create_report", {
+          title: "Invalid period",
+          period: {
+            start: date,
+            end: date,
+            timeZone: "Asia/Taipei",
+          },
+        })
+      ).toThrowError(
+        expect.objectContaining({ category: "REPORT_ARGUMENT_ERROR" })
+      )
+      expect(state.getSnapshot()).toBeNull()
+    }
+  )
+
   it("allows date ranges and ordinary business terms in display text", () => {
     const { cache, state } = createWorkspace()
 
@@ -320,7 +341,6 @@ describe("report authoring WebMCP tools", () => {
         detailTone: "negative",
       },
     })
-
   })
 
   it("rejects unknown Metric value formats", () => {

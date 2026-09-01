@@ -1,0 +1,136 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "Operations workspace Voltage Dashboard" [ref=e6] [cursor=pointer]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - generic [ref=e12]: Operations workspace
+          - strong [ref=e13]: Voltage Dashboard
+      - generic [ref=e14]: Demo workspace · local data
+    - generic [ref=e15]:
+      - navigation "Voltage Dashboard navigation" [ref=e16]:
+        - paragraph [ref=e17]: Workspace
+        - generic [ref=e18]:
+          - button "Dashboard" [active] [ref=e19] [cursor=pointer]:
+            - img [ref=e20]
+            - text: Dashboard
+          - button "Products" [ref=e25] [cursor=pointer]:
+            - img [ref=e26]
+            - text: Products
+          - button "Orders" [ref=e32] [cursor=pointer]:
+            - img [ref=e33]
+            - text: Orders
+          - button "Customers" [ref=e36] [cursor=pointer]:
+            - img [ref=e37]
+            - text: Customers
+          - button "Inventory 29" [ref=e42] [cursor=pointer]:
+            - img [ref=e43]
+            - text: Inventory
+            - generic [ref=e53]: "29"
+          - button "Reports" [ref=e54] [cursor=pointer]:
+            - img [ref=e55]
+            - text: Reports
+          - button "Catalog Intake 2" [ref=e58] [cursor=pointer]:
+            - img [ref=e59]
+            - text: Catalog Intake
+            - generic [ref=e63]: "2"
+          - button "Operations Cases 4" [ref=e187] [cursor=pointer]:
+            - img [ref=e65]
+            - text: Operations Cases
+            - generic [ref=e67]: "4"
+          - button "Approval Inbox" [ref=e261] [cursor=pointer]:
+            - img [ref=e69]
+            - text: Approval Inbox
+        - complementary [ref=e72]:
+          - img [ref=e73]
+          - paragraph [ref=e75]: Data is sourced from an embedded, anonymous product catalog.
+      - region "Voltage Dashboard Overview" [ref=e269]:
+        - generic [ref=e271]:
+          - paragraph [ref=e272]: Overview · last 7 days
+          - heading "A calm read on the store." [level=1] [ref=e273]
+          - generic [ref=e274]: Built from the embedded operational dataset.
+        - generic [ref=e275]:
+          - article [ref=e277]:
+            - generic [ref=e278]: Revenue
+            - strong [ref=e279]: $731
+            - generic [ref=e280]: +12.4% this week
+          - article [ref=e282]:
+            - generic [ref=e283]: Orders
+            - strong [ref=e284]: "5"
+            - generic [ref=e285]: 2 need attention
+          - article [ref=e287]:
+            - generic [ref=e288]: Customers
+            - strong [ref=e289]: "6"
+            - generic [ref=e290]: Anonymous segments
+          - article [ref=e292]:
+            - generic [ref=e293]: Available SKUs
+            - strong [ref=e294]: "190"
+            - generic [ref=e295]: 29 low stock
+          - article [ref=e297]:
+            - generic [ref=e298]: Catalog drafts
+            - strong [ref=e299]: "0"
+            - generic [ref=e300]: Prepared for review
+          - article [ref=e302]:
+            - generic [ref=e303]: Exception cases
+            - strong [ref=e304]: "4"
+            - generic [ref=e305]: Safe operational cases
+          - article [ref=e307]:
+            - generic [ref=e308]: Human approvals
+            - strong [ref=e309]: "0"
+            - generic [ref=e310]: Final actions stay in UI
+          - article [ref=e312]:
+            - generic [ref=e313]:
+              - generic [ref=e314]:
+                - paragraph [ref=e315]: Latest activity
+                - heading "Order queue" [level=2] [ref=e316]
+              - button "All orders" [ref=e317] [cursor=pointer]:
+                - text: All orders
+                - img
+            - generic [ref=e318]:
+              - generic [ref=e319]:
+                - generic [ref=e320]:
+                  - strong [ref=e321]: VM-24081
+                  - generic [ref=e322]: 3 items · Today, 10:32
+                - generic [ref=e323]:
+                  - generic [ref=e324]: Processing
+                  - strong [ref=e325]: $184
+              - generic [ref=e326]:
+                - generic [ref=e327]:
+                  - strong [ref=e328]: VM-24080
+                  - generic [ref=e329]: 1 items · Today, 09:14
+                - generic [ref=e330]:
+                  - generic [ref=e331]: Shipped
+                  - strong [ref=e332]: $74
+              - generic [ref=e333]:
+                - generic [ref=e334]:
+                  - strong [ref=e335]: VM-24079
+                  - generic [ref=e336]: 2 items · Yesterday, 16:45
+                - generic [ref=e337]:
+                  - generic [ref=e338]: Action needed
+                  - strong [ref=e339]: $129
+              - generic [ref=e340]:
+                - generic [ref=e341]:
+                  - strong [ref=e342]: VM-24078
+                  - generic [ref=e343]: 4 items · Yesterday, 11:20
+                - generic [ref=e344]:
+                  - generic [ref=e345]: Delivered
+                  - strong [ref=e346]: $246
+          - article [ref=e348]:
+            - generic [ref=e349]:
+              - generic [ref=e350]:
+                - paragraph [ref=e351]: Inventory signal
+                - heading "Low stock" [level=2] [ref=e352]
+              - img [ref=e353]
+            - generic [ref=e355]:
+              - generic [ref=e356]: Dolce Shine Eau de
+              - strong [ref=e357]: 4 left
+            - generic [ref=e358]:
+              - generic [ref=e359]: Wooden Bathroom Sink With Mirror
+              - strong [ref=e360]: 7 left
+            - generic [ref=e361]:
+              - generic [ref=e362]: Apple
+              - strong [ref=e363]: 8 left
+            - generic [ref=e364]:
+              - generic [ref=e365]: Cooking Oil
+              - strong [ref=e366]: 10 left
+            - button "Review inventory" [ref=e367] [cursor=pointer]

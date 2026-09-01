@@ -1,0 +1,164 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "開啟導覽" [ref=e260] [cursor=pointer]:
+        - img [ref=e261]
+      - button "V" [ref=e262] [cursor=pointer]:
+        - generic [ref=e7]: V
+    - generic [ref=e9]:
+      - button "搜尋商品" [ref=e10] [cursor=pointer]:
+        - img [ref=e11]
+      - button "通知" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+      - generic [ref=e20] [cursor=pointer]:
+        - img [ref=e21]
+        - generic [ref=e25]: 切換語言
+        - combobox "切換語言" [ref=e26]:
+          - option "English"
+          - option "繁體中文" [selected]
+      - button "帳號選單" [ref=e27] [cursor=pointer]:
+        - img [ref=e28]
+  - region "顧客詳細資料" [ref=e834]:
+    - generic [ref=e836]:
+      - generic [ref=e837]:
+        - navigation "Breadcrumb" [ref=e838]:
+          - list [ref=e839]:
+            - listitem [ref=e840]:
+              - link "顧客" [ref=e841] [cursor=pointer]:
+                - /url: /customers
+            - listitem [ref=e842]: /CUST-1011
+        - generic [ref=e843]:
+          - heading "CUST-1011" [level=1] [ref=e844]
+          - generic [ref=e846]: 啟用
+      - generic [ref=e848]:
+        - button "返回" [ref=e849]:
+          - img
+          - text: 返回
+        - button "編輯顧客" [ref=e850]
+        - button "停權顧客" [active] [ref=e851]
+    - generic [ref=e852]:
+      - generic [ref=e855]:
+        - generic [ref=e857]: 訂單
+        - strong [ref=e858]: "4"
+        - generic [ref=e859]: 保留歷史訂單
+      - generic [ref=e862]:
+        - generic [ref=e864]: 備註
+        - strong [ref=e865]: "1"
+        - generic [ref=e866]: 僅供介面使用的內部備註
+      - generic [ref=e869]:
+        - generic [ref=e871]: 活動
+        - strong [ref=e872]: "7"
+        - generic [ref=e873]: 生命週期紀錄
+      - generic [ref=e876]:
+        - generic [ref=e878]: 安全標籤
+        - strong [ref=e879]: "1"
+        - generic [ref=e880]: 可用於報表的標籤
+      - generic [ref=e882]:
+        - generic [ref=e884]: 顧客資料
+        - generic [ref=e885]:
+          - strong [ref=e886]: 測試客戶 1011
+          - generic [ref=e887]: customer1011@example.test
+          - generic [ref=e888]: "0910000010"
+          - generic [ref=e889]: 測試路 11 號, 高雄市 300, TW
+          - generic [ref=e890]: 回購客戶 · 南區
+          - generic [ref=e891]: 更新時間 2026年8月30日 晚上11:19
+      - generic [ref=e893]:
+        - generic [ref=e895]: 標籤
+        - generic [ref=e896]:
+          - generic [ref=e897]: 回購顧客
+          - generic [ref=e898]: independent-verify
+      - generic [ref=e900]:
+        - generic [ref=e902]: 累積消費
+        - generic [ref=e903]:
+          - strong [ref=e904]: USD 22,319.05
+          - strong [ref=e905]: TWD 0.00
+          - generic [ref=e906]: 不同原生幣別不會合併計算。
+      - generic [ref=e908]:
+        - generic [ref=e910]: 客戶訂單
+        - table [ref=e912]:
+          - rowgroup [ref=e913]:
+            - row "訂單 建立時間 狀態 付款 總額" [ref=e914]:
+              - columnheader "訂單" [ref=e915]
+              - columnheader "建立時間" [ref=e916]
+              - columnheader "狀態" [ref=e917]
+              - columnheader "付款" [ref=e918]
+              - columnheader "總額" [ref=e919]
+          - rowgroup [ref=e920]:
+            - row "VM-25052 2026年8月24日 下午1:00 已送達 已付款 USD 65.83" [ref=e921]:
+              - cell "VM-25052" [ref=e922]:
+                - button "VM-25052" [ref=e923]
+              - cell "2026年8月24日 下午1:00" [ref=e924]
+              - cell "已送達" [ref=e925]
+              - cell "已付款" [ref=e926]
+              - cell "USD 65.83" [ref=e927]
+            - row "VM-25049 2026年5月3日 上午10:00 處理中 等待審查 USD 61.04" [ref=e928]:
+              - cell "VM-25049" [ref=e929]:
+                - button "VM-25049" [ref=e930]
+              - cell "2026年5月3日 上午10:00" [ref=e931]
+              - cell "處理中" [ref=e932]
+              - cell "等待審查" [ref=e933]
+              - cell "USD 61.04" [ref=e934]
+            - row "VM-25033 2026年2月11日 上午10:00 已出貨 已付款 USD 22,006.89" [ref=e935]:
+              - cell "VM-25033" [ref=e936]:
+                - button "VM-25033" [ref=e937]
+              - cell "2026年2月11日 上午10:00" [ref=e938]
+              - cell "已出貨" [ref=e939]
+              - cell "已付款" [ref=e940]
+              - cell "USD 22,006.89" [ref=e941]
+            - row "VM-25029 2025年10月7日 晚上10:00 處理中 等待審查 USD 185.29" [ref=e942]:
+              - cell "VM-25029" [ref=e943]:
+                - button "VM-25029" [ref=e944]
+              - cell "2025年10月7日 晚上10:00" [ref=e945]
+              - cell "處理中" [ref=e946]
+              - cell "等待審查" [ref=e947]
+              - cell "USD 185.29" [ref=e948]
+      - generic [ref=e950]:
+        - generic [ref=e952]: 顧客備註
+        - generic [ref=e953]:
+          - generic [ref=e954]:
+            - generic [ref=e955]: 新增備註
+            - textbox "新增備註" [ref=e956]
+          - button "加入備註" [disabled]
+          - list [ref=e982]:
+            - listitem [ref=e983]:
+              - paragraph [ref=e984]: independent verification note
+              - generic [ref=e985]:
+                - generic [ref=e986]: 2026-08-30T15:19:32.220Z
+                - button "編輯備註" [ref=e987]
+      - generic [ref=e958]:
+        - generic [ref=e960]: 活動紀錄
+        - list [ref=e962]:
+          - listitem [ref=e988]:
+            - generic [ref=e989]: 新增備註
+            - time [ref=e990]: 2026年8月30日 晚上11:19
+          - listitem [ref=e963]:
+            - generic [ref=e964]: 更新顧客
+            - time [ref=e965]: 2026年8月30日 晚上11:19
+          - listitem [ref=e966]:
+            - generic [ref=e967]: 建立訂單
+            - time [ref=e968]: 2026年8月24日 下午1:00
+          - listitem [ref=e969]:
+            - generic [ref=e970]: 建立訂單
+            - time [ref=e971]: 2026年5月3日 上午10:00
+          - listitem [ref=e972]:
+            - generic [ref=e973]: 建立訂單
+            - time [ref=e974]: 2026年2月11日 上午10:00
+          - listitem [ref=e975]:
+            - generic [ref=e976]: 建立訂單
+            - time [ref=e977]: 2025年10月7日 晚上10:00
+          - listitem [ref=e978]:
+            - generic [ref=e979]: 建立顧客
+            - time [ref=e980]: 2024年11月13日 下午4:00
+      - dialog "停權顧客" [ref=e992]:
+        - heading "停權顧客" [level=2] [ref=e993]
+        - paragraph [ref=e994]: 歷史訂單將保持不變。
+        - generic [ref=e995]:
+          - generic [ref=e996]: 原因
+          - combobox "原因" [ref=e997]:
+            - option "請選擇原因"
+            - option "人工審查" [selected]
+            - option "違反政策"
+            - option "顧客要求"
+        - generic [ref=e998]:
+          - button "取消" [ref=e999]
+          - button "確認停權" [ref=e1000]

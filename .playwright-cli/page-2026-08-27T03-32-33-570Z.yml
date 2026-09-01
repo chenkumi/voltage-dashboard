@@ -1,0 +1,36 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - button "前往 Cinder Store 商品目錄" [ref=e7] [cursor=pointer]:
+        - generic [ref=e12]:
+          - generic [ref=e13]: Cinder Store
+          - generic [ref=e14]: 日常的好設計
+      - navigation "商店導覽" [ref=e15]:
+        - button "商品" [ref=e16] [cursor=pointer]
+        - button "購物車" [ref=e272] [cursor=pointer]
+        - button "訂單" [ref=e18] [cursor=pointer]
+      - generic [ref=e19]: 模擬結帳環境
+    - region "訂單管理" [ref=e273]:
+      - generic [ref=e274]:
+        - generic [ref=e275]:
+          - paragraph [ref=e276]: Order management
+          - heading "你的模擬訂單" [level=1] [ref=e277]
+        - button "繼續購物" [ref=e278] [cursor=pointer]
+      - generic [ref=e279]:
+        - paragraph [ref=e282]: 模擬訂單 CDR-522944-XHSH 已建立。
+        - button "關閉通知" [ref=e283] [cursor=pointer]
+      - article [ref=e288]:
+        - generic [ref=e289]:
+          - generic [ref=e290]:
+            - generic [ref=e291]:
+              - heading "CDR-522944-XHSH" [level=2] [ref=e292]
+              - generic [ref=e293]: 已取消
+            - paragraph [ref=e294]: 2026年8月27日 上午11:32 · 王小明
+          - generic [ref=e295]:
+            - paragraph [ref=e296]: 訂單總計
+            - paragraph [ref=e297]: $61
+        - generic [ref=e299]:
+          - generic [ref=e300]:
+            - generic [ref=e301]: Aceite Fino12 × 1
+            - generic [ref=e302]: $49
+          - paragraph [ref=e303]: 送往：台北市信義區測試路 1 號

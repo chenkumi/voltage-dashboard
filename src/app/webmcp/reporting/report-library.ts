@@ -35,12 +35,12 @@ export const saveReportSnapshot = async (snapshot: SavedReport) => {
   })
 }
 
-export const listSavedReports = async (): Promise<
-  readonly SavedReportSummary[]
-> =>
-  (await reportLibraryDb.reports.orderBy("updatedAt").reverse().toArray()).map(
-    toSummary
-  )
+export const listSavedReports = async (
+  contextId: string
+): Promise<readonly SavedReportSummary[]> =>
+  (await reportLibraryDb.reports.orderBy("updatedAt").reverse().toArray())
+    .filter(({ snapshot }) => snapshot.contextId === contextId)
+    .map(toSummary)
 
 export const readSavedReport = async (id: string) =>
   (await reportLibraryDb.reports.get(id))?.snapshot ?? null

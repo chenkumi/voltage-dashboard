@@ -57,7 +57,7 @@ const zhTW = {
   "A calm read on the store.": "從容掌握商店營運。",
   "Built from the embedded operational dataset.": "依據內嵌營運資料集產生。",
   Revenue: "營收",
-  "Order totals by currency": "依幣別分列訂單總額",
+  "Paid order totals by currency": "依幣別分列已付款訂單總額",
   "{{count}} need attention": "{{count}} 筆需要處理",
   "{{count}} active": "{{count}} 位使用中",
   "Available SKUs": "可售 SKU",
@@ -233,7 +233,7 @@ const zhTW = {
   "Connected Agent tools and your direct edits update the same in-memory report. Query evidence stays inside this Dashboard page.":
     "連線的 Agent 工具與你的直接編輯會更新同一份記憶體報表；查詢證據只保留在此儀表板頁面。",
   "Report library": "報表庫",
-  "Saved locally in this browser": "儲存在此瀏覽器",
+  "Saved in this page session": "儲存在目前頁面工作階段",
   "No saved reports yet.": "尚無已儲存報表。",
   "Delete saved report": "刪除已儲存報表",
   "Editable report canvas": "可編輯報表畫布",

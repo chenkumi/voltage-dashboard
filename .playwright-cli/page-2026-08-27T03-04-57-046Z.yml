@@ -1,0 +1,67 @@
+- generic [ref=e6]:
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - img [ref=e11]
+        - generic [ref=e14]:
+          - paragraph [ref=e15]: WebMCP workspace
+          - heading "Embedded web surface" [level=2] [ref=e16]
+      - generic [ref=e17]:
+        - generic [ref=e18]: Embedded website
+        - combobox "Embedded website" [ref=e19]:
+          - option "Cinder Studio" [selected]
+          - option "Field Market"
+        - generic [ref=e20]: Waiting for iframe
+        - button "Refresh WebMCP tools" [ref=e22]:
+          - img
+    - generic [ref=e23]:
+      - iframe [ref=e25]
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - generic [ref=e28]:
+            - generic [ref=e29]:
+              - img [ref=e30]
+              - heading "Tools from iframe" [level=3] [ref=e32]
+            - generic [ref=e33]: 0 available
+          - paragraph [ref=e81]: 工具會在 iframe 載入後自動同步到右側 Agent。
+        - generic [ref=e41]:
+          - generic [ref=e42]:
+            - img [ref=e43]
+            - generic [ref=e46]: Scoped tool access
+          - text: 右側 Chat Room 僅會收到這個 iframe 暴露的 tools；目前使用同源 demo，方便驗證 discovery 與 execution flow。
+  - generic [ref=e48]:
+    - generic [ref=e49]:
+      - img [ref=e51]
+      - heading "New Chat" [level=1] [ref=e54]
+      - button "New Thread" [ref=e55]:
+        - img
+        - generic [ref=e56]: New Thread
+    - region "Chat history" [ref=e57]:
+      - log [ref=e59]:
+        - list [ref=e60]:
+          - listitem [ref=e61]:
+            - time [ref=e62]: 2026/8/27 上午11:04:12
+            - generic [ref=e65]: 請簡短回覆 OK
+            - button "Copy message" [ref=e67]:
+              - img
+          - listitem [ref=e68]:
+            - time [ref=e69]: 2026/8/27 上午11:04:15
+            - generic [ref=e70]:
+              - group [ref=e71]:
+                - generic "Thinking" [ref=e72] [cursor=pointer]
+              - generic [ref=e74]: OK
+            - generic [ref=e75]:
+              - button "Copy message" [ref=e76]:
+                - img
+              - button "Speak message" [ref=e77]:
+                - img
+        - generic [ref=e78]:
+          - button "Jump to latest":
+            - img
+    - generic [ref=e79]:
+      - textbox "Send Message" [ref=e80]:
+        - /placeholder: "You say: Shift+Enter for a new line"
+      - button "Send message" [disabled]:
+        - img
+        - generic: Send
+  - region "Notifications alt+T"

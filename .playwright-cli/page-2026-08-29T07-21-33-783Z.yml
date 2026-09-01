@@ -1,0 +1,117 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "Operations workspace Voltage Dashboard" [ref=e6] [cursor=pointer]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - generic [ref=e12]: Operations workspace
+          - strong [ref=e13]: Voltage Dashboard
+      - generic [ref=e14]: Demo workspace · local data
+    - generic [ref=e15]:
+      - navigation "Voltage Dashboard navigation" [ref=e16]:
+        - paragraph [ref=e17]: Workspace
+        - generic [ref=e18]:
+          - button "Dashboard" [ref=e19] [cursor=pointer]:
+            - img [ref=e20]
+            - text: Dashboard
+          - button "Products" [ref=e25] [cursor=pointer]:
+            - img [ref=e26]
+            - text: Products
+          - button "Orders" [ref=e32] [cursor=pointer]:
+            - img [ref=e33]
+            - text: Orders
+          - button "Customers" [ref=e36] [cursor=pointer]:
+            - img [ref=e37]
+            - text: Customers
+          - button "Inventory 29" [ref=e42] [cursor=pointer]:
+            - img [ref=e43]
+            - text: Inventory
+            - generic [ref=e53]: "29"
+          - button "Reports" [ref=e54] [cursor=pointer]:
+            - img [ref=e55]
+            - text: Reports
+          - button "Catalog Intake 1" [ref=e213] [cursor=pointer]:
+            - img [ref=e59]
+            - text: Catalog Intake
+            - generic [ref=e63]: "1"
+          - button "Operations Cases 5" [ref=e64] [cursor=pointer]:
+            - img [ref=e65]
+            - text: Operations Cases
+            - generic [ref=e67]: "5"
+          - button "Approval Inbox 1" [ref=e214] [cursor=pointer]:
+            - img [ref=e69]
+            - text: Approval Inbox
+            - generic [ref=e215]: "1"
+        - complementary [ref=e72]:
+          - img [ref=e73]
+          - paragraph [ref=e75]: Data is sourced from an embedded, anonymous product catalog.
+      - region "Approval Inbox" [ref=e216]:
+        - generic [ref=e218]:
+          - paragraph [ref=e219]: Human review
+          - heading "Keep final actions in human hands." [level=1] [ref=e220]
+          - generic [ref=e221]: 1 review items still require a page-level decision.
+        - generic [ref=e222]:
+          - region "Review queue" [ref=e224]:
+            - generic [ref=e225]:
+              - generic [ref=e226]:
+                - paragraph [ref=e227]: Cross-module queue
+                - heading "Product and case reviews" [level=2] [ref=e228]
+              - generic [ref=e229]: "1"
+            - status [ref=e230]: CAT-1001 recommendation approved.
+            - article [ref=e231]:
+              - generic [ref=e232]:
+                - generic [ref=e233]:
+                  - paragraph [ref=e234]: product review
+                  - heading "CAT-1001" [level=2] [ref=e235]
+                - generic [ref=e236]: approved
+              - generic [ref=e237]:
+                - strong [ref=e238]: AeroPress Clear Coffee Maker
+                - paragraph [ref=e239]: Compact manual coffee maker with a clear chamber for consistent everyday brewing.
+                - generic [ref=e240]:
+                  - generic [ref=e241]:
+                    - term [ref=e242]: Agent suggestion
+                    - definition [ref=e243]: Publish in Kitchen > Coffee after a human checks the draft.
+                  - generic [ref=e244]:
+                    - term [ref=e245]: Evidence source
+                    - definition [ref=e246]: Verified manufacturer feed
+                  - generic [ref=e247]:
+                    - term [ref=e248]: Human final action
+                    - definition [ref=e249]: Publish the product to local demo state.
+              - generic [ref=e250]:
+                - generic [ref=e251]: Buttons require a direct page interaction; URL or tool input cannot replace them.
+                - generic [ref=e252]:
+                  - button "Return for changes" [ref=e253] [cursor=pointer]:
+                    - img
+                    - text: Return for changes
+                  - button "Publish product" [active] [ref=e278] [cursor=pointer]:
+                    - img
+                    - text: Publish product
+          - complementary [ref=e256]:
+            - generic [ref=e257]:
+              - generic [ref=e258]:
+                - paragraph [ref=e259]: Structured activity
+                - heading "Audit trail" [level=2] [ref=e260]
+              - generic [ref=e261]: "3"
+            - generic [ref=e262]:
+              - generic [ref=e279]:
+                - generic [ref=e280]:
+                  - strong [ref=e281]: review approved
+                  - generic [ref=e282]: CAT-1001
+                - generic [ref=e283]:
+                  - generic [ref=e284]: user
+                  - generic [ref=e285]: approved · 2026-08-29T07:21
+              - generic [ref=e263]:
+                - generic [ref=e264]:
+                  - strong [ref=e265]: review opened
+                  - generic [ref=e266]: CAT-1001
+                - generic [ref=e267]:
+                  - generic [ref=e268]: agent
+                  - generic [ref=e269]: queued · 2026-08-29T07:21
+              - generic [ref=e270]:
+                - generic [ref=e271]:
+                  - strong [ref=e272]: product draft saved
+                  - generic [ref=e273]: CAT-1001
+                - generic [ref=e274]:
+                  - generic [ref=e275]: agent
+                  - generic [ref=e276]: saved · 2026-08-29T07:21
+            - paragraph [ref=e277]: Audit entries contain only actor, action, workflow ID, time, and result. Draft text and prompts are never copied here.

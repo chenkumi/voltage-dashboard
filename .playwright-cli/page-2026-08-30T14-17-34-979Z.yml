@@ -1,0 +1,132 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "開啟導覽" [ref=e820] [cursor=pointer]:
+        - img [ref=e821]
+      - button "V" [ref=e822] [cursor=pointer]:
+        - generic [ref=e7]: V
+    - generic [ref=e9]:
+      - button "搜尋商品" [ref=e10] [cursor=pointer]:
+        - img [ref=e11]
+      - button "通知" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+      - generic [ref=e20] [cursor=pointer]:
+        - img [ref=e21]
+        - generic [ref=e25]: 切換語言
+        - combobox "切換語言" [ref=e26]:
+          - option "English"
+          - option "繁體中文" [selected]
+      - button "帳號選單" [ref=e27] [cursor=pointer]:
+        - img [ref=e28]
+  - region "Essence Mascara Lash Princess" [ref=e1037]:
+    - generic [ref=e1039]:
+      - generic [ref=e1040]:
+        - navigation "Breadcrumb" [ref=e1041]:
+          - list [ref=e1042]:
+            - listitem [ref=e1043]:
+              - link "商品" [ref=e1044] [cursor=pointer]:
+                - /url: /products
+            - listitem [ref=e1045]: /Essence Mascara Lash Princess
+        - generic [ref=e1046]:
+          - heading "Essence Mascara Lash Princess" [level=1] [ref=e1047]
+          - generic [ref=e1049]: 已發布
+      - generic [ref=e1050]:
+        - button "編輯" [ref=e1051]:
+          - img
+          - text: 編輯
+        - button "複製" [ref=e1052]:
+          - img
+          - text: 複製
+        - button "封存" [ref=e1053]:
+          - img
+          - text: 封存
+    - generic [ref=e1054]:
+      - region "商品圖片" [ref=e1056]:
+        - img "Essence Mascara Lash Princess" [ref=e1059]
+      - generic [ref=e1061]:
+        - generic [ref=e1062]:
+          - text: Essence
+          - heading "Essence Mascara Lash Princess" [level=2] [ref=e1063]
+          - paragraph [ref=e1064]: The Essence Mascara Lash Princess is a popular mascara known for its volumizing and lengthening effects. Achieve dram...
+        - strong [ref=e1065]: US$9.99
+        - generic [ref=e1066]:
+          - generic [ref=e1067]:
+            - term [ref=e1068]: SKU
+            - definition [ref=e1069]: BEA-ESS-ESS-001
+          - generic [ref=e1070]:
+            - term [ref=e1071]: 分類
+            - definition [ref=e1072]: beauty
+          - generic [ref=e1073]:
+            - term [ref=e1074]: 庫存
+            - definition [ref=e1075]: "99"
+          - generic [ref=e1076]:
+            - term [ref=e1077]: 更新時間
+            - definition [ref=e1078]: 2026/8/29 上午8:00:00
+      - generic [ref=e1080]:
+        - heading "商品內容" [level=2] [ref=e1081]
+        - paragraph [ref=e1082]: The Essence Mascara Lash Princess is a popular mascara known for its volumizing and lengthening effects. Achieve dramatic lashes with this long-lasting and cruelty-free formula.
+      - generic [ref=e1084]:
+        - heading "規格" [level=2] [ref=e1085]
+        - generic [ref=e1086]:
+          - generic [ref=e1087]:
+            - term [ref=e1088]: Weight
+            - definition [ref=e1089]: "4"
+          - generic [ref=e1090]:
+            - term [ref=e1091]: Width
+            - definition [ref=e1092]: "15.14"
+          - generic [ref=e1093]:
+            - term [ref=e1094]: Height
+            - definition [ref=e1095]: "13.08"
+          - generic [ref=e1096]:
+            - term [ref=e1097]: Depth
+            - definition [ref=e1098]: "22.99"
+          - generic [ref=e1099]:
+            - term [ref=e1100]: Warranty
+            - definition [ref=e1101]: 1 week warranty
+          - generic [ref=e1102]:
+            - term [ref=e1103]: Shipping
+            - definition [ref=e1104]: Ships in 3-5 business days
+          - generic [ref=e1105]:
+            - term [ref=e1106]: Return policy
+            - definition [ref=e1107]: No return policy
+      - generic [ref=e1109]:
+        - heading "短廣告文案" [level=2] [ref=e1110]
+        - paragraph [ref=e1111]: The Essence Mascara Lash Princess is a popular mascara known for its volumizing and lengthening effects. Achieve dram...
+      - generic [ref=e1113]:
+        - heading "長廣告文案" [level=2] [ref=e1114]
+        - paragraph [ref=e1115]: The Essence Mascara Lash Princess is a popular mascara known for its volumizing and lengthening effects. Achieve dramatic lashes with this long-lasting and cruelty-free formula.
+      - generic [ref=e1117]:
+        - generic [ref=e1118]:
+          - heading "評價" [level=2] [ref=e1119]
+          - generic [ref=e1120]: 3 則評價
+        - generic [ref=e1121]:
+          - article [ref=e1122]:
+            - generic [ref=e1123]:
+              - generic "5 星中獲得 3 星" [ref=e1124]:
+                - img [ref=e1125]
+                - img [ref=e1127]
+                - img [ref=e1129]
+                - img [ref=e1131]
+                - img [ref=e1133]
+              - time [ref=e1135]: 2025/4/30
+            - paragraph [ref=e1136]: Would not recommend!
+          - article [ref=e1137]:
+            - generic [ref=e1138]:
+              - generic "5 星中獲得 4 星" [ref=e1139]:
+                - img [ref=e1140]
+                - img [ref=e1142]
+                - img [ref=e1144]
+                - img [ref=e1146]
+                - img [ref=e1148]
+              - time [ref=e1150]: 2025/4/30
+            - paragraph [ref=e1151]: Very satisfied!
+          - article [ref=e1152]:
+            - generic [ref=e1153]:
+              - generic "5 星中獲得 5 星" [ref=e1154]:
+                - img [ref=e1155]
+                - img [ref=e1157]
+                - img [ref=e1159]
+                - img [ref=e1161]
+                - img [ref=e1163]
+              - time [ref=e1165]: 2025/4/30
+            - paragraph [ref=e1166]: Highly impressed!

@@ -1,0 +1,460 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - button "V Voltage" [ref=e6] [cursor=pointer]:
+      - generic [ref=e7]: V
+      - strong [ref=e8]: Voltage
+    - generic [ref=e9]:
+      - button "搜尋商品" [ref=e10] [cursor=pointer]:
+        - img [ref=e11]
+        - generic [ref=e14]: 搜尋商品
+        - generic [ref=e15]: /
+      - button "通知" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+      - generic [ref=e20] [cursor=pointer]:
+        - img [ref=e21]
+        - generic [ref=e25]: 切換語言
+        - combobox "切換語言" [ref=e26]:
+          - option "English"
+          - option "繁體中文" [selected]
+      - button "帳號選單" [ref=e27] [cursor=pointer]:
+        - img [ref=e28]
+  - generic [ref=e31]:
+    - complementary "主要導覽" [ref=e32]:
+      - navigation [ref=e33]:
+        - generic [ref=e34]:
+          - heading "營運總覽" [level=2] [ref=e35]
+          - button "儀表板" [ref=e37] [cursor=pointer]:
+            - img [ref=e38]
+            - generic [ref=e43]: 儀表板
+            - img [ref=e44]
+        - generic [ref=e46]:
+          - heading "商品管理" [level=2] [ref=e47]
+          - generic [ref=e48]:
+            - button "商品" [ref=e49] [cursor=pointer]:
+              - img [ref=e50]
+              - generic [ref=e56]: 商品
+              - img [ref=e57]
+            - button "庫存 29" [ref=e193] [cursor=pointer]:
+              - img [ref=e60]
+              - generic [ref=e70]: 庫存
+              - generic [ref=e194]: "29"
+              - img [ref=e71]
+        - generic [ref=e73]:
+          - heading "訂單與顧客" [level=2] [ref=e74]
+          - generic [ref=e75]:
+            - button "訂單" [ref=e76] [cursor=pointer]:
+              - img [ref=e77]
+              - generic [ref=e80]: 訂單
+              - img [ref=e81]
+            - button "顧客" [ref=e83] [cursor=pointer]:
+              - img [ref=e84]
+              - generic [ref=e89]: 顧客
+              - img [ref=e90]
+        - generic [ref=e92]:
+          - heading "營運管理" [level=2] [ref=e93]
+          - generic [ref=e94]:
+            - button "營運案件 5" [ref=e95] [cursor=pointer]:
+              - img [ref=e96]
+              - generic [ref=e98]: 營運案件
+              - generic [ref=e99]: "5"
+              - img [ref=e100]
+            - button "核准收件匣" [ref=e102] [cursor=pointer]:
+              - img [ref=e103]
+              - generic [ref=e106]: 核准收件匣
+              - img [ref=e107]
+        - generic [ref=e109]:
+          - heading "分析" [level=2] [ref=e110]
+          - button "報表" [ref=e112] [cursor=pointer]:
+            - img [ref=e113]
+            - generic [ref=e116]: 報表
+            - img [ref=e117]
+      - generic [ref=e119]:
+        - img [ref=e120]
+        - generic [ref=e122]:
+          - text: 商品範例資料來源：
+          - link "DummyJSON" [ref=e123] [cursor=pointer]:
+            - /url: https://dummyjson.com/products
+    - region "訂單" [ref=e125]:
+      - generic [ref=e128]:
+        - navigation "Breadcrumb" [ref=e129]:
+          - list [ref=e130]:
+            - listitem [ref=e131]: 儀表板
+            - listitem [ref=e132]: /訂單
+        - generic [ref=e133]:
+          - heading "訂單" [level=1] [ref=e134]
+          - generic [ref=e136]: 65 筆訂單
+      - generic [ref=e137]:
+        - generic [ref=e140]:
+          - generic [ref=e142]: 訂單總數
+          - strong [ref=e143]: "65"
+          - generic [ref=e144]: 歷史訂單快照
+        - generic [ref=e147]:
+          - generic [ref=e149]: 處理中訂單
+          - strong [ref=e150]: "13"
+          - generic [ref=e151]: 目前正在備貨
+        - generic [ref=e154]:
+          - generic [ref=e156]: 需要處理
+          - strong [ref=e157]: "13"
+          - generic [ref=e158]: 需要營運檢查
+        - generic [ref=e161]:
+          - generic [ref=e163]: 付款失敗
+          - strong [ref=e164]: "13"
+          - generic [ref=e165]: 僅顯示狀態，不含付款識別資料
+        - region "訂單清單" [ref=e167]:
+          - generic [ref=e168]:
+            - generic [ref=e170]:
+              - generic [ref=e171]:
+                - generic [ref=e172]: 搜尋訂單
+                - img
+                - searchbox "搜尋訂單" [ref=e173]
+              - generic [ref=e174]:
+                - combobox "訂單狀態" [ref=e175]:
+                  - generic [ref=e177]: "訂單狀態: 所有訂單狀態"
+                  - img: ▼
+                - textbox [ref=e178]: all
+                - combobox "付款狀態" [ref=e179]:
+                  - generic [ref=e181]: "付款狀態: 所有付款狀態"
+                  - img: ▼
+                - textbox [ref=e182]: all
+                - combobox "履約狀態" [ref=e183]:
+                  - generic [ref=e185]: "履約狀態: 所有履約狀態"
+                  - img: ▼
+                - textbox [ref=e186]: all
+                - button "更多篩選" [ref=e187]:
+                  - img
+            - generic [ref=e190]: 顯示 16–30／65
+            - table [ref=e1340]:
+              - rowgroup [ref=e1341]:
+                - row "訂單 建立時間 顧客 狀態 付款 履約 總額 操作" [ref=e1342]:
+                  - columnheader "訂單" [ref=e1343]
+                  - columnheader "建立時間" [ref=e1344]
+                  - columnheader "顧客" [ref=e1345]
+                  - columnheader "狀態" [ref=e1346]
+                  - columnheader "付款" [ref=e1347]
+                  - columnheader "履約" [ref=e1348]
+                  - columnheader "總額" [ref=e1349]
+                  - columnheader "操作" [ref=e1350]
+              - rowgroup [ref=e1351]:
+                - row "VM-25062 2 件商品 2026年5月22日 晚上11:00 回購客戶 中區 已送達 已付款 已履約 US$16,839.87 快速檢視 詳細資料" [ref=e1642]:
+                  - cell "VM-25062 2 件商品" [ref=e1643]:
+                    - strong [ref=e1644]: VM-25062
+                    - generic [ref=e1645]: 2 件商品
+                  - cell "2026年5月22日 晚上11:00" [ref=e1646]
+                  - cell "回購客戶 中區" [ref=e1647]:
+                    - generic [ref=e1648]: 回購客戶
+                    - generic [ref=e1649]: 中區
+                  - cell "已送達" [ref=e1650]:
+                    - generic [ref=e1651]: 已送達
+                  - cell "已付款" [ref=e1652]:
+                    - generic [ref=e1653]: 已付款
+                  - cell "已履約" [ref=e1654]:
+                    - generic [ref=e1655]: 已履約
+                  - cell "US$16,839.87" [ref=e1656]
+                  - cell "快速檢視 詳細資料" [ref=e1657]:
+                    - generic [ref=e1658]:
+                      - button "快速檢視" [ref=e1659]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1660]
+                - row "VM-25010 1 件商品 2026年5月18日 晚上7:00 回購客戶 中區 需要處理 失敗 異常 US$16.95 快速檢視 詳細資料" [ref=e1661]:
+                  - cell "VM-25010 1 件商品" [ref=e1662]:
+                    - strong [ref=e1663]: VM-25010
+                    - generic [ref=e1664]: 1 件商品
+                  - cell "2026年5月18日 晚上7:00" [ref=e1665]
+                  - cell "回購客戶 中區" [ref=e1666]:
+                    - generic [ref=e1667]: 回購客戶
+                    - generic [ref=e1668]: 中區
+                  - cell "需要處理" [ref=e1669]:
+                    - generic [ref=e1670]: 需要處理
+                  - cell "失敗" [ref=e1671]:
+                    - generic [ref=e1672]: 失敗
+                  - cell "異常" [ref=e1673]:
+                    - generic [ref=e1674]: 異常
+                  - cell "US$16.95" [ref=e1675]
+                  - cell "快速檢視 詳細資料" [ref=e1676]:
+                    - generic [ref=e1677]:
+                      - button "快速檢視" [ref=e1678]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1679]
+                - row "VM-25023 2 件商品 2026年5月13日 下午4:00 回購客戶 北區 已出貨 已付款 運送中 US$43.14 快速檢視 詳細資料" [ref=e1680]:
+                  - cell "VM-25023 2 件商品" [ref=e1681]:
+                    - strong [ref=e1682]: VM-25023
+                    - generic [ref=e1683]: 2 件商品
+                  - cell "2026年5月13日 下午4:00" [ref=e1684]
+                  - cell "回購客戶 北區" [ref=e1685]:
+                    - generic [ref=e1686]: 回購客戶
+                    - generic [ref=e1687]: 北區
+                  - cell "已出貨" [ref=e1688]:
+                    - generic [ref=e1689]: 已出貨
+                  - cell "已付款" [ref=e1690]:
+                    - generic [ref=e1691]: 已付款
+                  - cell "運送中" [ref=e1692]:
+                    - generic [ref=e1693]: 運送中
+                  - cell "US$43.14" [ref=e1694]
+                  - cell "快速檢視 詳細資料" [ref=e1695]:
+                    - generic [ref=e1696]:
+                      - button "快速檢視" [ref=e1697]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1698]
+                - row "VM-25036 3 件商品 2026年5月8日 下午1:00 回購客戶 東區 已送達 已付款 已履約 US$4,929.69 快速檢視 詳細資料" [ref=e1699]:
+                  - cell "VM-25036 3 件商品" [ref=e1700]:
+                    - strong [ref=e1701]: VM-25036
+                    - generic [ref=e1702]: 3 件商品
+                  - cell "2026年5月8日 下午1:00" [ref=e1703]
+                  - cell "回購客戶 東區" [ref=e1704]:
+                    - generic [ref=e1705]: 回購客戶
+                    - generic [ref=e1706]: 東區
+                  - cell "已送達" [ref=e1707]:
+                    - generic [ref=e1708]: 已送達
+                  - cell "已付款" [ref=e1709]:
+                    - generic [ref=e1710]: 已付款
+                  - cell "已履約" [ref=e1711]:
+                    - generic [ref=e1712]: 已履約
+                  - cell "US$4,929.69" [ref=e1713]
+                  - cell "快速檢視 詳細資料" [ref=e1714]:
+                    - generic [ref=e1715]:
+                      - button "快速檢視" [ref=e1716]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1717]
+                - row "VM-25049 1 件商品 2026年5月3日 上午10:00 回購客戶 南區 處理中 待處理 揀貨中 US$61.04 快速檢視 詳細資料" [ref=e1718]:
+                  - cell "VM-25049 1 件商品" [ref=e1719]:
+                    - strong [ref=e1720]: VM-25049
+                    - generic [ref=e1721]: 1 件商品
+                  - cell "2026年5月3日 上午10:00" [ref=e1722]
+                  - cell "回購客戶 南區" [ref=e1723]:
+                    - generic [ref=e1724]: 回購客戶
+                    - generic [ref=e1725]: 南區
+                  - cell "處理中" [ref=e1726]:
+                    - generic [ref=e1727]: 處理中
+                  - cell "待處理" [ref=e1728]:
+                    - generic [ref=e1729]: 待處理
+                  - cell "揀貨中" [ref=e1730]:
+                    - generic [ref=e1731]: 揀貨中
+                  - cell "US$61.04" [ref=e1732]
+                  - cell "快速檢視 詳細資料" [ref=e1733]:
+                    - generic [ref=e1734]:
+                      - button "快速檢視" [ref=e1735]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1736]
+                - row "VM-25035 2 件商品 2026年4月25日 中午12:00 新客戶 南區 需要處理 失敗 異常 US$215.22 快速檢視 詳細資料" [ref=e1737]:
+                  - cell "VM-25035 2 件商品" [ref=e1738]:
+                    - strong [ref=e1739]: VM-25035
+                    - generic [ref=e1740]: 2 件商品
+                  - cell "2026年4月25日 中午12:00" [ref=e1741]
+                  - cell "新客戶 南區" [ref=e1742]:
+                    - generic [ref=e1743]: 新客戶
+                    - generic [ref=e1744]: 南區
+                  - cell "需要處理" [ref=e1745]:
+                    - generic [ref=e1746]: 需要處理
+                  - cell "失敗" [ref=e1747]:
+                    - generic [ref=e1748]: 失敗
+                  - cell "異常" [ref=e1749]:
+                    - generic [ref=e1750]: 異常
+                  - cell "US$215.22" [ref=e1751]
+                  - cell "快速檢視 詳細資料" [ref=e1752]:
+                    - generic [ref=e1753]:
+                      - button "快速檢視" [ref=e1754]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1755]
+                - row "VM-25048 3 件商品 2026年4月21日 凌晨1:00 新客戶 中區 已出貨 已付款 運送中 US$188.62 快速檢視 詳細資料" [ref=e1756]:
+                  - cell "VM-25048 3 件商品" [ref=e1757]:
+                    - strong [ref=e1758]: VM-25048
+                    - generic [ref=e1759]: 3 件商品
+                  - cell "2026年4月21日 凌晨1:00" [ref=e1760]
+                  - cell "新客戶 中區" [ref=e1761]:
+                    - generic [ref=e1762]: 新客戶
+                    - generic [ref=e1763]: 中區
+                  - cell "已出貨" [ref=e1764]:
+                    - generic [ref=e1765]: 已出貨
+                  - cell "已付款" [ref=e1766]:
+                    - generic [ref=e1767]: 已付款
+                  - cell "運送中" [ref=e1768]:
+                    - generic [ref=e1769]: 運送中
+                  - cell "US$188.62" [ref=e1770]
+                  - cell "快速檢視 詳細資料" [ref=e1771]:
+                    - generic [ref=e1772]:
+                      - button "快速檢視" [ref=e1773]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1774]
+                - row "VM-25061 1 件商品 2026年4月15日 晚上10:00 新客戶 北區 已送達 已付款 已履約 US$330.35 快速檢視 詳細資料" [ref=e1775]:
+                  - cell "VM-25061 1 件商品" [ref=e1776]:
+                    - strong [ref=e1777]: VM-25061
+                    - generic [ref=e1778]: 1 件商品
+                  - cell "2026年4月15日 晚上10:00" [ref=e1779]
+                  - cell "新客戶 北區" [ref=e1780]:
+                    - generic [ref=e1781]: 新客戶
+                    - generic [ref=e1782]: 北區
+                  - cell "已送達" [ref=e1783]:
+                    - generic [ref=e1784]: 已送達
+                  - cell "已付款" [ref=e1785]:
+                    - generic [ref=e1786]: 已付款
+                  - cell "已履約" [ref=e1787]:
+                    - generic [ref=e1788]: 已履約
+                  - cell "US$330.35" [ref=e1789]
+                  - cell "快速檢視 詳細資料" [ref=e1790]:
+                    - generic [ref=e1791]:
+                      - button "快速檢視" [ref=e1792]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1793]
+                - row "VM-25009 3 件商品 2026年4月11日 下午6:00 新客戶 北區 處理中 待處理 揀貨中 US$18.51 快速檢視 詳細資料" [ref=e1794]:
+                  - cell "VM-25009 3 件商品" [ref=e1795]:
+                    - strong [ref=e1796]: VM-25009
+                    - generic [ref=e1797]: 3 件商品
+                  - cell "2026年4月11日 下午6:00" [ref=e1798]
+                  - cell "新客戶 北區" [ref=e1799]:
+                    - generic [ref=e1800]: 新客戶
+                    - generic [ref=e1801]: 北區
+                  - cell "處理中" [ref=e1802]:
+                    - generic [ref=e1803]: 處理中
+                  - cell "待處理" [ref=e1804]:
+                    - generic [ref=e1805]: 待處理
+                  - cell "揀貨中" [ref=e1806]:
+                    - generic [ref=e1807]: 揀貨中
+                  - cell "US$18.51" [ref=e1808]
+                  - cell "快速檢視 詳細資料" [ref=e1809]:
+                    - generic [ref=e1810]:
+                      - button "快速檢視" [ref=e1811]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1812]
+                - row "VM-25022 1 件商品 2026年4月6日 下午3:00 新客戶 東區 已送達 已付款 已履約 US$35.90 快速檢視 詳細資料" [ref=e1813]:
+                  - cell "VM-25022 1 件商品" [ref=e1814]:
+                    - strong [ref=e1815]: VM-25022
+                    - generic [ref=e1816]: 1 件商品
+                  - cell "2026年4月6日 下午3:00" [ref=e1817]
+                  - cell "新客戶 東區" [ref=e1818]:
+                    - generic [ref=e1819]: 新客戶
+                    - generic [ref=e1820]: 東區
+                  - cell "已送達" [ref=e1821]:
+                    - generic [ref=e1822]: 已送達
+                  - cell "已付款" [ref=e1823]:
+                    - generic [ref=e1824]: 已付款
+                  - cell "已履約" [ref=e1825]:
+                    - generic [ref=e1826]: 已履約
+                  - cell "US$35.90" [ref=e1827]
+                  - cell "快速檢視 詳細資料" [ref=e1828]:
+                    - generic [ref=e1829]:
+                      - button "快速檢視" [ref=e1830]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1831]
+                - row "VM-25021 3 件商品 2026年3月23日 下午2:00 回購客戶 東區 已送達 已付款 已履約 US$149.56 快速檢視 詳細資料" [ref=e1832]:
+                  - cell "VM-25021 3 件商品" [ref=e1833]:
+                    - strong [ref=e1834]: VM-25021
+                    - generic [ref=e1835]: 3 件商品
+                  - cell "2026年3月23日 下午2:00" [ref=e1836]
+                  - cell "回購客戶 東區" [ref=e1837]:
+                    - generic [ref=e1838]: 回購客戶
+                    - generic [ref=e1839]: 東區
+                  - cell "已送達" [ref=e1840]:
+                    - generic [ref=e1841]: 已送達
+                  - cell "已付款" [ref=e1842]:
+                    - generic [ref=e1843]: 已付款
+                  - cell "已履約" [ref=e1844]:
+                    - generic [ref=e1845]: 已履約
+                  - cell "US$149.56" [ref=e1846]
+                  - cell "快速檢視 詳細資料" [ref=e1847]:
+                    - generic [ref=e1848]:
+                      - button "快速檢視" [ref=e1849]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1850]
+                - row "VM-25034 1 件商品 2026年3月18日 上午11:00 VIP 東區 處理中 待處理 揀貨中 US$259.33 快速檢視 詳細資料" [ref=e1851]:
+                  - cell "VM-25034 1 件商品" [ref=e1852]:
+                    - strong [ref=e1853]: VM-25034
+                    - generic [ref=e1854]: 1 件商品
+                  - cell "2026年3月18日 上午11:00" [ref=e1855]
+                  - cell "VIP 東區" [ref=e1856]:
+                    - generic [ref=e1857]: VIP
+                    - generic [ref=e1858]: 東區
+                  - cell "處理中" [ref=e1859]:
+                    - generic [ref=e1860]: 處理中
+                  - cell "待處理" [ref=e1861]:
+                    - generic [ref=e1862]: 待處理
+                  - cell "揀貨中" [ref=e1863]:
+                    - generic [ref=e1864]: 揀貨中
+                  - cell "US$259.33" [ref=e1865]
+                  - cell "快速檢視 詳細資料" [ref=e1866]:
+                    - generic [ref=e1867]:
+                      - button "快速檢視" [ref=e1868]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1869]
+                - row "VM-25047 2 件商品 2026年3月14日 凌晨12:00 新客戶 東區 已送達 已付款 已履約 US$62.14 快速檢視 詳細資料" [ref=e1870]:
+                  - cell "VM-25047 2 件商品" [ref=e1871]:
+                    - strong [ref=e1872]: VM-25047
+                    - generic [ref=e1873]: 2 件商品
+                  - cell "2026年3月14日 凌晨12:00" [ref=e1874]
+                  - cell "新客戶 東區" [ref=e1875]:
+                    - generic [ref=e1876]: 新客戶
+                    - generic [ref=e1877]: 東區
+                  - cell "已送達" [ref=e1878]:
+                    - generic [ref=e1879]: 已送達
+                  - cell "已付款" [ref=e1880]:
+                    - generic [ref=e1881]: 已付款
+                  - cell "已履約" [ref=e1882]:
+                    - generic [ref=e1883]: 已履約
+                  - cell "US$62.14" [ref=e1884]
+                  - cell "快速檢視 詳細資料" [ref=e1885]:
+                    - generic [ref=e1886]:
+                      - button "快速檢視" [ref=e1887]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1888]
+                - row "VM-25060 3 件商品 2026年3月8日 晚上9:00 回購客戶 東區 需要處理 失敗 異常 US$34,850.49 快速檢視 詳細資料" [ref=e1889]:
+                  - cell "VM-25060 3 件商品" [ref=e1890]:
+                    - strong [ref=e1891]: VM-25060
+                    - generic [ref=e1892]: 3 件商品
+                  - cell "2026年3月8日 晚上9:00" [ref=e1893]
+                  - cell "回購客戶 東區" [ref=e1894]:
+                    - generic [ref=e1895]: 回購客戶
+                    - generic [ref=e1896]: 東區
+                  - cell "需要處理" [ref=e1897]:
+                    - generic [ref=e1898]: 需要處理
+                  - cell "失敗" [ref=e1899]:
+                    - generic [ref=e1900]: 失敗
+                  - cell "異常" [ref=e1901]:
+                    - generic [ref=e1902]: 異常
+                  - cell "US$34,850.49" [ref=e1903]
+                  - cell "快速檢視 詳細資料" [ref=e1904]:
+                    - generic [ref=e1905]:
+                      - button "快速檢視" [ref=e1906]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1907]
+                - row "VM-25008 2 件商品 2026年3月4日 下午5:00 新客戶 東區 已出貨 已付款 運送中 US$32.11 快速檢視 詳細資料" [ref=e1908]:
+                  - cell "VM-25008 2 件商品" [ref=e1909]:
+                    - strong [ref=e1910]: VM-25008
+                    - generic [ref=e1911]: 2 件商品
+                  - cell "2026年3月4日 下午5:00" [ref=e1912]
+                  - cell "新客戶 東區" [ref=e1913]:
+                    - generic [ref=e1914]: 新客戶
+                    - generic [ref=e1915]: 東區
+                  - cell "已出貨" [ref=e1916]:
+                    - generic [ref=e1917]: 已出貨
+                  - cell "已付款" [ref=e1918]:
+                    - generic [ref=e1919]: 已付款
+                  - cell "運送中" [ref=e1920]:
+                    - generic [ref=e1921]: 運送中
+                  - cell "US$32.11" [ref=e1922]
+                  - cell "快速檢視 詳細資料" [ref=e1923]:
+                    - generic [ref=e1924]:
+                      - button "快速檢視" [ref=e1925]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e1926]
+            - navigation "訂單分頁" [ref=e1429]:
+              - button "上一頁" [ref=e1927]:
+                - img
+                - generic [ref=e1928]: 上一頁
+              - generic [ref=e1430]: 2 / 5
+              - button "下一頁" [active] [ref=e1640]:
+                - generic [ref=e1641]: 下一頁
+                - img

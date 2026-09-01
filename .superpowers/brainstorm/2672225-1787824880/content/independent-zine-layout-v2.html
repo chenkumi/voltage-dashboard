@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; padding: 34px; background: #f3f3ee; color: #20211d; font-family: Arial, Helvetica, sans-serif; }
+      h1 { font: 400 clamp(34px,5vw,62px)/.93 Georgia, serif; letter-spacing: -.065em; margin: 0; }
+      .lead { max-width: 680px; color: #696b63; font: 15px/1.5 Arial, sans-serif; margin: 18px 0 30px; }
+      .site { max-width: 1150px; margin: 0 auto; }
+      .nav { align-items: center; display: flex; justify-content: space-between; padding: 0 3px 25px; }
+      .brand { font: 900 16px/.9 Arial, sans-serif; letter-spacing: -.06em; }
+      .brand small { color: #dc5b3e; display: block; font: 700 8px Arial, sans-serif; letter-spacing: .18em; margin-top: 4px; }
+      .links { display: flex; gap: 19px; color: #585a52; font-size: 11px; }
+      .links b { color: #20211d; }
+      .hero { min-height: 390px; position: relative; overflow: hidden; border-radius: 27px; background: #d5d7c5; }
+      .hero::after { content: ""; position: absolute; width: 470px; height: 470px; border-radius: 50%; background: #e86e49; right: -113px; top: -92px; }
+      .hero-copy { padding: 50px; position: relative; z-index: 2; max-width: 570px; }
+      .issue { color: #8f3e2c; font-size: 10px; font-weight: 800; letter-spacing: .16em; }
+      .hero h2 { font: 400 clamp(45px,6vw,78px)/.83 Georgia,serif; letter-spacing: -.08em; margin: 25px 0 22px; }
+      .hero p { max-width: 290px; color: #4c5149; font-size: 13px; line-height: 1.5; }
+      .read { background: #20211d; border: 0; border-radius: 100px; color: #fffefa; font-size: 11px; font-weight: 800; margin-top: 13px; padding: 12px 17px; }
+      .shape { position: absolute; right: 15%; bottom: -28px; z-index: 2; width: 200px; height: 280px; border-radius: 120px 120px 28px 28px; background: linear-gradient(130deg,#253c47 0 49%,#eac24a 50%); transform: rotate(-14deg); box-shadow: -25px 20px 0 rgba(32,33,29,.1); }
+      .featured { align-items: center; display: flex; justify-content: space-between; margin: 46px 0 21px; }
+      .featured h3 { font: 400 32px Georgia, serif; letter-spacing: -.05em; margin: 0; }
+      .filter { background: #e4e5dc; border: 0; border-radius: 100px; color: #34362f; font-size: 11px; padding: 10px 14px; }
+      .products { display: grid; grid-template-columns: 1.15fr .925fr .925fr; gap: 18px; }
+      .product { min-height: 310px; overflow: hidden; position: relative; border-radius: 20px; background: #e4e5dc; }
+      .product:first-child { background: #e9c7a4; }
+      .product:nth-child(2) { background: #bdcfca; }
+      .product:nth-child(3) { background: #c9bdd0; }
+      .metadata { bottom: 19px; left: 19px; position: absolute; z-index: 2; }
+      .metadata small { color: rgba(32,33,29,.65); font-size: 10px; font-weight: 800; letter-spacing: .11em; }
+      .metadata h4 { font: 400 27px/.93 Georgia, serif; letter-spacing: -.06em; margin: 8px 0 6px; }
+      .metadata span { font-size: 12px; }
+      .object { position: absolute; right: 20px; top: 32px; }
+      .lamp { background: #ef6d43; border-radius: 120px 120px 25px 25px; height: 215px; transform: rotate(11deg); width: 170px; }
+      .lamp::after { content: ""; background: #322c29; bottom: -8px; height: 50px; left: 54px; position: absolute; width: 60px; }
+      .speaker { background: #1f4251; border-radius: 80px; height: 150px; transform: rotate(-9deg); width: 130px; }
+      .speaker::after { content: ""; background: #f4ede0; border-radius: 50%; height: 57px; left: 36px; position: absolute; top: 45px; width: 57px; }
+      .book { background: #f4eabf; box-shadow: 15px 15px 0 #7a5271; height: 190px; transform: rotate(9deg); width: 130px; }
+      .book::after { content: "VOL. 01"; color: #d4573e; font: 800 16px Arial, sans-serif; left: 16px; position: absolute; top: 18px; }
+      .mobile { background: #f3f3ee; border-radius: 28px; box-shadow: 0 16px 40px rgba(28,31,24,.16); margin: 38px auto 0; overflow: hidden; width: 250px; }
+      .m-nav { display: flex; justify-content: space-between; padding: 15px; font-size: 10px; font-weight: 800; }
+      .m-hero { background: #d5d7c5; min-height: 225px; padding: 25px 20px; position: relative; overflow: hidden; }
+      .m-hero::after { background: #e86e49; border-radius: 50%; content: ""; height: 200px; position: absolute; right: -72px; top: -38px; width: 200px; }
+      .m-hero h4 { font: 400 39px/.84 Georgia,serif; letter-spacing: -.08em; margin: 20px 0 0; position: relative; z-index: 1; }
+      .m-card { background: #e9c7a4; border-radius: 17px; height: 118px; margin: 12px; padding: 15px; position: relative; }
+      .m-card b { font: 400 19px/.9 Georgia, serif; }
+      .m-card i { background: #ef6d43; border-radius: 50px 50px 10px 10px; bottom: 0; height: 90px; position: absolute; right: 19px; transform: rotate(11deg); width: 67px; }
+      .approve { display: block; background: #20211d; border: 0; border-radius: 100px; color: white; cursor: pointer; font-size: 11px; font-weight: 800; letter-spacing: .08em; margin: 28px auto; padding: 14px 19px; text-transform: uppercase; }
+      @media (max-width:700px) { body { padding: 19px; } .links { display:none; } .hero { min-height: 335px; } .hero-copy { padding: 34px 28px; } .shape { right: -12px; width: 130px; height: 190px; } .products { grid-template-columns: 1fr; } .product { min-height: 230px; } }
+    </style>
+  </head>
+  <body>
+    <div class="site">
+      <h1>無框的獨立刊物感</h1>
+      <p class="lead">此版本完全移除原頁的黑框、方形按鈕與硬切網格。改以圓角色塊、刊物式留白與物件攝影舞台，讓商品瀏覽更像翻閱策展集。</p>
+      <section class="nav"><div class="brand">VOLTAGE<br />MARKET<small>CURATED DAILY OBJECTS</small></div><nav class="links"><b>本期選物</b><span>分類</span><span>關於我們</span><span>購物袋 (2)</span></nav></section>
+      <section class="hero"><div class="hero-copy"><div class="issue">THE SUMMER EDIT / ISSUE 27</div><h2>Useful things<br />with a point<br />of view.</h2><p>不是更多商品，而是值得留在生活裡的物件。探索本期的日常工具、閱讀與居家選物。</p><button class="read">閱讀本期選物</button></div><div class="shape"></div></section>
+      <div class="featured"><h3>本期精選</h3><button class="filter">所有分類&nbsp;&nbsp; ↓</button></div>
+      <section class="products"><article class="product"><div class="object lamp"></div><div class="metadata"><small>HOME / 014</small><h4>After-hours lamp</h4><span>$48.00</span></div></article><article class="product"><div class="object speaker"></div><div class="metadata"><small>TECH / 051</small><h4>Small signal</h4><span>$89.00</span></div></article><article class="product"><div class="object book"></div><div class="metadata"><small>STUDIO / 097</small><h4>Notes in colour</h4><span>$32.00</span></div></article></section>
+      <section class="mobile"><div class="m-nav"><span>VOLTAGE</span><span>BAG (2)</span></div><div class="m-hero"><small>ISSUE 27</small><h4>Useful things<br />with a point<br />of view.</h4></div><div class="m-card"><small>HOME / 014</small><br /><b>After-hours<br />lamp</b><i></i></div></section>
+      <button class="approve" data-choice="approve-unframed-zine" onclick="toggleSelect(this)">Approve this redesign direction</button>
+    </div>
+  </body>
+</html>

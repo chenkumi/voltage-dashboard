@@ -12,6 +12,7 @@ import { createMemoryRouter, RouterProvider } from "react-router-dom"
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import i18n from "../../../i18n"
 import { ProductEditor } from "./product-editor"
+import { ProductDraftStore } from "./product-draft-store"
 import { ProductRepository } from "./product-repository"
 import type { Product, ProductWriteInput } from "./types"
 
@@ -52,9 +53,10 @@ const product: Product = {
 }
 
 const renderEditor = (
-  props:
+  props: (
     | { mode: "create"; sourceProduct?: Product }
     | { mode: "edit"; product: Product }
+  ) & { draftStore?: ProductDraftStore }
 ) => {
   const create = vi.fn(
     async (input: ProductWriteInput, status: "draft" | "published") => {
@@ -80,6 +82,7 @@ const renderEditor = (
           <ProductEditor
             {...props}
             repository={{ create, update, publish, archiveMany, restore }}
+            draftStore={props.draftStore}
           />
         ),
       },
@@ -197,7 +200,7 @@ describe("ProductEditor", () => {
     expect(screen.queryByDisplayValue("Weight")).toBeNull()
   })
 
-  it("warns only when cancelling with unsaved changes", async () => {
+  it("leaves without a native discard prompt when changes are unsaved", async () => {
     const user = userEvent.setup()
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
     renderEditor({ mode: "edit", product })
@@ -208,10 +211,10 @@ describe("ProductEditor", () => {
     await user.clear(screen.getByRole("textbox", { name: /Title/ }))
     await user.type(screen.getByRole("textbox", { name: /Title/ }), "Changed")
     await user.click(screen.getByRole("button", { name: "Cancel" }))
-    expect(confirm).toHaveBeenCalledWith("Discard unsaved changes?")
+    expect(confirm).not.toHaveBeenCalled()
   })
 
-  it("blocks breadcrumb navigation while changes are unsaved", async () => {
+  it("does not block breadcrumb navigation while changes are unsaved", async () => {
     const user = userEvent.setup()
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false)
     const { router } = renderEditor({ mode: "create" })
@@ -219,8 +222,29 @@ describe("ProductEditor", () => {
 
     await user.click(screen.getByRole("link", { name: "Products" }))
 
-    expect(confirm).toHaveBeenCalledWith("Discard unsaved changes?")
-    expect(router.state.location.pathname).toBe("/products/add")
+    expect(confirm).not.toHaveBeenCalled()
+    expect(router.state.location.pathname).toBe("/products")
+  })
+
+  it("autosaves, restores, and lets the user discard a create draft", async () => {
+    const store = new ProductDraftStore()
+    await store.discard("create")
+    const user = userEvent.setup()
+    renderEditor({ mode: "create", draftStore: store })
+    await user.type(screen.getByRole("textbox", { name: /SKU/ }), "SAVED-1")
+    await waitFor(async () =>
+      expect((await store.get("create"))?.draft.sku).toBe("SAVED-1")
+    )
+
+    cleanup()
+    renderEditor({ mode: "create", draftStore: store })
+    await waitFor(() =>
+      expect((screen.getByRole("textbox", { name: /SKU/ }) as HTMLInputElement).value).toBe(
+        "SAVED-1"
+      )
+    )
+    await user.click(screen.getByRole("button", { name: "Discard saved draft" }))
+    await waitFor(async () => expect(await store.get("create")).toBeNull())
   })
 
   it("offers archive and restore as direct edit-page actions", async () => {

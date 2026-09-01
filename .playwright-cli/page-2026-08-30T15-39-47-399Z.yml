@@ -1,0 +1,483 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "開啟導覽" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - button "V" [ref=e8] [cursor=pointer]:
+        - generic [ref=e9]: V
+    - generic [ref=e10]:
+      - button "搜尋商品" [ref=e11] [cursor=pointer]:
+        - img [ref=e12]
+      - button "通知" [ref=e15] [cursor=pointer]:
+        - img [ref=e16]
+      - generic [ref=e19] [cursor=pointer]:
+        - img [ref=e20]
+        - generic [ref=e24]: 切換語言
+        - combobox "切換語言" [ref=e25]:
+          - option "English"
+          - option "繁體中文" [selected]
+      - button "帳號選單" [ref=e26] [cursor=pointer]:
+        - img [ref=e27]
+  - region "商品" [ref=e32]:
+    - generic [ref=e34]:
+      - generic [ref=e35]:
+        - navigation "Breadcrumb" [ref=e36]:
+          - list [ref=e37]:
+            - listitem [ref=e38]: 儀表板
+            - listitem [ref=e39]: /商品
+        - heading "商品" [level=1] [ref=e41]
+      - button "新增商品" [ref=e43]:
+        - img
+        - text: 新增商品
+    - region "商品清單" [ref=e46]:
+      - generic [ref=e47]:
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - generic [ref=e51]: 搜尋商品
+            - img
+            - searchbox "搜尋商品" [ref=e52]
+          - generic [ref=e53]:
+            - button "篩選商品" [expanded] [ref=e54]:
+              - img
+            - dialog "篩選商品" [ref=e399]:
+              - heading "篩選商品" [level=2] [ref=e401]
+              - generic [ref=e403]:
+                - generic [ref=e404]:
+                  - generic [ref=e405]: 分類
+                  - combobox "分類" [active] [ref=e406]:
+                    - generic [ref=e408]: "分類: 所有分類"
+                    - img: ▼
+                  - textbox [ref=e409]: all
+                - generic [ref=e410]:
+                  - generic [ref=e411]: 狀態
+                  - combobox "狀態" [ref=e412]:
+                    - generic [ref=e414]: "狀態: 有效商品"
+                    - img: ▼
+                  - textbox [ref=e415]: active
+                - generic [ref=e416]:
+                  - generic [ref=e417]: 庫存
+                  - combobox "庫存" [ref=e418]:
+                    - generic [ref=e420]: "庫存: 所有庫存"
+                    - img: ▼
+                  - textbox [ref=e421]: all
+                - generic [ref=e422]:
+                  - generic [ref=e423]: 排序
+                  - combobox "排序" [ref=e424]:
+                    - generic [ref=e426]: "排序: 最近更新"
+                    - img: ▼
+                  - textbox [ref=e427]: recent
+              - generic [ref=e428]:
+                - button "清除" [ref=e429]
+                - generic [ref=e430]:
+                  - button "取消" [ref=e431]
+                  - button "套用" [ref=e432]
+        - generic [ref=e59]: 顯示 1–15／194
+        - table [ref=e63]:
+          - rowgroup [ref=e64]:
+            - row "選取目前頁面 商品 分類 價格 狀態 庫存 更新時間 操作" [ref=e65]:
+              - columnheader "選取目前頁面" [ref=e66]:
+                - checkbox "選取目前頁面" [ref=e67] [cursor=pointer]
+              - columnheader "商品" [ref=e68]
+              - columnheader "分類" [ref=e69]
+              - columnheader "價格" [ref=e70]
+              - columnheader "狀態" [ref=e71]
+              - columnheader "庫存" [ref=e72]
+              - columnheader "更新時間" [ref=e73]
+              - columnheader "操作" [ref=e74]
+          - rowgroup [ref=e75]:
+            - row "選取 Essence Mascara Lash Princess Essence Mascara Lash Princess Essence Mascara Lash Princess BEA-ESS-ESS-001 beauty US$9.99 已發布 99 2026/8/29 查看 Essence Mascara Lash Princess 編輯 Essence Mascara Lash Princess 複製 Essence Mascara Lash Princess 封存 Essence Mascara Lash Princess" [ref=e76]:
+              - cell "選取 Essence Mascara Lash Princess" [ref=e77]:
+                - checkbox "選取 Essence Mascara Lash Princess" [ref=e78] [cursor=pointer]
+              - cell "Essence Mascara Lash Princess Essence Mascara Lash Princess BEA-ESS-ESS-001" [ref=e79]:
+                - generic [ref=e80]:
+                  - img "Essence Mascara Lash Princess" [ref=e81]
+                  - generic [ref=e82]:
+                    - link "Essence Mascara Lash Princess" [ref=e83] [cursor=pointer]:
+                      - /url: /products/1
+                    - generic [ref=e84]: BEA-ESS-ESS-001
+              - cell "beauty" [ref=e85]
+              - cell "US$9.99" [ref=e86]
+              - cell "已發布" [ref=e87]:
+                - generic [ref=e88]: 已發布
+              - cell "99" [ref=e89]
+              - cell "2026/8/29" [ref=e90]
+              - cell "查看 Essence Mascara Lash Princess 編輯 Essence Mascara Lash Princess 複製 Essence Mascara Lash Princess 封存 Essence Mascara Lash Princess" [ref=e91]:
+                - generic [ref=e92]:
+                  - button "查看 Essence Mascara Lash Princess" [ref=e93]:
+                    - img
+                  - button "編輯 Essence Mascara Lash Princess" [ref=e94]:
+                    - img
+                  - button "複製 Essence Mascara Lash Princess" [ref=e95]:
+                    - img
+                  - button "封存 Essence Mascara Lash Princess" [ref=e96]:
+                    - img
+            - row "選取 Eyeshadow Palette with Mirror Eyeshadow Palette with Mirror Eyeshadow Palette with Mirror BEA-GLA-EYE-002 beauty US$19.99 已發布 34 2026/8/29 查看 Eyeshadow Palette with Mirror 編輯 Eyeshadow Palette with Mirror 複製 Eyeshadow Palette with Mirror 封存 Eyeshadow Palette with Mirror" [ref=e97]:
+              - cell "選取 Eyeshadow Palette with Mirror" [ref=e98]:
+                - checkbox "選取 Eyeshadow Palette with Mirror" [ref=e99] [cursor=pointer]
+              - cell "Eyeshadow Palette with Mirror Eyeshadow Palette with Mirror BEA-GLA-EYE-002" [ref=e100]:
+                - generic [ref=e101]:
+                  - img "Eyeshadow Palette with Mirror" [ref=e102]
+                  - generic [ref=e103]:
+                    - link "Eyeshadow Palette with Mirror" [ref=e104] [cursor=pointer]:
+                      - /url: /products/2
+                    - generic [ref=e105]: BEA-GLA-EYE-002
+              - cell "beauty" [ref=e106]
+              - cell "US$19.99" [ref=e107]
+              - cell "已發布" [ref=e108]:
+                - generic [ref=e109]: 已發布
+              - cell "34" [ref=e110]
+              - cell "2026/8/29" [ref=e111]
+              - cell "查看 Eyeshadow Palette with Mirror 編輯 Eyeshadow Palette with Mirror 複製 Eyeshadow Palette with Mirror 封存 Eyeshadow Palette with Mirror" [ref=e112]:
+                - generic [ref=e113]:
+                  - button "查看 Eyeshadow Palette with Mirror" [ref=e114]:
+                    - img
+                  - button "編輯 Eyeshadow Palette with Mirror" [ref=e115]:
+                    - img
+                  - button "複製 Eyeshadow Palette with Mirror" [ref=e116]:
+                    - img
+                  - button "封存 Eyeshadow Palette with Mirror" [ref=e117]:
+                    - img
+            - row "選取 Powder Canister Powder Canister Powder Canister BEA-VEL-POW-003 beauty US$14.99 已發布 89 2026/8/29 查看 Powder Canister 編輯 Powder Canister 複製 Powder Canister 封存 Powder Canister" [ref=e118]:
+              - cell "選取 Powder Canister" [ref=e119]:
+                - checkbox "選取 Powder Canister" [ref=e120] [cursor=pointer]
+              - cell "Powder Canister Powder Canister BEA-VEL-POW-003" [ref=e121]:
+                - generic [ref=e122]:
+                  - img "Powder Canister" [ref=e123]
+                  - generic [ref=e124]:
+                    - link "Powder Canister" [ref=e125] [cursor=pointer]:
+                      - /url: /products/3
+                    - generic [ref=e126]: BEA-VEL-POW-003
+              - cell "beauty" [ref=e127]
+              - cell "US$14.99" [ref=e128]
+              - cell "已發布" [ref=e129]:
+                - generic [ref=e130]: 已發布
+              - cell "89" [ref=e131]
+              - cell "2026/8/29" [ref=e132]
+              - cell "查看 Powder Canister 編輯 Powder Canister 複製 Powder Canister 封存 Powder Canister" [ref=e133]:
+                - generic [ref=e134]:
+                  - button "查看 Powder Canister" [ref=e135]:
+                    - img
+                  - button "編輯 Powder Canister" [ref=e136]:
+                    - img
+                  - button "複製 Powder Canister" [ref=e137]:
+                    - img
+                  - button "封存 Powder Canister" [ref=e138]:
+                    - img
+            - row "選取 Red Lipstick Red Lipstick Red Lipstick BEA-CHI-LIP-004 beauty US$12.99 已發布 91 2026/8/29 查看 Red Lipstick 編輯 Red Lipstick 複製 Red Lipstick 封存 Red Lipstick" [ref=e139]:
+              - cell "選取 Red Lipstick" [ref=e140]:
+                - checkbox "選取 Red Lipstick" [ref=e141] [cursor=pointer]
+              - cell "Red Lipstick Red Lipstick BEA-CHI-LIP-004" [ref=e142]:
+                - generic [ref=e143]:
+                  - img "Red Lipstick" [ref=e144]
+                  - generic [ref=e145]:
+                    - link "Red Lipstick" [ref=e146] [cursor=pointer]:
+                      - /url: /products/4
+                    - generic [ref=e147]: BEA-CHI-LIP-004
+              - cell "beauty" [ref=e148]
+              - cell "US$12.99" [ref=e149]
+              - cell "已發布" [ref=e150]:
+                - generic [ref=e151]: 已發布
+              - cell "91" [ref=e152]
+              - cell "2026/8/29" [ref=e153]
+              - cell "查看 Red Lipstick 編輯 Red Lipstick 複製 Red Lipstick 封存 Red Lipstick" [ref=e154]:
+                - generic [ref=e155]:
+                  - button "查看 Red Lipstick" [ref=e156]:
+                    - img
+                  - button "編輯 Red Lipstick" [ref=e157]:
+                    - img
+                  - button "複製 Red Lipstick" [ref=e158]:
+                    - img
+                  - button "封存 Red Lipstick" [ref=e159]:
+                    - img
+            - row "選取 Red Nail Polish Red Nail Polish Red Nail Polish BEA-NAI-NAI-005 beauty US$8.99 已發布 79 2026/8/29 查看 Red Nail Polish 編輯 Red Nail Polish 複製 Red Nail Polish 封存 Red Nail Polish" [ref=e160]:
+              - cell "選取 Red Nail Polish" [ref=e161]:
+                - checkbox "選取 Red Nail Polish" [ref=e162] [cursor=pointer]
+              - cell "Red Nail Polish Red Nail Polish BEA-NAI-NAI-005" [ref=e163]:
+                - generic [ref=e164]:
+                  - img "Red Nail Polish" [ref=e165]
+                  - generic [ref=e166]:
+                    - link "Red Nail Polish" [ref=e167] [cursor=pointer]:
+                      - /url: /products/5
+                    - generic [ref=e168]: BEA-NAI-NAI-005
+              - cell "beauty" [ref=e169]
+              - cell "US$8.99" [ref=e170]
+              - cell "已發布" [ref=e171]:
+                - generic [ref=e172]: 已發布
+              - cell "79" [ref=e173]
+              - cell "2026/8/29" [ref=e174]
+              - cell "查看 Red Nail Polish 編輯 Red Nail Polish 複製 Red Nail Polish 封存 Red Nail Polish" [ref=e175]:
+                - generic [ref=e176]:
+                  - button "查看 Red Nail Polish" [ref=e177]:
+                    - img
+                  - button "編輯 Red Nail Polish" [ref=e178]:
+                    - img
+                  - button "複製 Red Nail Polish" [ref=e179]:
+                    - img
+                  - button "封存 Red Nail Polish" [ref=e180]:
+                    - img
+            - row "選取 Calvin Klein CK One Calvin Klein CK One Calvin Klein CK One FRA-CAL-CAL-006 fragrances US$49.99 已發布 29 2026/8/29 查看 Calvin Klein CK One 編輯 Calvin Klein CK One 複製 Calvin Klein CK One 封存 Calvin Klein CK One" [ref=e181]:
+              - cell "選取 Calvin Klein CK One" [ref=e182]:
+                - checkbox "選取 Calvin Klein CK One" [ref=e183] [cursor=pointer]
+              - cell "Calvin Klein CK One Calvin Klein CK One FRA-CAL-CAL-006" [ref=e184]:
+                - generic [ref=e185]:
+                  - img "Calvin Klein CK One" [ref=e186]
+                  - generic [ref=e187]:
+                    - link "Calvin Klein CK One" [ref=e188] [cursor=pointer]:
+                      - /url: /products/6
+                    - generic [ref=e189]: FRA-CAL-CAL-006
+              - cell "fragrances" [ref=e190]
+              - cell "US$49.99" [ref=e191]
+              - cell "已發布" [ref=e192]:
+                - generic [ref=e193]: 已發布
+              - cell "29" [ref=e194]
+              - cell "2026/8/29" [ref=e195]
+              - cell "查看 Calvin Klein CK One 編輯 Calvin Klein CK One 複製 Calvin Klein CK One 封存 Calvin Klein CK One" [ref=e196]:
+                - generic [ref=e197]:
+                  - button "查看 Calvin Klein CK One" [ref=e198]:
+                    - img
+                  - button "編輯 Calvin Klein CK One" [ref=e199]:
+                    - img
+                  - button "複製 Calvin Klein CK One" [ref=e200]:
+                    - img
+                  - button "封存 Calvin Klein CK One" [ref=e201]:
+                    - img
+            - row "選取 Chanel Coco Noir Eau De Chanel Coco Noir Eau De Chanel Coco Noir Eau De FRA-CHA-CHA-007 fragrances US$129.99 已發布 58 2026/8/29 查看 Chanel Coco Noir Eau De 編輯 Chanel Coco Noir Eau De 複製 Chanel Coco Noir Eau De 封存 Chanel Coco Noir Eau De" [ref=e202]:
+              - cell "選取 Chanel Coco Noir Eau De" [ref=e203]:
+                - checkbox "選取 Chanel Coco Noir Eau De" [ref=e204] [cursor=pointer]
+              - cell "Chanel Coco Noir Eau De Chanel Coco Noir Eau De FRA-CHA-CHA-007" [ref=e205]:
+                - generic [ref=e206]:
+                  - img "Chanel Coco Noir Eau De" [ref=e207]
+                  - generic [ref=e208]:
+                    - link "Chanel Coco Noir Eau De" [ref=e209] [cursor=pointer]:
+                      - /url: /products/7
+                    - generic [ref=e210]: FRA-CHA-CHA-007
+              - cell "fragrances" [ref=e211]
+              - cell "US$129.99" [ref=e212]
+              - cell "已發布" [ref=e213]:
+                - generic [ref=e214]: 已發布
+              - cell "58" [ref=e215]
+              - cell "2026/8/29" [ref=e216]
+              - cell "查看 Chanel Coco Noir Eau De 編輯 Chanel Coco Noir Eau De 複製 Chanel Coco Noir Eau De 封存 Chanel Coco Noir Eau De" [ref=e217]:
+                - generic [ref=e218]:
+                  - button "查看 Chanel Coco Noir Eau De" [ref=e219]:
+                    - img
+                  - button "編輯 Chanel Coco Noir Eau De" [ref=e220]:
+                    - img
+                  - button "複製 Chanel Coco Noir Eau De" [ref=e221]:
+                    - img
+                  - button "封存 Chanel Coco Noir Eau De" [ref=e222]:
+                    - img
+            - row "選取 Dior J'adore Dior J'adore Dior J'adore FRA-DIO-DIO-008 fragrances US$89.99 已發布 98 2026/8/29 查看 Dior J'adore 編輯 Dior J'adore 複製 Dior J'adore 封存 Dior J'adore" [ref=e223]:
+              - cell "選取 Dior J'adore" [ref=e224]:
+                - checkbox "選取 Dior J'adore" [ref=e225] [cursor=pointer]
+              - cell "Dior J'adore Dior J'adore FRA-DIO-DIO-008" [ref=e226]:
+                - generic [ref=e227]:
+                  - img "Dior J'adore" [ref=e228]
+                  - generic [ref=e229]:
+                    - link "Dior J'adore" [ref=e230] [cursor=pointer]:
+                      - /url: /products/8
+                    - generic [ref=e231]: FRA-DIO-DIO-008
+              - cell "fragrances" [ref=e232]
+              - cell "US$89.99" [ref=e233]
+              - cell "已發布" [ref=e234]:
+                - generic [ref=e235]: 已發布
+              - cell "98" [ref=e236]
+              - cell "2026/8/29" [ref=e237]
+              - cell "查看 Dior J'adore 編輯 Dior J'adore 複製 Dior J'adore 封存 Dior J'adore" [ref=e238]:
+                - generic [ref=e239]:
+                  - button "查看 Dior J'adore" [ref=e240]:
+                    - img
+                  - button "編輯 Dior J'adore" [ref=e241]:
+                    - img
+                  - button "複製 Dior J'adore" [ref=e242]:
+                    - img
+                  - button "封存 Dior J'adore" [ref=e243]:
+                    - img
+            - row "選取 Dolce Shine Eau de Dolce Shine Eau de Dolce Shine Eau de FRA-DOL-DOL-009 fragrances US$69.99 已發布 4 2026/8/29 查看 Dolce Shine Eau de 編輯 Dolce Shine Eau de 複製 Dolce Shine Eau de 封存 Dolce Shine Eau de" [ref=e244]:
+              - cell "選取 Dolce Shine Eau de" [ref=e245]:
+                - checkbox "選取 Dolce Shine Eau de" [ref=e246] [cursor=pointer]
+              - cell "Dolce Shine Eau de Dolce Shine Eau de FRA-DOL-DOL-009" [ref=e247]:
+                - generic [ref=e248]:
+                  - img "Dolce Shine Eau de" [ref=e249]
+                  - generic [ref=e250]:
+                    - link "Dolce Shine Eau de" [ref=e251] [cursor=pointer]:
+                      - /url: /products/9
+                    - generic [ref=e252]: FRA-DOL-DOL-009
+              - cell "fragrances" [ref=e253]
+              - cell "US$69.99" [ref=e254]
+              - cell "已發布" [ref=e255]:
+                - generic [ref=e256]: 已發布
+              - cell "4" [ref=e257]
+              - cell "2026/8/29" [ref=e258]
+              - cell "查看 Dolce Shine Eau de 編輯 Dolce Shine Eau de 複製 Dolce Shine Eau de 封存 Dolce Shine Eau de" [ref=e259]:
+                - generic [ref=e260]:
+                  - button "查看 Dolce Shine Eau de" [ref=e261]:
+                    - img
+                  - button "編輯 Dolce Shine Eau de" [ref=e262]:
+                    - img
+                  - button "複製 Dolce Shine Eau de" [ref=e263]:
+                    - img
+                  - button "封存 Dolce Shine Eau de" [ref=e264]:
+                    - img
+            - row "選取 Gucci Bloom Eau de Gucci Bloom Eau de Gucci Bloom Eau de FRA-GUC-GUC-010 fragrances US$79.99 已發布 91 2026/8/29 查看 Gucci Bloom Eau de 編輯 Gucci Bloom Eau de 複製 Gucci Bloom Eau de 封存 Gucci Bloom Eau de" [ref=e265]:
+              - cell "選取 Gucci Bloom Eau de" [ref=e266]:
+                - checkbox "選取 Gucci Bloom Eau de" [ref=e267] [cursor=pointer]
+              - cell "Gucci Bloom Eau de Gucci Bloom Eau de FRA-GUC-GUC-010" [ref=e268]:
+                - generic [ref=e269]:
+                  - img "Gucci Bloom Eau de" [ref=e270]
+                  - generic [ref=e271]:
+                    - link "Gucci Bloom Eau de" [ref=e272] [cursor=pointer]:
+                      - /url: /products/10
+                    - generic [ref=e273]: FRA-GUC-GUC-010
+              - cell "fragrances" [ref=e274]
+              - cell "US$79.99" [ref=e275]
+              - cell "已發布" [ref=e276]:
+                - generic [ref=e277]: 已發布
+              - cell "91" [ref=e278]
+              - cell "2026/8/29" [ref=e279]
+              - cell "查看 Gucci Bloom Eau de 編輯 Gucci Bloom Eau de 複製 Gucci Bloom Eau de 封存 Gucci Bloom Eau de" [ref=e280]:
+                - generic [ref=e281]:
+                  - button "查看 Gucci Bloom Eau de" [ref=e282]:
+                    - img
+                  - button "編輯 Gucci Bloom Eau de" [ref=e283]:
+                    - img
+                  - button "複製 Gucci Bloom Eau de" [ref=e284]:
+                    - img
+                  - button "封存 Gucci Bloom Eau de" [ref=e285]:
+                    - img
+            - row "選取 Annibale Colombo Bed Annibale Colombo Bed Annibale Colombo Bed FUR-ANN-ANN-011 furniture US$1,899.99 已發布 88 2026/8/29 查看 Annibale Colombo Bed 編輯 Annibale Colombo Bed 複製 Annibale Colombo Bed 封存 Annibale Colombo Bed" [ref=e286]:
+              - cell "選取 Annibale Colombo Bed" [ref=e287]:
+                - checkbox "選取 Annibale Colombo Bed" [ref=e288] [cursor=pointer]
+              - cell "Annibale Colombo Bed Annibale Colombo Bed FUR-ANN-ANN-011" [ref=e289]:
+                - generic [ref=e290]:
+                  - img "Annibale Colombo Bed" [ref=e291]
+                  - generic [ref=e292]:
+                    - link "Annibale Colombo Bed" [ref=e293] [cursor=pointer]:
+                      - /url: /products/11
+                    - generic [ref=e294]: FUR-ANN-ANN-011
+              - cell "furniture" [ref=e295]
+              - cell "US$1,899.99" [ref=e296]
+              - cell "已發布" [ref=e297]:
+                - generic [ref=e298]: 已發布
+              - cell "88" [ref=e299]
+              - cell "2026/8/29" [ref=e300]
+              - cell "查看 Annibale Colombo Bed 編輯 Annibale Colombo Bed 複製 Annibale Colombo Bed 封存 Annibale Colombo Bed" [ref=e301]:
+                - generic [ref=e302]:
+                  - button "查看 Annibale Colombo Bed" [ref=e303]:
+                    - img
+                  - button "編輯 Annibale Colombo Bed" [ref=e304]:
+                    - img
+                  - button "複製 Annibale Colombo Bed" [ref=e305]:
+                    - img
+                  - button "封存 Annibale Colombo Bed" [ref=e306]:
+                    - img
+            - row "選取 Annibale Colombo Sofa Annibale Colombo Sofa Annibale Colombo Sofa FUR-ANN-ANN-012 furniture US$2,499.99 已發布 60 2026/8/29 查看 Annibale Colombo Sofa 編輯 Annibale Colombo Sofa 複製 Annibale Colombo Sofa 封存 Annibale Colombo Sofa" [ref=e307]:
+              - cell "選取 Annibale Colombo Sofa" [ref=e308]:
+                - checkbox "選取 Annibale Colombo Sofa" [ref=e309] [cursor=pointer]
+              - cell "Annibale Colombo Sofa Annibale Colombo Sofa FUR-ANN-ANN-012" [ref=e310]:
+                - generic [ref=e311]:
+                  - img "Annibale Colombo Sofa" [ref=e312]
+                  - generic [ref=e313]:
+                    - link "Annibale Colombo Sofa" [ref=e314] [cursor=pointer]:
+                      - /url: /products/12
+                    - generic [ref=e315]: FUR-ANN-ANN-012
+              - cell "furniture" [ref=e316]
+              - cell "US$2,499.99" [ref=e317]
+              - cell "已發布" [ref=e318]:
+                - generic [ref=e319]: 已發布
+              - cell "60" [ref=e320]
+              - cell "2026/8/29" [ref=e321]
+              - cell "查看 Annibale Colombo Sofa 編輯 Annibale Colombo Sofa 複製 Annibale Colombo Sofa 封存 Annibale Colombo Sofa" [ref=e322]:
+                - generic [ref=e323]:
+                  - button "查看 Annibale Colombo Sofa" [ref=e324]:
+                    - img
+                  - button "編輯 Annibale Colombo Sofa" [ref=e325]:
+                    - img
+                  - button "複製 Annibale Colombo Sofa" [ref=e326]:
+                    - img
+                  - button "封存 Annibale Colombo Sofa" [ref=e327]:
+                    - img
+            - row "選取 Bedside Table African Cherry Bedside Table African Cherry Bedside Table African Cherry FUR-FUR-BED-013 furniture US$299.99 已發布 64 2026/8/29 查看 Bedside Table African Cherry 編輯 Bedside Table African Cherry 複製 Bedside Table African Cherry 封存 Bedside Table African Cherry" [ref=e328]:
+              - cell "選取 Bedside Table African Cherry" [ref=e329]:
+                - checkbox "選取 Bedside Table African Cherry" [ref=e330] [cursor=pointer]
+              - cell "Bedside Table African Cherry Bedside Table African Cherry FUR-FUR-BED-013" [ref=e331]:
+                - generic [ref=e332]:
+                  - img "Bedside Table African Cherry" [ref=e333]
+                  - generic [ref=e334]:
+                    - link "Bedside Table African Cherry" [ref=e335] [cursor=pointer]:
+                      - /url: /products/13
+                    - generic [ref=e336]: FUR-FUR-BED-013
+              - cell "furniture" [ref=e337]
+              - cell "US$299.99" [ref=e338]
+              - cell "已發布" [ref=e339]:
+                - generic [ref=e340]: 已發布
+              - cell "64" [ref=e341]
+              - cell "2026/8/29" [ref=e342]
+              - cell "查看 Bedside Table African Cherry 編輯 Bedside Table African Cherry 複製 Bedside Table African Cherry 封存 Bedside Table African Cherry" [ref=e343]:
+                - generic [ref=e344]:
+                  - button "查看 Bedside Table African Cherry" [ref=e345]:
+                    - img
+                  - button "編輯 Bedside Table African Cherry" [ref=e346]:
+                    - img
+                  - button "複製 Bedside Table African Cherry" [ref=e347]:
+                    - img
+                  - button "封存 Bedside Table African Cherry" [ref=e348]:
+                    - img
+            - row "選取 Knoll Saarinen Executive Conference Chair Knoll Saarinen Executive Conference Chair Knoll Saarinen Executive Conference Chair FUR-KNO-KNO-014 furniture US$499.99 已發布 26 2026/8/29 查看 Knoll Saarinen Executive Conference Chair 編輯 Knoll Saarinen Executive Conference Chair 複製 Knoll Saarinen Executive Conference Chair 封存 Knoll Saarinen Executive Conference Chair" [ref=e349]:
+              - cell "選取 Knoll Saarinen Executive Conference Chair" [ref=e350]:
+                - checkbox "選取 Knoll Saarinen Executive Conference Chair" [ref=e351] [cursor=pointer]
+              - cell "Knoll Saarinen Executive Conference Chair Knoll Saarinen Executive Conference Chair FUR-KNO-KNO-014" [ref=e352]:
+                - generic [ref=e353]:
+                  - img "Knoll Saarinen Executive Conference Chair" [ref=e354]
+                  - generic [ref=e355]:
+                    - link "Knoll Saarinen Executive Conference Chair" [ref=e356] [cursor=pointer]:
+                      - /url: /products/14
+                    - generic [ref=e357]: FUR-KNO-KNO-014
+              - cell "furniture" [ref=e358]
+              - cell "US$499.99" [ref=e359]
+              - cell "已發布" [ref=e360]:
+                - generic [ref=e361]: 已發布
+              - cell "26" [ref=e362]
+              - cell "2026/8/29" [ref=e363]
+              - cell "查看 Knoll Saarinen Executive Conference Chair 編輯 Knoll Saarinen Executive Conference Chair 複製 Knoll Saarinen Executive Conference Chair 封存 Knoll Saarinen Executive Conference Chair" [ref=e364]:
+                - generic [ref=e365]:
+                  - button "查看 Knoll Saarinen Executive Conference Chair" [ref=e366]:
+                    - img
+                  - button "編輯 Knoll Saarinen Executive Conference Chair" [ref=e367]:
+                    - img
+                  - button "複製 Knoll Saarinen Executive Conference Chair" [ref=e368]:
+                    - img
+                  - button "封存 Knoll Saarinen Executive Conference Chair" [ref=e369]:
+                    - img
+            - row "選取 Wooden Bathroom Sink With Mirror Wooden Bathroom Sink With Mirror Wooden Bathroom Sink With Mirror FUR-BAT-WOO-015 furniture US$799.99 已發布 7 2026/8/29 查看 Wooden Bathroom Sink With Mirror 編輯 Wooden Bathroom Sink With Mirror 複製 Wooden Bathroom Sink With Mirror 封存 Wooden Bathroom Sink With Mirror" [ref=e370]:
+              - cell "選取 Wooden Bathroom Sink With Mirror" [ref=e371]:
+                - checkbox "選取 Wooden Bathroom Sink With Mirror" [ref=e372] [cursor=pointer]
+              - cell "Wooden Bathroom Sink With Mirror Wooden Bathroom Sink With Mirror FUR-BAT-WOO-015" [ref=e373]:
+                - generic [ref=e374]:
+                  - img "Wooden Bathroom Sink With Mirror" [ref=e375]
+                  - generic [ref=e376]:
+                    - link "Wooden Bathroom Sink With Mirror" [ref=e377] [cursor=pointer]:
+                      - /url: /products/15
+                    - generic [ref=e378]: FUR-BAT-WOO-015
+              - cell "furniture" [ref=e379]
+              - cell "US$799.99" [ref=e380]
+              - cell "已發布" [ref=e381]:
+                - generic [ref=e382]: 已發布
+              - cell "7" [ref=e383]
+              - cell "2026/8/29" [ref=e384]
+              - cell "查看 Wooden Bathroom Sink With Mirror 編輯 Wooden Bathroom Sink With Mirror 複製 Wooden Bathroom Sink With Mirror 封存 Wooden Bathroom Sink With Mirror" [ref=e385]:
+                - generic [ref=e386]:
+                  - button "查看 Wooden Bathroom Sink With Mirror" [ref=e387]:
+                    - img
+                  - button "編輯 Wooden Bathroom Sink With Mirror" [ref=e388]:
+                    - img
+                  - button "複製 Wooden Bathroom Sink With Mirror" [ref=e389]:
+                    - img
+                  - button "封存 Wooden Bathroom Sink With Mirror" [ref=e390]:
+                    - img
+        - navigation "商品分頁" [ref=e392]:
+          - button [disabled]:
+            - img
+          - generic [ref=e393]: 1 / 13
+          - button [ref=e394]:
+            - img

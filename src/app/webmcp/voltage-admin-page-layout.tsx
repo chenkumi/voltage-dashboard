@@ -31,12 +31,6 @@ export const PageLayout = ({
   breadcrumb?: readonly PageBreadcrumb[]
   status?: ReactNode
   actions?: ReactNode
-  /** Legacy display copy is accepted but intentionally not rendered. */
-  eyebrow?: string
-  /** Legacy display copy is accepted but intentionally not rendered. */
-  title?: string
-  /** Legacy display copy is accepted but intentionally not rendered. */
-  detail?: string
   children: ReactNode
 }) => {
   const { t } = useTranslation()

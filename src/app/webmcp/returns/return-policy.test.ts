@@ -32,9 +32,9 @@ describe("return policy", () => {
   })
 
   it("requires complete evidence and rejects final sale or expired returns", () => {
-    expect(
-      checkReturnEligibility({ reason: "wrong_item" }).decision
-    ).toBe("needs_information")
+    expect(checkReturnEligibility({ reason: "wrong_item" }).decision).toBe(
+      "needs_information"
+    )
     expect(
       checkReturnEligibility({
         reason: "wrong_item",

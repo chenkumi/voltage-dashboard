@@ -1,0 +1,525 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - button "V Voltage" [ref=e6] [cursor=pointer]:
+      - generic [ref=e7]: V
+      - strong [ref=e8]: Voltage
+    - generic [ref=e9]:
+      - button "搜尋商品" [ref=e10] [cursor=pointer]:
+        - img [ref=e11]
+        - generic [ref=e14]: 搜尋商品
+        - generic [ref=e15]: /
+      - button "通知" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+      - generic [ref=e20] [cursor=pointer]:
+        - img [ref=e21]
+        - generic [ref=e25]: 切換語言
+        - combobox "切換語言" [ref=e26]:
+          - option "English"
+          - option "繁體中文" [selected]
+      - button "帳號選單" [ref=e27] [cursor=pointer]:
+        - img [ref=e28]
+  - generic [ref=e31]:
+    - complementary "主要導覽" [ref=e32]:
+      - navigation [ref=e33]:
+        - generic [ref=e34]:
+          - heading "營運總覽" [level=2] [ref=e35]
+          - button "儀表板" [ref=e37] [cursor=pointer]:
+            - img [ref=e38]
+            - generic [ref=e43]: 儀表板
+            - img [ref=e44]
+        - generic [ref=e46]:
+          - heading "商品管理" [level=2] [ref=e47]
+          - generic [ref=e48]:
+            - button "商品" [ref=e49] [cursor=pointer]:
+              - img [ref=e50]
+              - generic [ref=e56]: 商品
+              - img [ref=e57]
+            - button "庫存 29" [ref=e195] [cursor=pointer]:
+              - img [ref=e60]
+              - generic [ref=e70]: 庫存
+              - generic [ref=e196]: "29"
+              - img [ref=e71]
+        - generic [ref=e73]:
+          - heading "訂單與顧客" [level=2] [ref=e74]
+          - generic [ref=e75]:
+            - button "訂單" [ref=e76] [cursor=pointer]:
+              - img [ref=e77]
+              - generic [ref=e80]: 訂單
+              - img [ref=e81]
+            - button "顧客" [ref=e83] [cursor=pointer]:
+              - img [ref=e84]
+              - generic [ref=e89]: 顧客
+              - img [ref=e90]
+        - generic [ref=e92]:
+          - heading "營運管理" [level=2] [ref=e93]
+          - generic [ref=e94]:
+            - button "營運案件 5" [ref=e95] [cursor=pointer]:
+              - img [ref=e96]
+              - generic [ref=e98]: 營運案件
+              - generic [ref=e99]: "5"
+              - img [ref=e100]
+            - button "核准收件匣" [ref=e102] [cursor=pointer]:
+              - img [ref=e103]
+              - generic [ref=e106]: 核准收件匣
+              - img [ref=e107]
+        - generic [ref=e109]:
+          - heading "分析" [level=2] [ref=e110]
+          - button "報表" [ref=e112] [cursor=pointer]:
+            - img [ref=e113]
+            - generic [ref=e116]: 報表
+            - img [ref=e117]
+      - generic [ref=e119]:
+        - img [ref=e120]
+        - generic [ref=e122]:
+          - text: 商品範例資料來源：
+          - link "DummyJSON" [ref=e123] [cursor=pointer]:
+            - /url: https://dummyjson.com/products
+    - region "顧客" [ref=e125]:
+      - generic [ref=e127]:
+        - generic [ref=e128]:
+          - navigation "Breadcrumb" [ref=e129]:
+            - list [ref=e130]:
+              - listitem [ref=e131]: 儀表板
+              - listitem [ref=e132]: /顧客
+          - generic [ref=e133]:
+            - heading "顧客" [level=1] [ref=e134]
+            - generic [ref=e136]: 28 位顧客
+        - button "新增顧客" [ref=e138]:
+          - img
+          - text: 新增顧客
+      - generic [ref=e139]:
+        - generic [ref=e142]:
+          - generic [ref=e144]: 顧客總數
+          - strong [ref=e145]: "28"
+          - generic [ref=e146]: 全部顧客紀錄
+        - generic [ref=e149]:
+          - generic [ref=e151]: 啟用顧客
+          - strong [ref=e152]: "27"
+          - generic [ref=e153]: 可提供服務
+        - generic [ref=e156]:
+          - generic [ref=e158]: VIP 顧客
+          - strong [ref=e159]: "9"
+          - generic [ref=e160]: 高價值客群
+        - generic [ref=e163]:
+          - generic [ref=e165]: 已停權顧客
+          - strong [ref=e166]: "1"
+          - generic [ref=e167]: 不列入啟用統計
+        - region "顧客清單" [ref=e169]:
+          - generic [ref=e170]:
+            - generic [ref=e172]:
+              - generic [ref=e173]:
+                - generic [ref=e174]: 搜尋顧客
+                - img
+                - searchbox "搜尋顧客" [ref=e175]
+              - generic [ref=e176]:
+                - combobox "顧客狀態" [ref=e177]:
+                  - generic [ref=e179]: "顧客狀態: 所有顧客狀態"
+                  - img: ▼
+                - textbox [ref=e180]: all
+                - combobox "客群" [ref=e181]:
+                  - generic [ref=e183]: "客群: 所有客群"
+                  - img: ▼
+                - textbox [ref=e184]: all
+                - combobox "區域" [ref=e185]:
+                  - generic [ref=e187]: "區域: 所有區域"
+                  - img: ▼
+                - textbox [ref=e188]: all
+                - button "更多篩選" [expanded] [ref=e189]:
+                  - img
+                - dialog "更多篩選" [ref=e523]:
+                  - heading "更多篩選" [level=2] [ref=e525]
+                  - generic [ref=e527]:
+                    - generic [ref=e528]:
+                      - generic [ref=e529]: 標籤
+                      - combobox "標籤" [ref=e530]:
+                        - generic [ref=e532]: "標籤: 所有標籤"
+                        - img: ▼
+                      - textbox [ref=e533]: all
+                    - generic [ref=e534]:
+                      - generic [ref=e535]: 最近活動
+                      - combobox "最近活動" [ref=e536]:
+                        - generic [ref=e538]: "最近活動: 所有活動期間"
+                        - img: ▼
+                      - textbox [ref=e539]: all
+                    - generic [ref=e540]:
+                      - generic [ref=e541]: 消費幣別
+                      - combobox "消費幣別" [ref=e542]:
+                        - generic [ref=e544]: "消費幣別: USD"
+                        - img: ▼
+                      - textbox [ref=e545]: USD
+                    - generic [ref=e546]:
+                      - generic [ref=e547]: 最低消費
+                      - spinbutton "最低消費" [ref=e548]
+                    - generic [ref=e549]:
+                      - generic [ref=e550]: 最高消費
+                      - spinbutton "最高消費" [ref=e551]
+                    - generic [ref=e552]:
+                      - generic [ref=e553]: 排序
+                      - combobox "排序" [ref=e554]:
+                        - generic [ref=e556]: "排序: 最近活動優先"
+                        - img: ▼
+                      - textbox [ref=e557]: activity-desc
+                  - generic [ref=e558]:
+                    - button "清除" [active] [ref=e559]
+                    - generic [ref=e560]:
+                      - button "取消" [ref=e561]
+                      - button "套用" [ref=e562]
+            - generic [ref=e192]: 顯示 1–15／28
+            - table [ref=e198]:
+              - rowgroup [ref=e199]:
+                - row "顧客 狀態 客群與區域 安全標籤 訂單 累積消費 最近購買 操作" [ref=e200]:
+                  - columnheader "顧客" [ref=e201]
+                  - columnheader "狀態" [ref=e202]
+                  - columnheader "客群與區域" [ref=e203]
+                  - columnheader "安全標籤" [ref=e204]
+                  - columnheader "訂單" [ref=e205]
+                  - columnheader "累積消費" [ref=e206]
+                  - columnheader "最近購買" [ref=e207]
+                  - columnheader "操作" [ref=e208]
+              - rowgroup [ref=e209]:
+                - row "CUST-1011 測••• · c•••@example.test 啟用 回購客戶 南區 回購顧客 4 USD 22,319.05 TWD 0.00 2026年8月24日 下午1:00 快速檢視 詳細資料" [ref=e210]:
+                  - cell "CUST-1011 測••• · c•••@example.test" [ref=e211]:
+                    - strong [ref=e212]: CUST-1011
+                    - generic [ref=e213]: 測••• · c•••@example.test
+                  - cell "啟用" [ref=e214]:
+                    - generic [ref=e215]: 啟用
+                  - cell "回購客戶 南區" [ref=e216]:
+                    - generic [ref=e217]: 回購客戶
+                    - generic [ref=e218]: 南區
+                  - cell "回購顧客" [ref=e219]:
+                    - generic [ref=e221]: 回購顧客
+                  - cell "4" [ref=e222]
+                  - cell "USD 22,319.05 TWD 0.00" [ref=e223]:
+                    - generic [ref=e224]: USD 22,319.05
+                    - text: TWD 0.00
+                  - cell "2026年8月24日 下午1:00" [ref=e225]
+                  - cell "快速檢視 詳細資料" [ref=e226]:
+                    - generic [ref=e227]:
+                      - button "快速檢視" [ref=e228]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e229]
+                - row "CUST-1014 測••• · c•••@example.test 啟用 回購客戶 中區 回購顧客 4 USD 20,566.19 TWD 0.00 2026年8月19日 上午10:00 快速檢視 詳細資料" [ref=e230]:
+                  - cell "CUST-1014 測••• · c•••@example.test" [ref=e231]:
+                    - strong [ref=e232]: CUST-1014
+                    - generic [ref=e233]: 測••• · c•••@example.test
+                  - cell "啟用" [ref=e234]:
+                    - generic [ref=e235]: 啟用
+                  - cell "回購客戶 中區" [ref=e236]:
+                    - generic [ref=e237]: 回購客戶
+                    - generic [ref=e238]: 中區
+                  - cell "回購顧客" [ref=e239]:
+                    - generic [ref=e241]: 回購顧客
+                  - cell "4" [ref=e242]
+                  - cell "USD 20,566.19 TWD 0.00" [ref=e243]:
+                    - generic [ref=e244]: USD 20,566.19
+                    - text: TWD 0.00
+                  - cell "2026年8月19日 上午10:00" [ref=e245]
+                  - cell "快速檢視 詳細資料" [ref=e246]:
+                    - generic [ref=e247]:
+                      - button "快速檢視" [ref=e248]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e249]
+                - row "CUST-1002 測••• · c•••@example.test 啟用 回購客戶 中區 回購顧客 4 USD 2,068.45 TWD 0.00 2026年8月15日 晚上10:00 快速檢視 詳細資料" [ref=e250]:
+                  - cell "CUST-1002 測••• · c•••@example.test" [ref=e251]:
+                    - strong [ref=e252]: CUST-1002
+                    - generic [ref=e253]: 測••• · c•••@example.test
+                  - cell "啟用" [ref=e254]:
+                    - generic [ref=e255]: 啟用
+                  - cell "回購客戶 中區" [ref=e256]:
+                    - generic [ref=e257]: 回購客戶
+                    - generic [ref=e258]: 中區
+                  - cell "回購顧客" [ref=e259]:
+                    - generic [ref=e261]: 回購顧客
+                  - cell "4" [ref=e262]
+                  - cell "USD 2,068.45 TWD 0.00" [ref=e263]:
+                    - generic [ref=e264]: USD 2,068.45
+                    - text: TWD 0.00
+                  - cell "2026年8月15日 晚上10:00" [ref=e265]
+                  - cell "快速檢視 詳細資料" [ref=e266]:
+                    - generic [ref=e267]:
+                      - button "快速檢視" [ref=e268]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e269]
+                - row "CUST-1026 測••• · c•••@example.test 已停權 回購客戶 中區 回購顧客 0 USD 0.00 TWD 0.00 沒有訂單 快速檢視 詳細資料" [ref=e270]:
+                  - cell "CUST-1026 測••• · c•••@example.test" [ref=e271]:
+                    - strong [ref=e272]: CUST-1026
+                    - generic [ref=e273]: 測••• · c•••@example.test
+                  - cell "已停權" [ref=e274]:
+                    - generic [ref=e275]: 已停權
+                  - cell "回購客戶 中區" [ref=e276]:
+                    - generic [ref=e277]: 回購客戶
+                    - generic [ref=e278]: 中區
+                  - cell "回購顧客" [ref=e279]:
+                    - generic [ref=e281]: 回購顧客
+                  - cell "0" [ref=e282]
+                  - cell "USD 0.00 TWD 0.00" [ref=e283]:
+                    - generic [ref=e284]: USD 0.00
+                    - text: TWD 0.00
+                  - cell "沒有訂單" [ref=e285]
+                  - cell "快速檢視 詳細資料" [ref=e286]:
+                    - generic [ref=e287]:
+                      - button "快速檢視" [ref=e288]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e289]
+                - row "CUST-1005 測••• · c•••@example.test 啟用 回購客戶 北區 回購顧客 4 USD 519.54 TWD 0.00 2026年8月10日 晚上7:00 快速檢視 詳細資料" [ref=e290]:
+                  - cell "CUST-1005 測••• · c•••@example.test" [ref=e291]:
+                    - strong [ref=e292]: CUST-1005
+                    - generic [ref=e293]: 測••• · c•••@example.test
+                  - cell "啟用" [ref=e294]:
+                    - generic [ref=e295]: 啟用
+                  - cell "回購客戶 北區" [ref=e296]:
+                    - generic [ref=e297]: 回購客戶
+                    - generic [ref=e298]: 北區
+                  - cell "回購顧客" [ref=e299]:
+                    - generic [ref=e301]: 回購顧客
+                  - cell "4" [ref=e302]
+                  - cell "USD 519.54 TWD 0.00" [ref=e303]:
+                    - generic [ref=e304]: USD 519.54
+                    - text: TWD 0.00
+                  - cell "2026年8月10日 晚上7:00" [ref=e305]
+                  - cell "快速檢視 詳細資料" [ref=e306]:
+                    - generic [ref=e307]:
+                      - button "快速檢視" [ref=e308]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e309]
+                - row "CUST-1008 測••• · c•••@example.test 啟用 回購客戶 東區 回購顧客 4 USD 36,334.63 TWD 0.00 2026年8月5日 下午4:00 快速檢視 詳細資料" [ref=e310]:
+                  - cell "CUST-1008 測••• · c•••@example.test" [ref=e311]:
+                    - strong [ref=e312]: CUST-1008
+                    - generic [ref=e313]: 測••• · c•••@example.test
+                  - cell "啟用" [ref=e314]:
+                    - generic [ref=e315]: 啟用
+                  - cell "回購客戶 東區" [ref=e316]:
+                    - generic [ref=e317]: 回購客戶
+                    - generic [ref=e318]: 東區
+                  - cell "回購顧客" [ref=e319]:
+                    - generic [ref=e321]: 回購顧客
+                  - cell "4" [ref=e322]
+                  - cell "USD 36,334.63 TWD 0.00" [ref=e323]:
+                    - generic [ref=e324]: USD 36,334.63
+                    - text: TWD 0.00
+                  - cell "2026年8月5日 下午4:00" [ref=e325]
+                  - cell "快速檢視 詳細資料" [ref=e326]:
+                    - generic [ref=e327]:
+                      - button "快速檢視" [ref=e328]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e329]
+                - row "CUST-1007 測••• · c•••@example.test 啟用 新客戶 南區 新顧客 4 USD 1,289.84 TWD 0.00 2026年7月22日 下午3:00 快速檢視 詳細資料" [ref=e330]:
+                  - cell "CUST-1007 測••• · c•••@example.test" [ref=e331]:
+                    - strong [ref=e332]: CUST-1007
+                    - generic [ref=e333]: 測••• · c•••@example.test
+                  - cell "啟用" [ref=e334]:
+                    - generic [ref=e335]: 啟用
+                  - cell "新客戶 南區" [ref=e336]:
+                    - generic [ref=e337]: 新客戶
+                    - generic [ref=e338]: 南區
+                  - cell "新顧客" [ref=e339]:
+                    - generic [ref=e341]: 新顧客
+                  - cell "4" [ref=e342]
+                  - cell "USD 1,289.84 TWD 0.00" [ref=e343]:
+                    - generic [ref=e344]: USD 1,289.84
+                    - text: TWD 0.00
+                  - cell "2026年7月22日 下午3:00" [ref=e345]
+                  - cell "快速檢視 詳細資料" [ref=e346]:
+                    - generic [ref=e347]:
+                      - button "快速檢視" [ref=e348]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e349]
+                - row "CUST-1010 測••• · c•••@example.test 啟用 新客戶 中區 新顧客 4 USD 6,873.87 TWD 0.00 2026年7月17日 中午12:00 快速檢視 詳細資料" [ref=e350]:
+                  - cell "CUST-1010 測••• · c•••@example.test" [ref=e351]:
+                    - strong [ref=e352]: CUST-1010
+                    - generic [ref=e353]: 測••• · c•••@example.test
+                  - cell "啟用" [ref=e354]:
+                    - generic [ref=e355]: 啟用
+                  - cell "新客戶 中區" [ref=e356]:
+                    - generic [ref=e357]: 新客戶
+                    - generic [ref=e358]: 中區
+                  - cell "新顧客" [ref=e359]:
+                    - generic [ref=e361]: 新顧客
+                  - cell "4" [ref=e362]
+                  - cell "USD 6,873.87 TWD 0.00" [ref=e363]:
+                    - generic [ref=e364]: USD 6,873.87
+                    - text: TWD 0.00
+                  - cell "2026年7月17日 中午12:00" [ref=e365]
+                  - cell "快速檢視 詳細資料" [ref=e366]:
+                    - generic [ref=e367]:
+                      - button "快速檢視" [ref=e368]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e369]
+                - row "CUST-1013 測••• · c•••@example.test 啟用 新客戶 北區 新顧客 4 USD 11,048.48 TWD 0.00 2026年7月13日 凌晨1:00 快速檢視 詳細資料" [ref=e370]:
+                  - cell "CUST-1013 測••• · c•••@example.test" [ref=e371]:
+                    - strong [ref=e372]: CUST-1013
+                    - generic [ref=e373]: 測••• · c•••@example.test
+                  - cell "啟用" [ref=e374]:
+                    - generic [ref=e375]: 啟用
+                  - cell "新客戶 北區" [ref=e376]:
+                    - generic [ref=e377]: 新客戶
+                    - generic [ref=e378]: 北區
+                  - cell "新顧客" [ref=e379]:
+                    - generic [ref=e381]: 新顧客
+                  - cell "4" [ref=e382]
+                  - cell "USD 11,048.48 TWD 0.00" [ref=e383]:
+                    - generic [ref=e384]: USD 11,048.48
+                    - text: TWD 0.00
+                  - cell "2026年7月13日 凌晨1:00" [ref=e385]
+                  - cell "快速檢視 詳細資料" [ref=e386]:
+                    - generic [ref=e387]:
+                      - button "快速檢視" [ref=e388]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e389]
+                - row "CUST-1001 測••• · c•••@example.test 啟用 新客戶 北區 新顧客 4 USD 696.28 TWD 0.00 2026年7月8日 晚上9:00 快速檢視 詳細資料" [ref=e390]:
+                  - cell "CUST-1001 測••• · c•••@example.test" [ref=e391]:
+                    - strong [ref=e392]: CUST-1001
+                    - generic [ref=e393]: 測••• · c•••@example.test
+                  - cell "啟用" [ref=e394]:
+                    - generic [ref=e395]: 啟用
+                  - cell "新客戶 北區" [ref=e396]:
+                    - generic [ref=e397]: 新客戶
+                    - generic [ref=e398]: 北區
+                  - cell "新顧客" [ref=e399]:
+                    - generic [ref=e401]: 新顧客
+                  - cell "4" [ref=e402]
+                  - cell "USD 696.28 TWD 0.00" [ref=e403]:
+                    - generic [ref=e404]: USD 696.28
+                    - text: TWD 0.00
+                  - cell "2026年7月8日 晚上9:00" [ref=e405]
+                  - cell "快速檢視 詳細資料" [ref=e406]:
+                    - generic [ref=e407]:
+                      - button "快速檢視" [ref=e408]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e409]
+                - row "CUST-1004 測••• · c•••@example.test 啟用 新客戶 東區 新顧客 4 USD 270.28 TWD 0.00 2026年7月3日 下午6:00 快速檢視 詳細資料" [ref=e410]:
+                  - cell "CUST-1004 測••• · c•••@example.test" [ref=e411]:
+                    - strong [ref=e412]: CUST-1004
+                    - generic [ref=e413]: 測••• · c•••@example.test
+                  - cell "啟用" [ref=e414]:
+                    - generic [ref=e415]: 啟用
+                  - cell "新客戶 東區" [ref=e416]:
+                    - generic [ref=e417]: 新客戶
+                    - generic [ref=e418]: 東區
+                  - cell "新顧客" [ref=e419]:
+                    - generic [ref=e421]: 新顧客
+                  - cell "4" [ref=e422]
+                  - cell "USD 270.28 TWD 0.00" [ref=e423]:
+                    - generic [ref=e424]: USD 270.28
+                    - text: TWD 0.00
+                  - cell "2026年7月3日 下午6:00" [ref=e425]
+                  - cell "快速檢視 詳細資料" [ref=e426]:
+                    - generic [ref=e427]:
+                      - button "快速檢視" [ref=e428]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e429]
+                - row "CUST-1003 測••• · c•••@example.test 啟用 VIP 南區 高價值 回購顧客 3 USD 827.20 TWD 0.00 2026年6月25日 晚上8:00 快速檢視 詳細資料" [ref=e430]:
+                  - cell "CUST-1003 測••• · c•••@example.test" [ref=e431]:
+                    - strong [ref=e432]: CUST-1003
+                    - generic [ref=e433]: 測••• · c•••@example.test
+                  - cell "啟用" [ref=e434]:
+                    - generic [ref=e435]: 啟用
+                  - cell "VIP 南區" [ref=e436]:
+                    - generic [ref=e437]: VIP
+                    - generic [ref=e438]: 南區
+                  - cell "高價值 回購顧客" [ref=e439]:
+                    - generic [ref=e440]:
+                      - generic [ref=e441]: 高價值
+                      - generic [ref=e442]: 回購顧客
+                  - cell "3" [ref=e443]
+                  - cell "USD 827.20 TWD 0.00" [ref=e444]:
+                    - generic [ref=e445]: USD 827.20
+                    - text: TWD 0.00
+                  - cell "2026年6月25日 晚上8:00" [ref=e446]
+                  - cell "快速檢視 詳細資料" [ref=e447]:
+                    - generic [ref=e448]:
+                      - button "快速檢視" [ref=e449]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e450]
+                - row "CUST-1006 測••• · c•••@example.test 啟用 VIP 中區 高價值 回購顧客 3 USD 285.42 TWD 0.00 2026年6月20日 下午5:00 快速檢視 詳細資料" [ref=e451]:
+                  - cell "CUST-1006 測••• · c•••@example.test" [ref=e452]:
+                    - strong [ref=e453]: CUST-1006
+                    - generic [ref=e454]: 測••• · c•••@example.test
+                  - cell "啟用" [ref=e455]:
+                    - generic [ref=e456]: 啟用
+                  - cell "VIP 中區" [ref=e457]:
+                    - generic [ref=e458]: VIP
+                    - generic [ref=e459]: 中區
+                  - cell "高價值 回購顧客" [ref=e460]:
+                    - generic [ref=e461]:
+                      - generic [ref=e462]: 高價值
+                      - generic [ref=e463]: 回購顧客
+                  - cell "3" [ref=e464]
+                  - cell "USD 285.42 TWD 0.00" [ref=e465]:
+                    - generic [ref=e466]: USD 285.42
+                    - text: TWD 0.00
+                  - cell "2026年6月20日 下午5:00" [ref=e467]
+                  - cell "快速檢視 詳細資料" [ref=e468]:
+                    - generic [ref=e469]:
+                      - button "快速檢視" [ref=e470]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e471]
+                - row "CUST-1009 測••• · c•••@example.test 啟用 VIP 北區 高價值 回購顧客 3 USD 4,158.36 TWD 0.00 2026年6月15日 下午2:00 快速檢視 詳細資料" [ref=e472]:
+                  - cell "CUST-1009 測••• · c•••@example.test" [ref=e473]:
+                    - strong [ref=e474]: CUST-1009
+                    - generic [ref=e475]: 測••• · c•••@example.test
+                  - cell "啟用" [ref=e476]:
+                    - generic [ref=e477]: 啟用
+                  - cell "VIP 北區" [ref=e478]:
+                    - generic [ref=e479]: VIP
+                    - generic [ref=e480]: 北區
+                  - cell "高價值 回購顧客" [ref=e481]:
+                    - generic [ref=e482]:
+                      - generic [ref=e483]: 高價值
+                      - generic [ref=e484]: 回購顧客
+                  - cell "3" [ref=e485]
+                  - cell "USD 4,158.36 TWD 0.00" [ref=e486]:
+                    - generic [ref=e487]: USD 4,158.36
+                    - text: TWD 0.00
+                  - cell "2026年6月15日 下午2:00" [ref=e488]
+                  - cell "快速檢視 詳細資料" [ref=e489]:
+                    - generic [ref=e490]:
+                      - button "快速檢視" [ref=e491]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e492]
+                - row "CUST-1012 測••• · c•••@example.test 啟用 VIP 東區 高價值 回購顧客 3 USD 10,312.69 TWD 0.00 2026年6月10日 上午11:00 快速檢視 詳細資料" [ref=e493]:
+                  - cell "CUST-1012 測••• · c•••@example.test" [ref=e494]:
+                    - strong [ref=e495]: CUST-1012
+                    - generic [ref=e496]: 測••• · c•••@example.test
+                  - cell "啟用" [ref=e497]:
+                    - generic [ref=e498]: 啟用
+                  - cell "VIP 東區" [ref=e499]:
+                    - generic [ref=e500]: VIP
+                    - generic [ref=e501]: 東區
+                  - cell "高價值 回購顧客" [ref=e502]:
+                    - generic [ref=e503]:
+                      - generic [ref=e504]: 高價值
+                      - generic [ref=e505]: 回購顧客
+                  - cell "3" [ref=e506]
+                  - cell "USD 10,312.69 TWD 0.00" [ref=e507]:
+                    - generic [ref=e508]: USD 10,312.69
+                    - text: TWD 0.00
+                  - cell "2026年6月10日 上午11:00" [ref=e509]
+                  - cell "快速檢視 詳細資料" [ref=e510]:
+                    - generic [ref=e511]:
+                      - button "快速檢視" [ref=e512]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e513]
+            - navigation "顧客分頁" [ref=e515]:
+              - button "上一頁" [disabled]:
+                - img
+                - generic: 上一頁
+              - generic [ref=e516]: 1 / 2
+              - button "下一頁" [ref=e517]:
+                - generic [ref=e518]: 下一頁
+                - img

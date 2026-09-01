@@ -1,0 +1,47 @@
+- generic [ref=e6]:
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - img [ref=e11]
+        - generic [ref=e14]:
+          - paragraph [ref=e15]: WebMCP workspace
+          - heading "Embedded web surface" [level=2] [ref=e16]
+      - generic [ref=e17]:
+        - generic [ref=e18]: Embedded website
+        - combobox "Embedded website" [ref=e19]:
+          - option "Cinder Studio" [selected]
+          - option "Voltage Market"
+        - generic [ref=e20]: Waiting for iframe
+        - button "Refresh WebMCP tools" [ref=e22]:
+          - img
+    - generic [ref=e23]:
+      - iframe [ref=e25]
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - generic [ref=e28]:
+            - generic [ref=e29]:
+              - img [ref=e30]
+              - heading "Tools from iframe" [level=3] [ref=e32]
+            - generic [ref=e33]: 0 available
+          - paragraph [ref=e71]: 工具會在 iframe 載入後自動同步到右側 Agent。
+        - generic [ref=e35]:
+          - generic [ref=e36]:
+            - img [ref=e37]
+            - generic [ref=e40]: Scoped tool access
+          - text: 右側 Chat Room 僅會收到這個 iframe 暴露的 tools；目前使用同源 demo，方便驗證 discovery 與 execution flow。
+  - generic [ref=e42]:
+    - generic [ref=e43]:
+      - img [ref=e45]
+      - heading "New Chat" [level=1] [ref=e48]
+      - button "New Thread" [ref=e49]:
+        - img
+        - generic [ref=e50]: New Thread
+    - region "Chat history" [ref=e51]:
+      - generic [ref=e52]: Hi, how can I help you?
+    - generic [ref=e53]:
+      - textbox "Send Message" [ref=e54]:
+        - /placeholder: "You say: Shift+Enter for a new line"
+      - button "Send message" [disabled]:
+        - img
+        - generic: Send
+  - region "Notifications alt+T"

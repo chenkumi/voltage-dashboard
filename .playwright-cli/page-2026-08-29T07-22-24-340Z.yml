@@ -1,0 +1,182 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "Operations workspace Voltage Dashboard" [ref=e6] [cursor=pointer]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - generic [ref=e12]: Operations workspace
+          - strong [ref=e13]: Voltage Dashboard
+      - generic [ref=e14]: Demo workspace · local data
+    - generic [ref=e15]:
+      - navigation "Voltage Dashboard navigation" [ref=e16]:
+        - paragraph [ref=e17]: Workspace
+        - generic [ref=e18]:
+          - button "Dashboard" [ref=e19] [cursor=pointer]:
+            - img [ref=e20]
+            - text: Dashboard
+          - button "Products" [ref=e25] [cursor=pointer]:
+            - img [ref=e26]
+            - text: Products
+          - button "Orders" [ref=e32] [cursor=pointer]:
+            - img [ref=e33]
+            - text: Orders
+          - button "Customers" [ref=e36] [cursor=pointer]:
+            - img [ref=e37]
+            - text: Customers
+          - button "Inventory 29" [ref=e42] [cursor=pointer]:
+            - img [ref=e43]
+            - text: Inventory
+            - generic [ref=e53]: "29"
+          - button "Reports" [ref=e54] [cursor=pointer]:
+            - img [ref=e55]
+            - text: Reports
+          - button "Catalog Intake 2" [ref=e58] [cursor=pointer]:
+            - img [ref=e59]
+            - text: Catalog Intake
+            - generic [ref=e63]: "2"
+          - button "Operations Cases 5" [ref=e64] [cursor=pointer]:
+            - img [ref=e65]
+            - text: Operations Cases
+            - generic [ref=e67]: "5"
+          - button "Approval Inbox" [ref=e68] [cursor=pointer]:
+            - img [ref=e69]
+            - text: Approval Inbox
+        - complementary [ref=e72]:
+          - img [ref=e73]
+          - paragraph [ref=e75]: Data is sourced from an embedded, anonymous product catalog.
+      - region "Operations Cases" [ref=e77]:
+        - generic [ref=e79]:
+          - paragraph [ref=e80]: Exception operations
+          - heading "Triage cases without changing orders." [level=1] [ref=e81]
+          - generic [ref=e82]: 5 cases are waiting for a classification draft.
+        - generic [ref=e83]:
+          - generic [ref=e85]:
+            - generic [ref=e86]:
+              - generic [ref=e87]: Case type
+              - combobox "Case type" [ref=e88]:
+                - option "All types" [selected]
+                - option "Fulfillment"
+                - option "Payment check"
+                - option "Address validation"
+                - option "Return request"
+            - generic [ref=e89]:
+              - generic [ref=e90]: Status
+              - combobox "Status" [ref=e91]:
+                - option "All statuses" [selected]
+                - option "Open"
+                - option "Drafted"
+                - option "Pending review"
+                - option "Resolved"
+            - generic [ref=e92]:
+              - generic [ref=e93]: Priority
+              - combobox "Priority" [ref=e94]:
+                - option "All priorities" [selected]
+                - option "Low"
+                - option "Medium"
+                - option "High"
+            - generic [ref=e95]: 5 matching cases
+          - region "Operations case list" [ref=e97]:
+            - generic [ref=e98]:
+              - button "CASE-2001 Fulfillment open Reason code · dispatch_overdue high priority dispatch_sla_exceeded inventory_reserved" [pressed] [ref=e99] [cursor=pointer]:
+                - generic [ref=e100]:
+                  - generic [ref=e101]:
+                    - generic [ref=e102]: CASE-2001
+                    - strong [ref=e103]: Fulfillment
+                  - generic [ref=e104]: open
+                - generic [ref=e105]: Reason code · dispatch_overdue
+                - generic [ref=e106]:
+                  - generic [ref=e107]: high priority
+                  - generic [ref=e108]: dispatch_sla_exceeded
+                  - generic [ref=e109]: inventory_reserved
+              - button "CASE-2002 Payment check open Reason code · authorization_failed medium priority authorization_failed retry_not_started" [ref=e110] [cursor=pointer]:
+                - generic [ref=e111]:
+                  - generic [ref=e112]:
+                    - generic [ref=e113]: CASE-2002
+                    - strong [ref=e114]: Payment check
+                  - generic [ref=e115]: open
+                - generic [ref=e116]: Reason code · authorization_failed
+                - generic [ref=e117]:
+                  - generic [ref=e118]: medium priority
+                  - generic [ref=e119]: authorization_failed
+                  - generic [ref=e120]: retry_not_started
+              - button "CASE-2003 Address validation open Reason code · address_unverified medium priority validation_failed dispatch_blocked" [ref=e121] [cursor=pointer]:
+                - generic [ref=e122]:
+                  - generic [ref=e123]:
+                    - generic [ref=e124]: CASE-2003
+                    - strong [ref=e125]: Address validation
+                  - generic [ref=e126]: open
+                - generic [ref=e127]: Reason code · address_unverified
+                - generic [ref=e128]:
+                  - generic [ref=e129]: medium priority
+                  - generic [ref=e130]: validation_failed
+                  - generic [ref=e131]: dispatch_blocked
+              - button "CASE-2004 Return request open Reason code · return_requested low priority delivered return_reason_changed_mind" [ref=e132] [cursor=pointer]:
+                - generic [ref=e133]:
+                  - generic [ref=e134]:
+                    - generic [ref=e135]: CASE-2004
+                    - strong [ref=e136]: Return request
+                  - generic [ref=e137]: open
+                - generic [ref=e138]: Reason code · return_requested
+                - generic [ref=e139]:
+                  - generic [ref=e140]: low priority
+                  - generic [ref=e141]: delivered
+                  - generic [ref=e142]: return_reason_changed_mind
+              - button "CASE-2005 Return request open Reason code · return_requested medium priority delivered return_reason_unspecified" [ref=e143] [cursor=pointer]:
+                - generic [ref=e144]:
+                  - generic [ref=e145]:
+                    - generic [ref=e146]: CASE-2005
+                    - strong [ref=e147]: Return request
+                  - generic [ref=e148]: open
+                - generic [ref=e149]: Reason code · return_requested
+                - generic [ref=e150]:
+                  - generic [ref=e151]: medium priority
+                  - generic [ref=e152]: delivered
+                  - generic [ref=e153]: return_reason_unspecified
+          - article [ref=e155]:
+            - generic [ref=e156]:
+              - generic [ref=e157]:
+                - paragraph [ref=e158]: Classification draft
+                - heading "CASE-2001" [level=2] [ref=e159]
+              - generic [ref=e160]: Not saved
+            - generic [ref=e161]:
+              - generic [ref=e162]:
+                - generic [ref=e163]: Category
+                - combobox "Category" [ref=e164]:
+                  - option "Fulfillment follow-up" [selected]
+                  - option "Payment status review"
+                  - option "Address validation review"
+                  - option "Return policy review"
+              - generic [ref=e165]:
+                - generic [ref=e166]: Priority
+                - combobox "Priority" [ref=e167]:
+                  - option "Low"
+                  - option "Medium"
+                  - option "High" [selected]
+              - group "Evidence status codes" [ref=e168]:
+                - generic [ref=e169]: Evidence status codes
+                - generic [ref=e170]:
+                  - generic [ref=e171]:
+                    - checkbox "dispatch_sla_exceeded" [checked] [ref=e172]
+                    - text: dispatch_sla_exceeded
+                  - generic [ref=e173]:
+                    - checkbox "inventory_reserved" [checked] [ref=e174]
+                    - text: inventory_reserved
+              - generic [ref=e175]:
+                - generic [ref=e176]: Recommended next step
+                - textbox "Recommended next step" [ref=e177]: Review the safe status codes and route this case.
+              - generic [ref=e178]:
+                - generic [ref=e179]: Customer support draft
+                - textbox "Customer support draft" [ref=e180]: The request is under operational review. A final decision has not been made.
+            - generic [ref=e181]:
+              - status
+              - generic [ref=e182]:
+                - button "Save draft" [ref=e183] [cursor=pointer]:
+                  - img
+                  - text: Save draft
+                - button "Queue review" [ref=e184] [cursor=pointer]:
+                  - img
+                  - text: Queue review
+                - button "Complete simulated handling" [ref=e185] [cursor=pointer]:
+                  - img
+                  - text: Complete simulated handling
+            - paragraph [ref=e186]: Human-only demo control. This does not refund, cancel, pay, or modify an order.

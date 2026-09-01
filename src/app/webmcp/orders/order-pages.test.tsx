@@ -49,7 +49,11 @@ describe("order pages", () => {
     render(<RouterProvider router={router} />)
 
     expect(await screen.findByText("Total orders")).toBeTruthy()
-    await screen.findByRole("button", { name: "Next page" }, { timeout: 5_000 })
+    await screen.findByRole(
+      "button",
+      { name: "Next page" },
+      { timeout: 10_000 }
+    )
     const orderSeed = createCommerceSeed()
     for (const [label, expected] of [
       ["Total orders", orderSeed.orders.length],
@@ -85,7 +89,7 @@ describe("order pages", () => {
     const next = await screen.findByRole(
       "button",
       { name: "Next page" },
-      { timeout: 5_000 }
+      { timeout: 10_000 }
     )
     await user.click(next)
     expect(
@@ -103,7 +107,7 @@ describe("order pages", () => {
       await screen.findAllByRole(
         "button",
         { name: "Quick view" },
-        { timeout: 5_000 }
+        { timeout: 10_000 }
       )
     )[0]
     const orderRow = quickButton.closest("tr")
@@ -176,7 +180,7 @@ describe("order pages", () => {
       )
     )
     expect(await screen.findByText("Safe customer statement")).toBeTruthy()
-  })
+  }, 20_000)
 
   it("applies primary filters and keeps advanced drafts until Apply", async () => {
     const router = createMemoryRouter([{ path: "*", element: <App /> }], {

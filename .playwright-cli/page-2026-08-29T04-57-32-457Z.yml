@@ -1,0 +1,77 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "Operations workspace Voltage Dashboard" [ref=e6] [cursor=pointer]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - generic [ref=e12]: Operations workspace
+          - strong [ref=e13]: Voltage Dashboard
+      - generic [ref=e14]: Demo workspace · local data
+    - generic [ref=e15]:
+      - navigation "Voltage Dashboard navigation" [ref=e16]:
+        - paragraph [ref=e17]: Workspace
+        - generic [ref=e18]:
+          - button "Dashboard" [ref=e19] [cursor=pointer]:
+            - img [ref=e20]
+            - text: Dashboard
+          - button "Products" [ref=e25] [cursor=pointer]:
+            - img [ref=e26]
+            - text: Products
+          - button "Orders" [ref=e32] [cursor=pointer]:
+            - img [ref=e33]
+            - text: Orders
+          - button "Customers" [ref=e36] [cursor=pointer]:
+            - img [ref=e37]
+            - text: Customers
+          - button "Inventory 29" [ref=e42] [cursor=pointer]:
+            - img [ref=e43]
+            - text: Inventory
+            - generic [ref=e53]: "29"
+          - button "Reports" [ref=e54] [cursor=pointer]:
+            - img [ref=e55]
+            - text: Reports
+        - complementary [ref=e58]:
+          - img [ref=e59]
+          - paragraph [ref=e61]: Data is sourced from an embedded, anonymous product catalog.
+      - region "Voltage Dashboard Customers" [ref=e63]:
+        - generic [ref=e64]:
+          - paragraph [ref=e65]: Customer intelligence
+          - heading "Segments without identities." [level=1] [ref=e66]
+          - generic [ref=e67]: Only non-identifying demo references are available to the agent.
+        - generic [ref=e68]:
+          - article [ref=e69]:
+            - generic [ref=e70]:
+              - generic [ref=e71]: CUST-1042
+              - generic [ref=e72]: VIP
+            - strong [ref=e73]: $1,840
+            - paragraph [ref=e74]: 12 orders · active Today
+          - article [ref=e75]:
+            - generic [ref=e76]:
+              - generic [ref=e77]: CUST-1187
+              - generic [ref=e78]: Returning
+            - strong [ref=e79]: $612
+            - paragraph [ref=e80]: 6 orders · active Today
+          - article [ref=e81]:
+            - generic [ref=e82]:
+              - generic [ref=e83]: CUST-1219
+              - generic [ref=e84]: New
+            - strong [ref=e85]: $74
+            - paragraph [ref=e86]: 1 orders · active Yesterday
+          - article [ref=e87]:
+            - generic [ref=e88]:
+              - generic [ref=e89]: CUST-1236
+              - generic [ref=e90]: Returning
+            - strong [ref=e91]: $428
+            - paragraph [ref=e92]: 4 orders · active Yesterday
+          - article [ref=e93]:
+            - generic [ref=e94]:
+              - generic [ref=e95]: CUST-1284
+              - generic [ref=e96]: VIP
+            - strong [ref=e97]: $1,320
+            - paragraph [ref=e98]: 9 orders · active 2 days ago
+          - article [ref=e99]:
+            - generic [ref=e100]:
+              - generic [ref=e101]: CUST-1311
+              - generic [ref=e102]: New
+            - strong [ref=e103]: $49
+            - paragraph [ref=e104]: 1 orders · active 2 days ago

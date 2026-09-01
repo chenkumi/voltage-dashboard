@@ -1,0 +1,98 @@
+- generic [ref=e61]:
+  - generic [ref=e62]:
+    - generic [ref=e63]:
+      - generic [ref=e64]:
+        - img [ref=e66]
+        - paragraph [ref=e70]: WebMCP workspace
+      - tablist "Demo pages" [ref=e71]:
+        - tab "Voltage Market" [ref=e72] [cursor=pointer]:
+          - img [ref=e73]
+          - text: Voltage Market
+        - tab "Voltage Dashboard" [selected] [ref=e76] [cursor=pointer]:
+          - img [ref=e77]
+          - text: Voltage Dashboard
+      - generic [ref=e82]:
+        - button "上一頁（目前：reports）" [ref=e83]:
+          - img
+        - button "下一頁（目前：reports）" [ref=e84]:
+          - img
+        - generic [ref=e85]: Connected
+        - button "Refresh WebMCP tools" [ref=e87]:
+          - img
+    - iframe [ref=e90]:
+      - main [ref=f4e3]:
+        - generic [ref=f4e4]:
+          - generic [ref=f4e5]:
+            - button "Voltage Market Voltage Dashboard" [ref=f4e6] [cursor=pointer]:
+              - img [ref=f4e8]
+              - generic [ref=f4e11]:
+                - generic [ref=f4e12]: Voltage Market
+                - strong [ref=f4e13]: Voltage Dashboard
+            - generic [ref=f4e14]: Demo workspace · local data
+          - generic [ref=f4e15]:
+            - navigation "Voltage Dashboard navigation" [ref=f4e16]:
+              - generic [ref=f4e17]:
+                - button "Dashboard" [ref=f4e18] [cursor=pointer]:
+                  - img [ref=f4e19]
+                  - text: Dashboard
+                - button "Products" [ref=f4e24] [cursor=pointer]:
+                  - img [ref=f4e25]
+                  - text: Products
+                - button "Orders" [ref=f4e31] [cursor=pointer]:
+                  - img [ref=f4e32]
+                  - text: Orders
+                - button "Customers" [ref=f4e35] [cursor=pointer]:
+                  - img [ref=f4e36]
+                  - text: Customers
+                - button "Inventory 29" [ref=f4e41] [cursor=pointer]:
+                  - img [ref=f4e42]
+                  - text: Inventory
+                  - generic [ref=f4e52]: "29"
+                - button "Reports" [ref=f4e53] [cursor=pointer]:
+                  - img [ref=f4e54]
+                  - text: Reports
+            - region "Voltage Dashboard Reports" [ref=f4e58]:
+              - generic [ref=f4e59]:
+                - paragraph [ref=f4e60]: Smart Dashboard · shared workspace
+                - heading "Shape the report together." [level=1] [ref=f4e61]
+                - generic [ref=f4e62]: Agent tools and your direct edits update the same in-memory report. Query evidence stays inside this Admin iframe.
+              - generic [ref=f4e63]:
+                - region "Saved reports" [ref=f4e64]:
+                  - generic [ref=f4e65]:
+                    - generic [ref=f4e66]:
+                      - paragraph [ref=f4e67]: Report library
+                      - strong [ref=f4e68]: Saved locally in this browser
+                    - button "New report" [ref=f4e69] [cursor=pointer]:
+                      - img
+                      - text: New report
+                  - paragraph [ref=f4e70]: No saved reports yet.
+                - region "Empty report canvas" [ref=f4e71]:
+                  - img [ref=f4e73]
+                  - paragraph [ref=f4e76]: Editable report canvas
+                  - heading "Start with a question, not a template." [level=2] [ref=f4e77]
+                  - generic [ref=f4e78]: Ask the Agent to inspect dataset status, explore the curated data with SQL, and build a report from verified query evidence. No fixed widgets are added in advance.
+  - generic [ref=e91]:
+    - generic [ref=e92]:
+      - img [ref=e94]
+      - generic [ref=e97]:
+        - paragraph [ref=e98]: Agent chat
+        - heading "New Chat" [level=1] [ref=e99]
+      - button "Start new chat" [ref=e101]:
+        - img
+    - generic [ref=e102]:
+      - region "Chat history" [ref=e103]:
+        - generic [ref=e104]:
+          - img [ref=e106]
+          - heading "Ready to explore" [level=2] [ref=e109]
+          - paragraph [ref=e110]: Ask the agent to use the tools available in the workspace.
+      - generic [ref=e112]:
+        - textbox "Send Message" [ref=e113]:
+          - /placeholder: Ask the agent to work with this page…
+        - generic [ref=e114]:
+          - generic [ref=e115]:
+            - img [ref=e116]
+            - text: Enter to send
+          - button "Send message" [disabled]:
+            - img
+            - generic: Send
+  - region "Notifications alt+T"

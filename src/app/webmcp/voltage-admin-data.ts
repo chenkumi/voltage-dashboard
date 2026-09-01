@@ -28,7 +28,11 @@ export const getVoltageAdminDashboard = (
       currency,
       amount: Number(
         commerce.orders
-          .filter((order) => order.amounts.total.currency === currency)
+          .filter(
+            (order) =>
+              order.paymentStatus === "paid" &&
+              order.amounts.total.currency === currency
+          )
           .reduce((total, order) => total + order.amounts.total.amount, 0)
           .toFixed(2)
       ),

@@ -1,0 +1,153 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - paragraph [ref=e12]: WebMCP workspace
+          - heading "Embedded web surface" [level=2] [ref=e13]
+      - generic [ref=e14]:
+        - generic [ref=e15]: Embedded website
+        - combobox "Embedded website" [ref=e16]:
+          - option "Cinder Studio" [selected]
+          - option "Field Market"
+        - generic [ref=e17]: Waiting for iframe
+        - button "Refresh WebMCP tools" [ref=e19]:
+          - img
+    - generic [ref=e20]:
+      - iframe [ref=e22]:
+        - main [ref=f3e3]:
+          - generic [ref=f3e4]:
+            - generic [ref=f3e5]:
+              - generic [ref=f3e6]:
+                - generic [ref=f3e7]:
+                  - img [ref=f3e8]
+                  - text: Cinder Studio · Ceramics and paper goods
+                - heading "Small rituals, better tools." [level=1] [ref=f3e11]
+                - paragraph [ref=f3e12]: 這是 Cinder Studio 同源測試網站。右側 Agent 可以搜尋陶器與紙品、加入購物車並讀取摘要。
+              - generic [ref=f3e13]:
+                - img [ref=f3e14]
+                - text: 0 reserved
+            - generic [ref=f3e17]:
+              - generic [ref=f3e18]:
+                - paragraph [ref=f3e19]: Catalog
+                - paragraph [ref=f3e20]: Ready for a WebMCP tool call
+              - generic [ref=f3e21]: Cinder Studio WebMCP
+            - generic [ref=f3e22]:
+              - generic [ref=f3e23]:
+                - generic [ref=f3e26]: Cinder mug
+                - generic [ref=f3e27]:
+                  - generic [ref=f3e28]:
+                    - generic [ref=f3e29]: Stoneware
+                    - generic [ref=f3e30]: $28
+                  - button "Add to studio cart" [ref=f3e31]
+              - generic [ref=f3e32]:
+                - generic [ref=f3e35]: Field notebook
+                - generic [ref=f3e36]:
+                  - generic [ref=f3e37]:
+                    - generic [ref=f3e38]: Paper goods
+                    - generic [ref=f3e39]: $16
+                  - button "Add to studio cart" [ref=f3e40]
+              - generic [ref=f3e41]:
+                - generic [ref=f3e44]: Night tea
+                - generic [ref=f3e45]:
+                  - generic [ref=f3e46]:
+                    - generic [ref=f3e47]: Small batch
+                    - generic [ref=f3e48]: $22
+                  - button "Add to studio cart" [ref=f3e49]
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]:
+            - generic [ref=e26]:
+              - img [ref=e27]
+              - heading "Tools from iframe" [level=3] [ref=e29]
+            - generic [ref=e30]: 0 available
+          - paragraph [ref=e155]: 工具會在 iframe 載入後自動同步到右側 Agent。
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - img [ref=e34]
+            - generic [ref=e37]: Scoped tool access
+          - text: 右側 Chat Room 僅會收到這個 iframe 暴露的 tools；目前使用同源 demo，方便驗證 discovery 與 execution flow。
+  - generic [ref=e39]:
+    - generic [ref=e40]:
+      - img [ref=e42]
+      - heading "New Chat" [level=1] [ref=e45]
+      - button "New Thread" [ref=e46]:
+        - img
+        - generic [ref=e47]: New Thread
+    - region "Chat history" [ref=e48]:
+      - log [ref=e50]:
+        - list [ref=e51]:
+          - listitem [ref=e53]:
+            - time [ref=e105]: 2026/8/27 上午10:56:08
+            - generic [ref=e108]: Virtual row 77
+            - generic [ref=e109]:
+              - button "Copy message" [ref=e110]:
+                - img
+              - button "Speak message" [ref=e111]:
+                - img
+          - listitem [ref=e54]:
+            - time [ref=e112]: 2026/8/27 上午10:56:09
+            - generic [ref=e115]: Virtual row 78
+            - button "Copy message" [ref=e117]:
+              - img
+          - listitem [ref=e55]:
+            - time [ref=e118]: 2026/8/27 上午10:56:10
+            - generic [ref=e121]: Virtual row 79
+            - generic [ref=e122]:
+              - button "Copy message" [ref=e123]:
+                - img
+              - button "Speak message" [ref=e124]:
+                - img
+          - listitem [ref=e56]:
+            - time [ref=e125]: 2026/8/27 上午10:56:33
+            - generic [ref=e128]: 取消 partial 測試
+            - button "Copy message" [ref=e130]:
+              - img
+          - listitem [ref=e57]:
+            - time [ref=e131]: 2026/8/27 上午10:56:40
+            - generic [ref=e132]:
+              - group [ref=e133]:
+                - generic "Thinking" [ref=e134] [cursor=pointer]
+              - generic [ref=e136]: 請問您希望我取消哪方面的測試呢？
+            - generic [ref=e137]:
+              - button "Copy message" [ref=e138]:
+                - img
+              - button "Speak message" [ref=e139]:
+                - img
+          - listitem [ref=e58]:
+            - time [ref=e140]: 2026/8/27 上午10:57:29
+            - generic [ref=e143]: 並行取消驗證
+            - button "Copy message" [ref=e145]:
+              - img
+          - listitem [ref=e148]:
+            - time [ref=e149]: 2026/8/27 上午10:58:58
+            - generic [ref=e152]: 第二次取消驗證
+            - button "Copy message" [ref=e154]:
+              - img
+          - listitem [ref=e156]:
+            - time [ref=e157]: 2026/8/27 上午11:00:23
+            - generic [ref=e160]: 第三次取消驗證
+            - button "Copy message" [ref=e162]:
+              - img
+          - listitem [ref=e163]:
+            - time [ref=e164]: 2026/8/27 上午11:00:29
+            - generic [ref=e166]:
+              - generic [ref=e167]: 好的，我理解您要求我執行「並行取消驗證」的動作，並進行三次取消驗證。
+              - generic [ref=e168]: 由於我目前在嵌入的頁面中沒有可用的 WebMCP 工具來執行特定的驗證或取消操作，請您提供更多關於您希望我對哪個部分執行這些取消驗證的上下文或指令。
+              - generic [ref=e169]: 請問您指的是哪一個流程或數據的驗證？
+            - generic [ref=e170]:
+              - button "Copy message" [ref=e171]:
+                - img
+              - button "Speak message" [ref=e172]:
+                - img
+        - generic [ref=e59]:
+          - button "Jump to latest":
+            - img
+    - generic [ref=e60]:
+      - textbox "Send Message" [ref=e61]:
+        - /placeholder: "You say: Shift+Enter for a new line"
+      - button "Send message" [disabled]:
+        - img
+        - generic: Send
+  - region "Notifications alt+T"

@@ -1,0 +1,38 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - button "前往 Voltage Market 商品目錄" [ref=e7] [cursor=pointer]:
+        - img [ref=e9]
+        - generic [ref=e12]:
+          - generic [ref=e13]: Voltage Market
+          - generic [ref=e14]: 大膽選物，立即上線
+      - navigation "Voltage Market 導覽" [ref=e15]:
+        - button "商品" [ref=e16] [cursor=pointer]
+        - button "購物車" [ref=e308] [cursor=pointer]
+        - button "訂單" [ref=e18] [cursor=pointer]
+      - generic [ref=e19]: 模擬結帳 · 無真實付款
+    - generic [ref=e20]: 模擬訂單 VOLT-6138559-S7XS 已建立。
+    - region "訂單紀錄" [ref=e309]:
+      - generic [ref=e310]:
+        - generic [ref=e311]:
+          - paragraph [ref=e312]: Local history
+          - heading "模擬訂單紀錄" [level=1] [ref=e313]
+        - button "繼續選購" [ref=e314] [cursor=pointer]:
+          - text: 繼續選購
+          - img
+      - article [ref=e316]:
+        - generic [ref=e317]:
+          - generic [ref=e318]:
+            - paragraph [ref=e319]: VOLT-6138559-S7XS
+            - heading "2026年8月27日 中午12:48" [level=2] [ref=e320]
+            - paragraph [ref=e321]: 測試使用者 · tester@example.com
+          - generic [ref=e322]: 已建立
+        - generic [ref=e323]:
+          - list [ref=e324]:
+            - listitem [ref=e325]:
+              - generic [ref=e326]: Tennis Racket × 1
+              - generic [ref=e327]: $40.19
+          - generic [ref=e328]:
+            - paragraph [ref=e329]: 送往：Taipei, Taiwan
+            - paragraph [ref=e330]: $50.09
+            - button "取消訂單" [ref=e332] [cursor=pointer]

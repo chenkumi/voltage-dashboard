@@ -1,0 +1,139 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "Operations workspace Voltage Dashboard" [ref=e6] [cursor=pointer]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - generic [ref=e12]: Operations workspace
+          - strong [ref=e13]: Voltage Dashboard
+      - generic [ref=e14]: Demo workspace · local data
+    - generic [ref=e15]:
+      - navigation "Voltage Dashboard navigation" [ref=e16]:
+        - generic [ref=e17]:
+          - button "Dashboard" [ref=e18] [cursor=pointer]:
+            - img [ref=e19]
+            - text: Dashboard
+          - button "Products" [ref=e24] [cursor=pointer]:
+            - img [ref=e25]
+            - text: Products
+          - button "Orders" [ref=e31] [cursor=pointer]:
+            - img [ref=e32]
+            - text: Orders
+          - button "Customers" [ref=e35] [cursor=pointer]:
+            - img [ref=e36]
+            - text: Customers
+          - button "Inventory 29" [ref=e41] [cursor=pointer]:
+            - img [ref=e42]
+            - text: Inventory
+            - generic [ref=e52]: "29"
+          - button "Reports" [ref=e53] [cursor=pointer]:
+            - img [ref=e54]
+            - text: Reports
+          - button "Catalog Intake 2" [ref=e57] [cursor=pointer]:
+            - img [ref=e58]
+            - text: Catalog Intake
+            - generic [ref=e62]: "2"
+          - button "Operations Cases 5" [ref=e63] [cursor=pointer]:
+            - img [ref=e64]
+            - text: Operations Cases
+            - generic [ref=e66]: "5"
+          - button "Approval Inbox" [ref=e67] [cursor=pointer]:
+            - img [ref=e68]
+            - text: Approval Inbox
+      - region "Catalog Intake" [ref=e72]:
+        - generic [ref=e74]:
+          - paragraph [ref=e75]: Catalog operations
+          - heading "Prepare product drafts for review." [level=1] [ref=e76]
+          - generic [ref=e77]: 2 catalog candidates still need a complete draft.
+        - generic [ref=e78]:
+          - region "Catalog candidates" [ref=e80]:
+            - generic [ref=e81]:
+              - generic [ref=e82]:
+                - paragraph [ref=e83]: Source queue
+                - heading "Catalog candidates" [level=2] [ref=e84]
+              - generic [ref=e85]: "2"
+            - generic [ref=e86]:
+              - button "CAT-1001 AeroPress Clear Coffee Maker Verified Verified manufacturer feed · 2026-08-27 Description missing" [ref=e87] [cursor=pointer]:
+                - generic [ref=e88]:
+                  - generic [ref=e89]:
+                    - generic [ref=e90]: CAT-1001
+                    - strong [ref=e91]: AeroPress Clear Coffee Maker
+                  - generic [ref=e92]: Verified
+                - generic [ref=e93]: Verified manufacturer feed · 2026-08-27
+                - generic [ref=e95]: Description missing
+              - button "CAT-1002 Portable LED Task Light Review source Distributor catalog snapshot · 2026-08-26 Category missing Description missing Specifications missing Draft draft" [pressed] [ref=e210] [cursor=pointer]:
+                - generic [ref=e97]:
+                  - generic [ref=e98]:
+                    - generic [ref=e99]: CAT-1002
+                    - strong [ref=e100]: Portable LED Task Light
+                  - generic [ref=e101]: Review source
+                - generic [ref=e102]: Distributor catalog snapshot · 2026-08-26
+                - generic [ref=e103]:
+                  - generic [ref=e104]: Category missing
+                  - generic [ref=e105]: Description missing
+                  - generic [ref=e106]: Specifications missing
+                - generic [ref=e211]:
+                  - img [ref=e212]
+                  - text: Draft draft
+          - article [ref=e214]:
+            - generic [ref=e215]:
+              - generic [ref=e216]:
+                - paragraph [ref=e217]: Product draft
+                - heading "Prepare for human review" [level=2] [ref=e218]
+              - generic [ref=e219]: v1 · user
+            - generic [ref=e220]:
+              - generic [ref=e221]:
+                - generic [ref=e222]: Product title
+                - textbox "Product title" [ref=e223]: Portable LED Task Light
+              - generic [ref=e224]:
+                - generic [ref=e225]: Category
+                - combobox "Category" [ref=e226]:
+                  - option "Kitchen > Coffee"
+                  - option "Home > Lighting" [selected]
+                  - option "Home > Storage"
+                  - option "Electronics > Accessories"
+              - generic [ref=e227]:
+                - generic [ref=e228]: Description
+                - textbox "Description 73/600 characters" [ref=e229]: Rechargeable desk light with three brightness levels and a folding stand.
+                - generic [ref=e230]: 73/600 characters
+              - generic [ref=e231]:
+                - generic [ref=e232]: Material
+                - textbox "Material" [ref=e233]: Aluminum and ABS
+              - generic [ref=e234]:
+                - generic [ref=e235]: Capacity
+                - textbox "Capacity" [ref=e236]
+              - generic [ref=e237]:
+                - generic [ref=e238]: Origin
+                - textbox "Origin" [ref=e239]: Taiwan
+              - generic [ref=e240]:
+                - generic [ref=e241]: Power
+                - textbox "Power" [ref=e242]: 5 W
+              - generic [ref=e243]:
+                - generic [ref=e244]: Runtime
+                - textbox "Runtime" [ref=e245]: 8 hours
+              - generic [ref=e246]:
+                - generic [ref=e247]: Warranty
+                - textbox "Warranty" [ref=e248]: One year limited warranty
+            - generic [ref=e249]:
+              - status
+              - generic [ref=e250]:
+                - button "Save draft" [ref=e251] [cursor=pointer]:
+                  - img
+                  - text: Save draft
+                - button "Preview" [ref=e252] [cursor=pointer]:
+                  - img
+                  - text: Preview
+          - article [ref=e148]:
+            - generic [ref=e149]:
+              - generic [ref=e150]:
+                - paragraph [ref=e151]: Untrusted source · display only
+                - heading "Manufacturer data" [level=2] [ref=e152]
+              - generic [ref=e153]: Never rendered as HTML
+            - paragraph [ref=e154]: Rechargeable desk light with three brightness levels and a folding stand.
+            - generic [ref=e155]:
+              - generic [ref=e204]:
+                - term [ref=e205]: power
+                - definition [ref=e206]: 5 W
+              - generic [ref=e207]:
+                - term [ref=e208]: runtime
+                - definition [ref=e209]: 8 hours

@@ -14,17 +14,19 @@ import {
   useEffect,
   useLayoutEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from "react"
 import { useTranslation } from "react-i18next"
-import { unstable_usePrompt, useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router-dom"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { GridBlock, PageLayout } from "../voltage-admin-page-layout"
 import { createProductContentModel } from "./product-content-model"
 import { ConfirmationDialog } from "./confirmation-dialog"
 import type { ProductEditorController } from "./product-editor-controller"
+import type { ProductDraftStore } from "./product-draft-store"
 import {
   createProductEditorState,
   markProductEditorSaved,
@@ -192,6 +194,7 @@ export const ProductEditor = ({
   sourceProduct,
   repository,
   controller,
+  draftStore,
 }: {
   mode: ProductEditorMode
   product?: Product
@@ -201,6 +204,7 @@ export const ProductEditor = ({
     "create" | "update" | "publish" | "archiveMany" | "restore"
   >
   controller?: ProductEditorController
+  draftStore?: ProductDraftStore
 }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -216,6 +220,11 @@ export const ProductEditor = ({
   const [errors, setErrors] = useState<readonly string[]>([])
   const [confirmArchive, setConfirmArchive] = useState(false)
   const [pendingNavigation, setPendingNavigation] = useState("")
+  const [draftReady, setDraftReady] = useState(!draftStore)
+  const [hasSavedDraft, setHasSavedDraft] = useState(false)
+  const restoredDraftRef = useRef(false)
+  const draftKey =
+    mode === "edit" ? `edit-${product?.id ?? "missing"}` : "create"
 
   useLayoutEffect(() => {
     if (!controller) return
@@ -227,19 +236,41 @@ export const ProductEditor = ({
   useLayoutEffect(() => controller?.update(state), [controller, state])
 
   useEffect(() => {
-    const guard = (event: BeforeUnloadEvent) => {
-      if (!state.dirty) return
-      event.preventDefault()
-      event.returnValue = ""
+    if (!draftStore) return
+    let active = true
+    void draftStore.get(draftKey).then((saved) => {
+      if (!active) return
+      if (saved && saved.mode === mode && saved.productId === (product?.id ?? null)) {
+        restoredDraftRef.current = true
+        setState(saved)
+        setHasSavedDraft(true)
+        controller?.setDraftPersistence({ saved: true, restored: true })
+      } else {
+        restoredDraftRef.current = false
+        controller?.setDraftPersistence({ saved: false, restored: false })
+      }
+      setDraftReady(true)
+    })
+    return () => {
+      active = false
     }
-    window.addEventListener("beforeunload", guard)
-    return () => window.removeEventListener("beforeunload", guard)
-  }, [state.dirty])
+  }, [controller, draftKey, draftStore, mode, product?.id])
 
-  unstable_usePrompt({
-    message: t("Discard unsaved changes?"),
-    when: state.dirty,
-  })
+  useEffect(() => {
+    if (!draftStore || !draftReady || !state.dirty) return
+    let active = true
+    void draftStore.save(draftKey, state).then(() => {
+      if (!active) return
+      setHasSavedDraft(true)
+      controller?.setDraftPersistence({
+        saved: true,
+        restored: restoredDraftRef.current,
+      })
+    })
+    return () => {
+      active = false
+    }
+  }, [controller, draftKey, draftReady, draftStore, state])
 
   useEffect(() => {
     if (pendingNavigation && !state.dirty) navigate(pendingNavigation)
@@ -282,6 +313,10 @@ export const ProductEditor = ({
         }
       }
       setState((current) => markProductEditorSaved(current, saved))
+      await draftStore?.discard(draftKey)
+      restoredDraftRef.current = false
+      setHasSavedDraft(false)
+      controller?.setDraftPersistence({ saved: false, restored: false })
       setMessage(
         intent === "publish" ? t("Product published.") : t("Product saved.")
       )
@@ -295,6 +330,20 @@ export const ProductEditor = ({
 
   const leave = () => {
     navigate(product ? `/products/${product.id}` : "/products")
+  }
+
+  const discardSavedDraft = async () => {
+    if (!draftStore) return
+    await draftStore.discard(draftKey)
+    restoredDraftRef.current = false
+    setState(() => {
+      const initial = createProductEditorState(mode, initialProduct)
+      return sourceProduct && mode === "create"
+        ? patchProductDraft(initial, { sku: "" })
+        : initial
+    })
+    setHasSavedDraft(false)
+    controller?.setDraftPersistence({ saved: false, restored: false })
   }
 
   const archive = async () => {
@@ -367,6 +416,16 @@ export const ProductEditor = ({
           <Button type="button" variant="outline" onClick={leave}>
             {t("Cancel")}
           </Button>
+          {hasSavedDraft ? (
+            <Button
+              type="button"
+              variant="outline"
+              disabled={busy}
+              onClick={() => void discardSavedDraft()}
+            >
+              <Trash2 /> {t("Discard saved draft")}
+            </Button>
+          ) : null}
           {product?.status === "archived" ? (
             <Button
               type="button"

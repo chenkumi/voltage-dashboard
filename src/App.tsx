@@ -38,9 +38,9 @@ export function App() {
   return (
     <DemoAuthProvider>
       <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route element={<ProtectedRoute />}>
-          <Route element={<VoltageAdminProvider />}>
+        <Route element={<VoltageAdminProvider />}>
+          <Route path="/login" element={<LoginPage />} />
+          <Route element={<ProtectedRoute />}>
             <Route element={<EnterpriseAdminShell />}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
@@ -99,8 +99,8 @@ export function App() {
               ))}
             </Route>
           </Route>
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Route>
-        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </DemoAuthProvider>
   )

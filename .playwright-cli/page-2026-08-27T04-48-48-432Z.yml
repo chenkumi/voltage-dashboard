@@ -1,0 +1,57 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - button "前往 Voltage Market 商品目錄" [ref=e7] [cursor=pointer]:
+        - img [ref=e9]
+        - generic [ref=e12]:
+          - generic [ref=e13]: Voltage Market
+          - generic [ref=e14]: 大膽選物，立即上線
+      - navigation "Voltage Market 導覽" [ref=e15]:
+        - button "商品" [ref=e16] [cursor=pointer]
+        - button "購物車 (1)" [active] [ref=e230] [cursor=pointer]
+        - button "訂單" [ref=e18] [cursor=pointer]
+      - generic [ref=e19]: 模擬結帳 · 無真實付款
+    - generic [ref=e20]: Tennis Racket 已加入購物車。
+    - region "購物車" [ref=e231]:
+      - generic [ref=e232]:
+        - generic [ref=e233]:
+          - generic [ref=e234]:
+            - paragraph [ref=e235]: Cart mode
+            - heading "你的選物清單" [level=1] [ref=e236]
+          - button "繼續選購" [ref=e237] [cursor=pointer]:
+            - img
+            - text: 繼續選購
+        - article [ref=e239]:
+          - img "Tennis Racket" [ref=e240]
+          - generic [ref=e241]:
+            - paragraph [ref=e242]: Sports Accessories
+            - heading "Tennis Racket" [level=2] [ref=e243]
+            - paragraph [ref=e244]: $40.19 / 件
+            - generic [ref=e245]:
+              - button "減少 Tennis Racket 的數量" [ref=e246] [cursor=pointer]:
+                - img
+              - spinbutton "Tennis Racket 的數量" [ref=e247]: "1"
+              - button "增加 Tennis Racket 的數量" [ref=e248] [cursor=pointer]:
+                - img
+          - generic [ref=e249]:
+            - generic [ref=e250]: $40.19
+            - button "移除 Tennis Racket" [ref=e251] [cursor=pointer]:
+              - img
+      - complementary [ref=e252]:
+        - heading "訂單摘要" [level=2] [ref=e253]:
+          - img [ref=e254]
+          - text: 訂單摘要
+        - generic [ref=e258]:
+          - generic [ref=e259]:
+            - generic [ref=e260]: 小計（1 件）
+            - generic [ref=e261]: $40.19
+          - generic [ref=e262]:
+            - generic [ref=e263]: 標準配送
+            - generic [ref=e264]: $9.90
+          - generic [ref=e265]:
+            - generic [ref=e266]: 合計
+            - generic [ref=e267]: $50.09
+          - paragraph [ref=e268]: 再購買 $34.81 即享免費配送。
+        - button "前往結帳" [ref=e269] [cursor=pointer]:
+          - text: 前往結帳
+          - img

@@ -1,0 +1,169 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - paragraph [ref=e12]: WebMCP workspace
+          - heading "Embedded web surface" [level=2] [ref=e13]
+      - generic [ref=e14]:
+        - generic [ref=e15]: Embedded website
+        - combobox "Embedded website" [ref=e16]:
+          - option "Cinder Studio" [selected]
+          - option "Field Market"
+        - generic [ref=e17]: Connected
+        - button "Refresh WebMCP tools" [ref=e19]:
+          - img
+    - generic [ref=e20]:
+      - iframe [ref=e22]:
+        - main [ref=f6e3]:
+          - generic [ref=f6e4]:
+            - generic [ref=f6e5]:
+              - generic [ref=f6e6]:
+                - generic [ref=f6e7]:
+                  - img [ref=f6e8]
+                  - text: Cinder Studio · Ceramics and paper goods
+                - heading "Small rituals, better tools." [level=1] [ref=f6e11]
+                - paragraph [ref=f6e12]: 這是 Cinder Studio 同源測試網站。右側 Agent 可以搜尋陶器與紙品、加入購物車並讀取摘要。
+              - generic [ref=f6e13]:
+                - img [ref=f6e14]
+                - text: 0 reserved
+            - generic [ref=f6e17]:
+              - generic [ref=f6e18]:
+                - paragraph [ref=f6e19]: Catalog
+                - paragraph [ref=f6e20]: Ready for a WebMCP tool call
+              - generic [ref=f6e21]: Cinder Studio WebMCP
+            - generic [ref=f6e22]:
+              - generic [ref=f6e23]:
+                - generic [ref=f6e26]: Cinder mug
+                - generic [ref=f6e27]:
+                  - generic [ref=f6e28]:
+                    - generic [ref=f6e29]: Stoneware
+                    - generic [ref=f6e30]: $28
+                  - button "Add to studio cart" [ref=f6e31]
+              - generic [ref=f6e32]:
+                - generic [ref=f6e35]: Field notebook
+                - generic [ref=f6e36]:
+                  - generic [ref=f6e37]:
+                    - generic [ref=f6e38]: Paper goods
+                    - generic [ref=f6e39]: $16
+                  - button "Add to studio cart" [ref=f6e40]
+              - generic [ref=f6e41]:
+                - generic [ref=f6e44]: Night tea
+                - generic [ref=f6e45]:
+                  - generic [ref=f6e46]:
+                    - generic [ref=f6e47]: Small batch
+                    - generic [ref=f6e48]: $22
+                  - button "Add to studio cart" [ref=f6e49]
+      - generic [ref=e23]:
+        - generic [ref=e24]:
+          - generic [ref=e25]:
+            - generic [ref=e26]:
+              - img [ref=e27]
+              - heading "Tools from iframe" [level=3] [ref=e29]
+            - generic [ref=e30]: 6 available
+          - generic [ref=e112]:
+            - generic [ref=e113]: search_studio_catalog
+            - generic [ref=e114]: add_to_studio_cart
+            - generic [ref=e115]: get_studio_cart_summary
+            - generic [ref=e116]: agent_instructions
+            - generic [ref=e117]: skill_list
+            - generic [ref=e118]: load_skill
+        - generic [ref=e32]:
+          - generic [ref=e33]:
+            - img [ref=e34]
+            - generic [ref=e37]: Scoped tool access
+          - text: 右側 Chat Room 僅會收到這個 iframe 暴露的 tools；目前使用同源 demo，方便驗證 discovery 與 execution flow。
+  - generic [ref=e39]:
+    - generic [ref=e40]:
+      - img [ref=e42]
+      - heading "New Chat" [level=1] [ref=e45]
+      - button "New Thread" [ref=e46]:
+        - img
+        - generic [ref=e47]: New Thread
+    - region "Chat history" [ref=e48]:
+      - log [ref=e50]:
+        - list [ref=e51]:
+          - listitem [ref=e147]:
+            - time [ref=e148]: 2026/8/27 上午10:51:07
+            - generic [ref=e151]: Virtual row 111
+            - generic [ref=e152]:
+              - button "Copy message" [ref=e153]:
+                - img
+              - button "Speak message" [ref=e154]:
+                - img
+          - listitem [ref=e55]:
+            - time [ref=e139]: 2026/8/27 上午10:51:08
+            - generic [ref=e142]: Virtual row 112
+            - button "Copy message" [ref=e144]:
+              - img
+          - listitem [ref=e56]:
+            - time [ref=e57]: 2026/8/27 上午10:51:09
+            - generic [ref=e60]: Virtual row 113
+            - generic [ref=e61]:
+              - button "Copy message" [ref=e62]:
+                - img
+              - button "Speak message" [ref=e63]:
+                - img
+          - listitem [ref=e64]:
+            - time [ref=e65]: 2026/8/27 上午10:51:10
+            - generic [ref=e68]: Virtual row 114
+            - button "Copy message" [ref=e70]:
+              - img
+          - listitem [ref=e71]:
+            - time [ref=e72]: 2026/8/27 上午10:51:11
+            - generic [ref=e75]: Virtual row 115
+            - generic [ref=e76]:
+              - button "Copy message" [ref=e77]:
+                - img
+              - button "Speak message" [ref=e78]:
+                - img
+          - listitem [ref=e79]:
+            - time [ref=e80]: 2026/8/27 上午10:51:12
+            - generic [ref=e83]: Virtual row 116
+            - button "Copy message" [ref=e85]:
+              - img
+          - listitem [ref=e86]:
+            - time [ref=e87]: 2026/8/27 上午10:51:13
+            - generic [ref=e90]: Virtual row 117
+            - generic [ref=e91]:
+              - button "Copy message" [ref=e92]:
+                - img
+              - button "Speak message" [ref=e93]:
+                - img
+          - listitem [ref=e94]:
+            - time [ref=e95]: 2026/8/27 上午10:51:14
+            - generic [ref=e98]: Virtual row 118
+            - button "Copy message" [ref=e100]:
+              - img
+          - listitem [ref=e101]:
+            - time [ref=e102]: 2026/8/27 上午10:51:15
+            - generic [ref=e105]: Virtual row 119
+            - generic [ref=e106]:
+              - button "Copy message" [ref=e107]:
+                - img
+              - button "Speak message" [ref=e108]:
+                - img
+          - listitem [ref=e155]:
+            - time [ref=e156]: 2026/8/27 上午10:54:35
+            - generic [ref=e159]: 測試取消串流
+            - button "Copy message" [ref=e161]:
+              - img
+          - listitem [ref=e162]:
+            - time [ref=e163]: 2026/8/27 上午10:54:40
+            - generic [ref=e166]: 我沒有看到任何與您上一個指令相關的工具，請您提供具體的指示或問題。請問您希望我對 Cinder Studio 進行什麼操作呢？
+            - generic [ref=e167]:
+              - button "Copy message" [ref=e168]:
+                - img
+              - button "Speak message" [ref=e169]:
+                - img
+        - generic [ref=e109]:
+          - button "Jump to latest":
+            - img
+    - generic [ref=e110]:
+      - textbox "Send Message" [ref=e111]:
+        - /placeholder: "You say: Shift+Enter for a new line"
+      - button "Send message" [disabled]:
+        - img
+        - generic: Send
+  - region "Notifications alt+T"

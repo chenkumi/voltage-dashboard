@@ -1,0 +1,89 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "開啟導覽" [ref=e260] [cursor=pointer]:
+        - img [ref=e261]
+      - button "V" [ref=e262] [cursor=pointer]:
+        - generic [ref=e7]: V
+    - generic [ref=e9]:
+      - button "搜尋商品" [ref=e10] [cursor=pointer]:
+        - img [ref=e11]
+      - button "通知" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+      - generic [ref=e20] [cursor=pointer]:
+        - img [ref=e21]
+        - generic [ref=e25]: 切換語言
+        - combobox "切換語言" [ref=e26]:
+          - option "English"
+          - option "繁體中文" [selected]
+      - button "帳號選單" [ref=e27] [cursor=pointer]:
+        - img [ref=e28]
+  - region "編輯顧客" [ref=e769]:
+    - generic [ref=e771]:
+      - generic [ref=e772]:
+        - navigation "Breadcrumb" [ref=e773]:
+          - list [ref=e774]:
+            - listitem [ref=e775]:
+              - link "顧客" [ref=e776] [cursor=pointer]:
+                - /url: /customers
+            - listitem [ref=e777]: /編輯顧客
+        - heading "編輯顧客" [level=1] [ref=e779]
+      - button "返回" [ref=e781]:
+        - img
+        - text: 返回
+    - generic [ref=e785]:
+      - generic [ref=e787]: 顧客資料
+      - generic [ref=e788]:
+        - generic [ref=e789]:
+          - generic [ref=e790]: 姓名
+          - textbox "姓名" [ref=e791]: 測試客戶 1011
+        - generic [ref=e792]:
+          - generic [ref=e793]: Email
+          - textbox "Email" [ref=e794]: customer1011@example.test
+        - generic [ref=e795]:
+          - generic [ref=e796]: 電話
+          - textbox "電話" [ref=e797]: "0910000010"
+        - generic [ref=e798]:
+          - generic [ref=e799]: 地址
+          - textbox "地址" [ref=e800]: 測試路 11 號
+        - generic [ref=e801]:
+          - generic [ref=e802]: 城市
+          - textbox "城市" [ref=e803]: 高雄市
+        - generic [ref=e804]:
+          - generic [ref=e805]: 郵遞區號
+          - textbox "郵遞區號" [ref=e806]: "300"
+        - generic [ref=e807]:
+          - generic [ref=e808]: 客群
+          - combobox "客群" [ref=e809]:
+            - option "新客戶"
+            - option "回購客戶" [selected]
+            - option "VIP"
+        - generic [ref=e810]:
+          - generic [ref=e811]: 區域
+          - combobox "區域" [ref=e812]:
+            - option "北區"
+            - option "中區"
+            - option "南區" [selected]
+            - option "東區"
+        - group "安全標籤" [ref=e813]:
+          - generic [ref=e814]: 安全標籤
+          - generic [ref=e815]:
+            - generic [ref=e816]:
+              - checkbox "新顧客" [ref=e817]
+              - generic [ref=e818]: 新顧客
+            - generic [ref=e819]:
+              - checkbox "回購顧客" [checked] [ref=e820]
+              - generic [ref=e821]: 回購顧客
+            - generic [ref=e822]:
+              - checkbox "高價值" [ref=e823]
+              - generic [ref=e824]: 高價值
+            - generic [ref=e825]:
+              - checkbox "流失風險" [ref=e826]
+              - generic [ref=e827]: 流失風險
+        - generic [ref=e828]:
+          - generic [ref=e829]: 自訂標籤
+          - textbox "自訂標籤" [ref=e830]:
+            - /placeholder: 以逗號分隔；僅供介面使用
+        - generic [ref=e831]:
+          - button "取消" [ref=e832]
+          - button "儲存顧客" [ref=e833]

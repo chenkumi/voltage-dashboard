@@ -25,11 +25,11 @@ const allocateMinorUnits = (
   }
   if (
     weightedIds.length === 0 ||
-    weightedIds.some(
-      ({ weight }) => !Number.isInteger(weight) || weight < 0
-    )
+    weightedIds.some(({ weight }) => !Number.isInteger(weight) || weight < 0)
   ) {
-    throw new Error("Allocation weights must be non-negative minor-unit values.")
+    throw new Error(
+      "Allocation weights must be non-negative minor-unit values."
+    )
   }
   const weightTotal = weightedIds.reduce(
     (sum, weightedId) => sum + BigInt(weightedId.weight),
@@ -78,7 +78,9 @@ export const allocateOrderLinePaidAmounts = (
         line.quantity <= 0
     )
   ) {
-    throw new Error("Order lines must use one currency and positive quantities.")
+    throw new Error(
+      "Order lines must use one currency and positive quantities."
+    )
   }
 
   const paidByLine = allocateMinorUnits(

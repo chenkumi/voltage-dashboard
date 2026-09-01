@@ -1,0 +1,67 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "營運工作區 Voltage Dashboard" [ref=e184] [cursor=pointer]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - generic [ref=e12]: 營運工作區
+          - strong [ref=e13]: Voltage Dashboard
+      - generic [ref=e16]:
+        - img [ref=e17]
+        - generic [ref=e21]: 切換語言
+        - combobox "切換語言" [ref=e185]:
+          - option "English"
+          - option "繁體中文" [selected]
+    - generic [ref=e23]:
+      - navigation "Voltage Dashboard 導覽" [ref=e186]:
+        - generic [ref=e26]:
+          - button "儀表板" [ref=e187] [cursor=pointer]:
+            - img [ref=e28]
+            - text: 儀表板
+          - button "商品" [ref=e188] [cursor=pointer]:
+            - img [ref=e34]
+            - text: 商品
+          - button "訂單" [ref=e189] [cursor=pointer]:
+            - img [ref=e41]
+            - text: 訂單
+          - button "顧客" [ref=e190] [cursor=pointer]:
+            - img [ref=e45]
+            - text: 顧客
+          - button "庫存 29" [ref=e191] [cursor=pointer]:
+            - img [ref=e51]
+            - text: 庫存
+            - generic [ref=e61]: "29"
+          - button "報表" [active] [ref=e192] [cursor=pointer]:
+            - img [ref=e63]
+            - text: 報表
+          - button "商品建檔 2" [ref=e193] [cursor=pointer]:
+            - img [ref=e67]
+            - text: 商品建檔
+            - generic [ref=e71]: "2"
+          - button "營運案件 5" [ref=e194] [cursor=pointer]:
+            - img [ref=e73]
+            - text: 營運案件
+            - generic [ref=e75]: "5"
+          - button "核准收件匣" [ref=e195] [cursor=pointer]:
+            - img [ref=e77]
+            - text: 核准收件匣
+      - region "Voltage Dashboard 報表" [ref=e295]:
+        - generic [ref=e297]:
+          - paragraph [ref=e298]: 智慧儀表板 · 共用工作區
+          - heading "一起整理營運報表。" [level=1] [ref=e299]
+          - generic [ref=e300]: 連線的 Agent 工具與你的直接編輯會更新同一份記憶體報表；查詢證據只保留在此儀表板頁面。
+        - generic [ref=e303]:
+          - region "已儲存報表" [ref=e304]:
+            - generic [ref=e305]:
+              - generic [ref=e306]:
+                - paragraph [ref=e307]: 報表庫
+                - strong [ref=e308]: 儲存在此瀏覽器
+              - button "新增報表" [ref=e309] [cursor=pointer]:
+                - img
+                - text: 新增報表
+            - paragraph [ref=e310]: 尚無已儲存報表。
+          - region "空白報表畫布" [ref=e311]:
+            - img [ref=e313]
+            - paragraph [ref=e316]: 可編輯報表畫布
+            - heading "從問題開始，而不是從範本開始。" [level=2] [ref=e317]
+            - generic [ref=e318]: 請 Agent 檢查資料集狀態、使用 SQL 探索整理過的資料，並以經驗證的查詢證據建立報表；系統不會預先加入固定元件。

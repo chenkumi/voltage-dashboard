@@ -1,0 +1,64 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - button "前往 Voltage Market 商品目錄" [ref=e7] [cursor=pointer]:
+        - img [ref=e9]
+        - generic [ref=e12]:
+          - generic [ref=e13]: Voltage Market
+          - generic [ref=e14]: 大膽選物，立即上線
+      - navigation "Voltage Market 導覽" [ref=e15]:
+        - button "商品" [ref=e16] [cursor=pointer]
+        - button "購物車 (1)" [ref=e230] [cursor=pointer]
+        - button "訂單" [ref=e18] [cursor=pointer]
+      - generic [ref=e19]: 模擬結帳 · 無真實付款
+    - generic [ref=e20]: Tennis Racket 已加入購物車。
+    - region "模擬結帳" [ref=e270]:
+      - button "返回購物車" [ref=e271] [cursor=pointer]:
+        - img
+        - text: 返回購物車
+      - generic [ref=e272]:
+        - generic [ref=e273]:
+          - paragraph [ref=e274]: Checkout / demo only
+          - heading "確認配送資訊" [level=1] [ref=e275]
+          - paragraph [ref=e276]: 付款欄位只展示畫面，卡號不會保存或傳送。建立的是本機模擬訂單。
+          - group "收件資訊" [ref=e277]:
+            - generic [ref=e278]: 收件資訊
+            - generic [ref=e279]:
+              - text: 收件人姓名
+              - textbox "收件人姓名" [ref=e280]
+            - generic [ref=e281]:
+              - text: Email
+              - textbox "Email" [ref=e282]
+            - generic [ref=e283]:
+              - text: 送貨地址
+              - textbox "送貨地址" [ref=e284]
+          - group "付款展示" [ref=e285]:
+            - generic [ref=e286]: 付款展示
+            - generic [ref=e287]:
+              - text: 卡號（不保存）
+              - generic [ref=e288]:
+                - img
+                - textbox "卡號（不保存）" [ref=e289]:
+                  - /placeholder: •••• •••• •••• ••••
+          - generic [ref=e290] [cursor=pointer]:
+            - checkbox "我確認商品、配送資訊與合計金額；我了解這會建立可在本機取消的模擬訂單。" [ref=e291]
+            - generic [ref=e292]:
+              - text: 我確認商品、配送資訊與合計金額；我了解這會建立可在本機取消的
+              - strong [ref=e293]: 模擬
+              - text: 訂單。
+          - button "建立模擬訂單" [ref=e294] [cursor=pointer]:
+            - img
+            - text: 建立模擬訂單
+        - complementary [ref=e295]:
+          - heading "本次合計" [level=2] [ref=e296]
+          - generic [ref=e297]:
+            - generic [ref=e298]:
+              - generic [ref=e299]: 小計（1 件）
+              - generic [ref=e300]: $40.19
+            - generic [ref=e301]:
+              - generic [ref=e302]: 標準配送
+              - generic [ref=e303]: $9.90
+            - generic [ref=e304]:
+              - generic [ref=e305]: 合計
+              - generic [ref=e306]: $50.09
+            - paragraph [ref=e307]: 再購買 $34.81 即享免費配送。

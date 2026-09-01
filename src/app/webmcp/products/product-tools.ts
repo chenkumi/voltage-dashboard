@@ -391,6 +391,7 @@ const projectEditorState = (controller: ProductEditorController) => {
     valid: state.valid,
     missingFields: state.missingFields,
     version: state.version,
+    draftPersistence: controller.getDraftPersistence(),
     draft: {
       sku: truncate(state.draft.sku, 80),
       title: truncate(state.draft.title, 120),
@@ -434,6 +435,7 @@ const projectEditorState = (controller: ProductEditorController) => {
     valid: state.valid,
     missingFields: state.missingFields,
     version: state.version,
+    draftPersistence: controller.getDraftPersistence(),
     counts: {
       images: state.draft.images.length,
       specifications: state.draft.specifications.length,
@@ -603,13 +605,17 @@ export const executeProductTool = async ({
   }
   if (name === "open_product_create") {
     exactArgs(args, [])
+    if (editor.getState()?.mode !== "create") editor.detach()
     navigate("/products/add")
   } else if (name === "open_product_detail") {
     exactArgs(args, ["productId"])
+    editor.detach()
     navigate(`/products/${parseProductId(args.productId)}`)
   } else if (name === "open_product_edit") {
     exactArgs(args, ["productId"])
-    navigate(`/products/edit/${parseProductId(args.productId)}`)
+    const productId = parseProductId(args.productId)
+    if (editor.getState()?.productId !== productId) editor.detach()
+    navigate(`/products/edit/${productId}`)
   } else if (name === "get_product_editor_state") {
     exactArgs(args, [])
     return projectEditorState(editor)

@@ -47,9 +47,6 @@ describe("operations navigation", () => {
     const markup = renderToStaticMarkup(
       createElement(PageLayout, {
         ariaLabel: "Test operations page",
-        eyebrow: "Operations",
-        title: "Shared layout",
-        detail: "Layout contract",
         children: createElement(GridBlock, null, "Content"),
       })
     )

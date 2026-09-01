@@ -364,9 +364,9 @@ export const assertValidOrder = (
   const paidLineTotal = roundMoney(
     orderLines.reduce((total, line) => total + line.paidAmount.amount, 0)
   )
-  let expectedPaidAllocations:
-    | ReturnType<typeof allocateOrderLinePaidAmounts>
-    | null = null
+  let expectedPaidAllocations: ReturnType<
+    typeof allocateOrderLinePaidAmounts
+  > | null = null
   try {
     expectedPaidAllocations = allocateOrderLinePaidAmounts(orderLines, {
       amount: roundMoney(

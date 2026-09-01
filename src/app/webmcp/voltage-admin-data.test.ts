@@ -60,4 +60,33 @@ describe("Voltage Dashboard data", () => {
       /customerId|CUST-|fullName|email|phone|address/i
     )
   })
+
+  it("counts only paid orders as dashboard revenue", () => {
+    const baseOrder = commerce.orders[0]
+    const paidOrder = {
+      ...baseOrder,
+      id: "VM-PAID",
+      paymentStatus: "paid" as const,
+      amounts: {
+        ...baseOrder.amounts,
+        total: { amount: 100, currency: "USD" as const },
+      },
+    }
+    const failedOrder = {
+      ...baseOrder,
+      id: "VM-FAILED",
+      paymentStatus: "failed" as const,
+      amounts: {
+        ...baseOrder.amounts,
+        total: { amount: 900, currency: "USD" as const },
+      },
+    }
+
+    expect(
+      getVoltageAdminDashboard(products, {
+        ...commerce,
+        orders: [paidOrder, failedOrder],
+      }).revenueByCurrency
+    ).toEqual([{ amount: 100, currency: "USD" }])
+  })
 })

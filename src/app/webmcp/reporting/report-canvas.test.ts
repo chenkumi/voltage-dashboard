@@ -173,9 +173,7 @@ describe("Report Canvas mapping", () => {
 
   it("opens the selected widget editor and closes it when selected again", () => {
     expect(toggleWidgetEditor(null, "revenue-table")).toBe("revenue-table")
-    expect(toggleWidgetEditor("revenue-table", "orders-bar")).toBe(
-      "orders-bar"
-    )
+    expect(toggleWidgetEditor("revenue-table", "orders-bar")).toBe("orders-bar")
     expect(toggleWidgetEditor("revenue-table", "revenue-table")).toBeNull()
   })
 

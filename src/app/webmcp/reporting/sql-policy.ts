@@ -95,7 +95,8 @@ const maskSqlLiteralsAndComments = (sql: string) => {
 
     if (char === "/" && next === "*") {
       const end = sql.indexOf("*/", index + 2)
-      if (end < 0) throw new SqlPolicyError("SQL contains an unterminated comment.")
+      if (end < 0)
+        throw new SqlPolicyError("SQL contains an unterminated comment.")
       index = end + 2
       masked += " "
       continue
@@ -118,7 +119,8 @@ const maskSqlLiteralsAndComments = (sql: string) => {
         }
         index += 1
       }
-      if (!closed) throw new SqlPolicyError("SQL contains an unterminated literal.")
+      if (!closed)
+        throw new SqlPolicyError("SQL contains an unterminated literal.")
       continue
     }
 
@@ -156,7 +158,9 @@ export const validateReadonlySql = (input: SqlQueryInput) => {
     throw new SqlPolicyError("SQL parameters must be JSON scalar values.")
 
   const masked = maskSqlLiteralsAndComments(sql)
-  const semicolons = [...masked.matchAll(/;/g)].map((match) => match.index ?? -1)
+  const semicolons = [...masked.matchAll(/;/g)].map(
+    (match) => match.index ?? -1
+  )
   if (semicolons.length > 1)
     throw new SqlPolicyError("Only one SQL statement is allowed.")
   if (semicolons.length === 1 && masked.slice(semicolons[0] + 1).trim())

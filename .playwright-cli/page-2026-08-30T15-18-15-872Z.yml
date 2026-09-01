@@ -1,0 +1,178 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "開啟導覽" [ref=e260] [cursor=pointer]:
+        - img [ref=e261]
+      - button "V" [ref=e262] [cursor=pointer]:
+        - generic [ref=e7]: V
+    - generic [ref=e9]:
+      - button "搜尋商品" [ref=e10] [cursor=pointer]:
+        - img [ref=e11]
+      - button "通知" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+      - generic [ref=e20] [cursor=pointer]:
+        - img [ref=e21]
+        - generic [ref=e25]: 切換語言
+        - combobox "切換語言" [ref=e26]:
+          - option "English"
+          - option "繁體中文" [selected]
+      - button "帳號選單" [ref=e27] [cursor=pointer]:
+        - img [ref=e28]
+  - region "顧客" [ref=e125]:
+    - generic [ref=e127]:
+      - generic [ref=e128]:
+        - navigation "Breadcrumb" [ref=e129]:
+          - list [ref=e130]:
+            - listitem [ref=e131]: 儀表板
+            - listitem [ref=e132]: /顧客
+        - generic [ref=e133]:
+          - heading "顧客" [level=1] [ref=e134]
+          - generic [ref=e136]: 28 位顧客
+      - button "新增顧客" [ref=e138]:
+        - img
+        - text: 新增顧客
+    - generic [ref=e139]:
+      - generic [ref=e142]:
+        - generic [ref=e144]: 顧客總數
+        - strong [ref=e145]: "28"
+        - generic [ref=e146]: 全部顧客紀錄
+      - generic [ref=e149]:
+        - generic [ref=e151]: 啟用顧客
+        - strong [ref=e152]: "27"
+        - generic [ref=e153]: 可提供服務
+      - generic [ref=e156]:
+        - generic [ref=e158]: VIP 顧客
+        - strong [ref=e159]: "9"
+        - generic [ref=e160]: 高價值客群
+      - generic [ref=e163]:
+        - generic [ref=e165]: 已停權顧客
+        - strong [ref=e166]: "1"
+        - generic [ref=e167]: 不列入啟用統計
+      - region "顧客清單" [ref=e169]:
+        - generic [ref=e170]:
+          - generic [ref=e172]:
+            - generic [ref=e173]:
+              - generic [ref=e174]: 搜尋顧客
+              - img
+              - searchbox "搜尋顧客" [ref=e175]
+            - generic [ref=e263]:
+              - button "篩選顧客" [expanded] [ref=e264]:
+                - img
+                - generic [ref=e265]: "4"
+              - dialog "篩選顧客" [ref=e270]:
+                - heading "篩選顧客" [level=2] [ref=e272]
+                - generic [ref=e274]:
+                  - generic [ref=e275]:
+                    - generic [ref=e276]: 顧客狀態
+                    - combobox "顧客狀態" [active] [ref=e277]:
+                      - generic [ref=e279]: "顧客狀態: 啟用"
+                      - img: ▼
+                    - textbox [ref=e280]: active
+                  - generic [ref=e281]:
+                    - generic [ref=e282]: 客群
+                    - combobox "客群" [ref=e283]:
+                      - generic [ref=e285]: "客群: VIP"
+                      - img: ▼
+                    - textbox [ref=e286]: vip
+                  - generic [ref=e287]:
+                    - generic [ref=e288]: 區域
+                    - combobox "區域" [ref=e289]:
+                      - generic [ref=e291]: "區域: 北區"
+                      - img: ▼
+                    - textbox [ref=e292]: north
+                  - generic [ref=e293]:
+                    - generic [ref=e294]: 標籤
+                    - combobox "標籤" [ref=e295]:
+                      - generic [ref=e297]: "標籤: 所有標籤"
+                      - img: ▼
+                    - textbox [ref=e298]: all
+                  - generic [ref=e299]:
+                    - generic [ref=e300]: 最近活動
+                    - combobox "最近活動" [ref=e301]:
+                      - generic [ref=e303]: "最近活動: 最近 365 天"
+                      - img: ▼
+                    - textbox [ref=e304]: 365d
+                  - generic [ref=e305]:
+                    - generic [ref=e306]: 消費幣別
+                    - combobox "消費幣別" [ref=e307]:
+                      - generic [ref=e309]: "消費幣別: USD"
+                      - img: ▼
+                    - textbox [ref=e310]: USD
+                  - generic [ref=e311]:
+                    - generic [ref=e312]: 最低消費
+                    - spinbutton "最低消費" [ref=e313]
+                  - generic [ref=e314]:
+                    - generic [ref=e315]: 最高消費
+                    - spinbutton "最高消費" [ref=e316]
+                  - generic [ref=e317]:
+                    - generic [ref=e318]: 排序
+                    - combobox "排序" [ref=e319]:
+                      - generic [ref=e321]: "排序: 最近活動優先"
+                      - img: ▼
+                    - textbox [ref=e322]: activity-desc
+                - generic [ref=e323]:
+                  - button "清除" [ref=e324]
+                  - generic [ref=e325]:
+                    - button "取消" [ref=e326]
+                    - button "套用" [ref=e327]
+          - generic [ref=e192]:
+            - generic [ref=e193]: 顯示 1–1／1
+            - generic [ref=e194]:
+              - generic [ref=e195]: "顧客狀態: 啟用"
+              - 'button "顧客狀態: 啟用 remove" [ref=e196]':
+                - img [ref=e197]
+            - generic [ref=e200]:
+              - generic [ref=e201]: "客群: VIP"
+              - 'button "客群: VIP remove" [ref=e202]':
+                - img [ref=e203]
+            - generic [ref=e206]:
+              - generic [ref=e207]: "區域: 北區"
+              - 'button "區域: 北區 remove" [ref=e208]':
+                - img [ref=e209]
+            - generic [ref=e212]:
+              - generic [ref=e213]: "最近活動: 最近 365 天"
+              - 'button "最近活動: 最近 365 天 remove" [ref=e214]':
+                - img [ref=e215]
+            - button "全部清除" [ref=e218]
+          - table [ref=e224]:
+            - rowgroup [ref=e225]:
+              - row "顧客 狀態 客群與區域 安全標籤 訂單 累積消費 最近購買 操作" [ref=e226]:
+                - columnheader "顧客" [ref=e227]
+                - columnheader "狀態" [ref=e228]
+                - columnheader "客群與區域" [ref=e229]
+                - columnheader "安全標籤" [ref=e230]
+                - columnheader "訂單" [ref=e231]
+                - columnheader "累積消費" [ref=e232]
+                - columnheader "最近購買" [ref=e233]
+                - columnheader "操作" [ref=e234]
+            - rowgroup [ref=e235]:
+              - row "CUST-1009 測••• · c•••@example.test 啟用 VIP 北區 高價值 回購顧客 3 USD 4,158.36 TWD 0.00 2026年6月15日 下午2:00 快速檢視 詳細資料" [ref=e236]:
+                - cell "CUST-1009 測••• · c•••@example.test" [ref=e237]:
+                  - strong [ref=e238]: CUST-1009
+                  - generic [ref=e239]: 測••• · c•••@example.test
+                - cell "啟用" [ref=e240]:
+                  - generic [ref=e241]: 啟用
+                - cell "VIP 北區" [ref=e242]:
+                  - generic [ref=e243]: VIP
+                  - generic [ref=e244]: 北區
+                - cell "高價值 回購顧客" [ref=e245]:
+                  - generic [ref=e246]:
+                    - generic [ref=e247]: 高價值
+                    - generic [ref=e248]: 回購顧客
+                - cell "3" [ref=e249]
+                - cell "USD 4,158.36 TWD 0.00" [ref=e250]:
+                  - generic [ref=e251]: USD 4,158.36
+                  - text: TWD 0.00
+                - cell "2026年6月15日 下午2:00" [ref=e252]
+                - cell "快速檢視 詳細資料" [ref=e253]:
+                  - generic [ref=e254]:
+                    - button "快速檢視" [ref=e255]:
+                      - img
+                      - text: 快速檢視
+                    - button "詳細資料" [ref=e256]
+          - navigation "顧客分頁" [ref=e258]:
+            - button [disabled]:
+              - img
+            - generic [ref=e259]: 1 / 1
+            - button [disabled]:
+              - img

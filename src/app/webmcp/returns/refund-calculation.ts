@@ -272,10 +272,7 @@ export const calculateRefund = (
         "Return item does not belong to the order snapshot."
       )
     }
-    if (
-      !Number.isInteger(item.acceptedQuantity) ||
-      item.acceptedQuantity < 0
-    ) {
+    if (!Number.isInteger(item.acceptedQuantity) || item.acceptedQuantity < 0) {
       throw new ReturnValidationError(
         "INVALID_QUANTITY",
         "Accepted quantity must be a non-negative whole number."
@@ -316,10 +313,7 @@ export const calculateRefund = (
       : 0
   const totalMinor = itemRefundMinor + shippingMinor
   const orderTotalMinor = toMinorUnits(input.orderTotal.amount)
-  if (
-    totalMinor < 0 ||
-    alreadyRefundedMinor + totalMinor > orderTotalMinor
-  ) {
+  if (totalMinor < 0 || alreadyRefundedMinor + totalMinor > orderTotalMinor) {
     throw new ReturnValidationError(
       "INVALID_MONEY",
       "Refund exceeds the order's remaining paid amount."

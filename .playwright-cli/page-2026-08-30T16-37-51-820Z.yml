@@ -1,0 +1,119 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - button "V Voltage" [ref=e6] [cursor=pointer]:
+      - generic [ref=e7]: V
+      - strong [ref=e8]: Voltage
+    - generic [ref=e9]:
+      - button "搜尋商品" [ref=e10] [cursor=pointer]:
+        - img [ref=e11]
+        - generic [ref=e14]: 搜尋商品
+        - generic [ref=e15]: /
+      - button "通知" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+      - generic [ref=e20] [cursor=pointer]:
+        - img [ref=e21]
+        - generic [ref=e25]: 切換語言
+        - combobox "切換語言" [ref=e26]:
+          - option "English"
+          - option "繁體中文" [selected]
+      - button "帳號選單" [ref=e27] [cursor=pointer]:
+        - img [ref=e28]
+  - generic [ref=e31]:
+    - complementary "主要導覽" [ref=e32]:
+      - navigation [ref=e33]:
+        - generic [ref=e34]:
+          - heading "營運總覽" [level=2] [ref=e35]
+          - button "儀表板" [ref=e37] [cursor=pointer]:
+            - img [ref=e38]
+            - generic [ref=e43]: 儀表板
+            - img [ref=e44]
+        - generic [ref=e46]:
+          - heading "商品管理" [level=2] [ref=e47]
+          - generic [ref=e48]:
+            - button "商品" [ref=e49] [cursor=pointer]:
+              - img [ref=e50]
+              - generic [ref=e56]: 商品
+              - img [ref=e57]
+            - button "庫存" [ref=e59] [cursor=pointer]:
+              - img [ref=e60]
+              - generic [ref=e70]: 庫存
+              - img [ref=e71]
+        - generic [ref=e73]:
+          - heading "訂單與顧客" [level=2] [ref=e74]
+          - generic [ref=e75]:
+            - button "訂單" [ref=e76] [cursor=pointer]:
+              - img [ref=e77]
+              - generic [ref=e80]: 訂單
+              - img [ref=e81]
+            - button "顧客" [ref=e83] [cursor=pointer]:
+              - img [ref=e84]
+              - generic [ref=e89]: 顧客
+              - img [ref=e90]
+        - generic [ref=e92]:
+          - heading "營運管理" [level=2] [ref=e93]
+          - generic [ref=e94]:
+            - button "營運案件 5" [ref=e95] [cursor=pointer]:
+              - img [ref=e96]
+              - generic [ref=e98]: 營運案件
+              - generic [ref=e99]: "5"
+              - img [ref=e100]
+            - button "核准收件匣" [ref=e102] [cursor=pointer]:
+              - img [ref=e103]
+              - generic [ref=e106]: 核准收件匣
+              - img [ref=e107]
+        - generic [ref=e109]:
+          - heading "分析" [level=2] [ref=e110]
+          - button "報表" [ref=e112] [cursor=pointer]:
+            - img [ref=e113]
+            - generic [ref=e116]: 報表
+            - img [ref=e117]
+      - generic [ref=e119]:
+        - img [ref=e120]
+        - generic [ref=e122]:
+          - text: 商品範例資料來源：
+          - link "DummyJSON" [ref=e123] [cursor=pointer]:
+            - /url: https://dummyjson.com/products
+    - region "Voltage Dashboard 總覽" [ref=e125]:
+      - generic [ref=e128]:
+        - navigation "Breadcrumb" [ref=e129]:
+          - list [ref=e130]:
+            - listitem [ref=e131]: 儀表板
+        - heading "儀表板" [level=1] [ref=e133]
+      - generic [ref=e134]:
+        - generic [ref=e137]:
+          - generic [ref=e139]: 營收
+          - generic "營收 loading" [ref=e140]
+        - generic [ref=e144]:
+          - generic [ref=e146]: 訂單
+          - generic "訂單 loading" [ref=e147]
+        - generic [ref=e151]:
+          - generic [ref=e153]: 顧客
+          - generic "顧客 loading" [ref=e154]
+        - generic [ref=e158]:
+          - generic [ref=e160]: 可售 SKU
+          - generic "可售 SKU loading" [ref=e161]
+        - generic [ref=e165]:
+          - generic [ref=e167]: 草稿商品
+          - generic "草稿商品 loading" [ref=e168]
+        - generic [ref=e172]:
+          - generic [ref=e174]: 異常案件
+          - strong [ref=e175]: "5"
+          - generic [ref=e176]: 安全營運案件
+        - generic [ref=e179]:
+          - generic [ref=e181]: 人工核准
+          - strong [ref=e182]: "0"
+          - generic [ref=e183]: 最終操作保留在介面
+        - generic [ref=e186]:
+          - generic [ref=e187]:
+            - generic [ref=e188]: 最新動態
+            - button "所有訂單" [ref=e189] [cursor=pointer]:
+              - text: 所有訂單
+              - img
+          - heading "訂單佇列" [level=2] [ref=e190]
+        - generic [ref=e193]:
+          - generic [ref=e194]:
+            - generic [ref=e195]: 庫存訊號
+            - img [ref=e196]
+          - heading "低庫存" [level=2] [ref=e198]
+          - paragraph [ref=e199]: 所有商品庫存均充足。
+          - button "檢視庫存" [ref=e200] [cursor=pointer]

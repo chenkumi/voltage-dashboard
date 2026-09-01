@@ -1,0 +1,75 @@
+- generic [ref=e268]:
+  - generic [ref=e269]:
+    - generic [ref=e270]:
+      - generic [ref=e271]:
+        - img [ref=e273]
+        - paragraph [ref=e277]: WebMCP workspace
+      - generic [ref=e278]:
+        - generic [ref=e279]: Embedded website
+        - combobox "Embedded website" [ref=e280]:
+          - option "Cinder Studio" [selected]
+          - option "Voltage Market"
+        - generic [ref=e281]: Discovering tools
+        - button "Refresh WebMCP tools" [ref=e283]:
+          - img
+    - iframe [ref=e286]:
+      - main [ref=f7e3]:
+        - generic [ref=f7e4]:
+          - generic [ref=f7e6]:
+            - button "前往 Cinder Store 商品目錄" [ref=f7e7] [cursor=pointer]:
+              - img [ref=f7e9]
+              - generic [ref=f7e12]:
+                - generic [ref=f7e13]: Cinder Store
+                - generic [ref=f7e14]: 日常的好設計
+            - navigation "商店導覽" [ref=f7e15]:
+              - button "商品" [ref=f7e16] [cursor=pointer]
+              - button "購物車" [ref=f7e17] [cursor=pointer]
+              - button "訂單" [ref=f7e18] [cursor=pointer]
+            - generic [ref=f7e19]: 模擬結帳環境
+          - region "商品目錄" [ref=f7e20]:
+            - generic [ref=f7e21]:
+              - generic [ref=f7e22]:
+                - paragraph [ref=f7e23]: Curated from Platzi Fake Store
+                - heading "把日常用品，選得更有意思。" [level=1] [ref=f7e24]
+                - paragraph [ref=f7e25]: 從商品探索、購物車到模擬結帳，完整體驗可由 WebMCP Agent 操作的購物流程。
+              - generic [ref=f7e26]:
+                - generic [ref=f7e27]:
+                  - generic [ref=f7e28]: —
+                  - generic [ref=f7e29]: 可探索商品
+                - generic [ref=f7e30]:
+                  - generic [ref=f7e31]: —
+                  - generic [ref=f7e32]: 可用分類
+            - generic [ref=f7e33]:
+              - generic [ref=f7e34]:
+                - text: 搜尋商品
+                - generic [ref=f7e35]:
+                  - img
+                  - textbox "搜尋商品" [ref=f7e36]:
+                    - /placeholder: 名稱、描述或分類
+              - generic [ref=f7e37]:
+                - text: 分類
+                - combobox "分類" [ref=f7e38]:
+                  - option "所有分類" [selected]
+              - generic [ref=f7e39]:
+                - text: 最高價格（USD）
+                - spinbutton "最高價格（USD）" [ref=f7e40]
+            - generic [ref=f7e42]:
+              - img [ref=f7e43]
+              - text: 載入商品資料中…
+  - generic [ref=e288]:
+    - generic [ref=e289]:
+      - img [ref=e291]
+      - heading "New Chat" [level=1] [ref=e294]
+      - button [ref=e295]:
+        - img
+      - button [ref=e296]:
+        - img
+    - region "Chat history" [ref=e297]:
+      - generic [ref=e298]: Hi, how can I help you?
+    - generic [ref=e299]:
+      - textbox "Send Message" [ref=e300]:
+        - /placeholder: "You say: Shift+Enter for a new line"
+      - button "Send message" [disabled]:
+        - img
+        - generic: Send
+  - region "Notifications alt+T"

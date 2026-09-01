@@ -78,8 +78,14 @@ export const resolveReportWidget = (
     const columns = new Map(
       result.columns.map((column) => [column.name, column.type])
     )
-    if (widget.type === "metric" && columns.get(widget.valueColumn) !== "number")
-      return { status: "error", message: "Metric column mapping is unavailable." }
+    if (
+      widget.type === "metric" &&
+      columns.get(widget.valueColumn) !== "number"
+    )
+      return {
+        status: "error",
+        message: "Metric column mapping is unavailable.",
+      }
     if (
       widget.type === "table" &&
       widget.columns.some((column) => !columns.has(column))

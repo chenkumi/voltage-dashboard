@@ -58,10 +58,15 @@ export class ReturnEditorController {
     state: ReturnFormEditorState,
     apply: Session<ReturnFormEditorState>["apply"]
   ) {
-    this.formSession = { state, apply }
+    const session = { state, apply }
+    this.formSession = session
     return () => {
-      this.formSession = null
+      if (this.formSession === session) this.formSession = null
     }
+  }
+
+  detachForm() {
+    this.formSession = null
   }
 
   updateForm(state: ReturnFormEditorState) {

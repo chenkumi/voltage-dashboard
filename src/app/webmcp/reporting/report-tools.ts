@@ -286,6 +286,15 @@ const SAFE_CJK_BUSINESS_CONTEXTS = new Set([
   "不在本報表範圍內",
 ])
 const ISO_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/
+
+const isCalendarDate = (value: string) => {
+  if (!ISO_DATE_PATTERN.test(value)) return false
+  const parsed = new Date(`${value}T00:00:00.000Z`)
+  return (
+    !Number.isNaN(parsed.getTime()) &&
+    parsed.toISOString().slice(0, 10) === value
+  )
+}
 const HTML_PATTERN = /[<>]/
 const MARKDOWN_LINK_PATTERN =
   /!?\[[^\]]*\]\([^)]*\)|https?:\/\/|mailto:|\bwww\./i
@@ -492,8 +501,8 @@ const assertPeriod = (value: unknown): ReportPeriod => {
   if (
     typeof input.start !== "string" ||
     typeof input.end !== "string" ||
-    !ISO_DATE_PATTERN.test(input.start) ||
-    !ISO_DATE_PATTERN.test(input.end) ||
+    !isCalendarDate(input.start) ||
+    !isCalendarDate(input.end) ||
     input.start > input.end ||
     input.timeZone !== "Asia/Taipei"
   )

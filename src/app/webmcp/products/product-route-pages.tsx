@@ -22,7 +22,7 @@ const ProductEditorUnavailable = ({ message }: { message: string }) => {
 
 export const ProductAddRoute = () => {
   const { t } = useTranslation()
-  const { productEditorController, productRepository, products } =
+  const { productDraftStore, productEditorController, productRepository, products } =
     useVoltageAdmin()
   const [searchParams] = useSearchParams()
   const sourceId = Number(searchParams.get("copyFrom"))
@@ -39,6 +39,7 @@ export const ProductAddRoute = () => {
       sourceProduct={sourceProduct}
       repository={productRepository}
       controller={productEditorController}
+      draftStore={productDraftStore}
     />
   )
 }
@@ -46,7 +47,7 @@ export const ProductAddRoute = () => {
 export const ProductEditRoute = () => {
   const { t } = useTranslation()
   const { productId = "" } = useParams()
-  const { productEditorController, productRepository, products } =
+  const { productDraftStore, productEditorController, productRepository, products } =
     useVoltageAdmin()
   const numericId = Number(productId)
   if (products.state !== "ready") {
@@ -63,6 +64,7 @@ export const ProductEditRoute = () => {
       product={product}
       repository={productRepository}
       controller={productEditorController}
+      draftStore={productDraftStore}
     />
   )
 }

@@ -1,0 +1,189 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - button "V Voltage" [ref=e6] [cursor=pointer]:
+      - generic [ref=e7]: V
+      - strong [ref=e8]: Voltage
+    - generic [ref=e9]:
+      - button "搜尋商品" [ref=e10] [cursor=pointer]:
+        - img [ref=e11]
+        - generic [ref=e14]: 搜尋商品
+        - generic [ref=e15]: /
+      - button "通知" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+      - generic [ref=e20] [cursor=pointer]:
+        - img [ref=e21]
+        - generic [ref=e25]: 切換語言
+        - combobox "切換語言" [ref=e26]:
+          - option "English"
+          - option "繁體中文" [selected]
+      - button "帳號選單" [ref=e27] [cursor=pointer]:
+        - img [ref=e28]
+  - generic [ref=e31]:
+    - complementary "主要導覽" [ref=e32]:
+      - navigation [ref=e33]:
+        - generic [ref=e34]:
+          - heading "營運總覽" [level=2] [ref=e35]
+          - button "儀表板" [ref=e37] [cursor=pointer]:
+            - img [ref=e38]
+            - generic [ref=e43]: 儀表板
+            - img [ref=e44]
+        - generic [ref=e46]:
+          - heading "商品管理" [level=2] [ref=e47]
+          - generic [ref=e48]:
+            - button "商品" [ref=e49] [cursor=pointer]:
+              - img [ref=e50]
+              - generic [ref=e56]: 商品
+              - img [ref=e57]
+            - button "庫存 29" [ref=e193] [cursor=pointer]:
+              - img [ref=e60]
+              - generic [ref=e70]: 庫存
+              - generic [ref=e194]: "29"
+              - img [ref=e71]
+        - generic [ref=e73]:
+          - heading "訂單與顧客" [level=2] [ref=e74]
+          - generic [ref=e75]:
+            - button "訂單" [ref=e76] [cursor=pointer]:
+              - img [ref=e77]
+              - generic [ref=e80]: 訂單
+              - img [ref=e81]
+            - button "顧客" [ref=e83] [cursor=pointer]:
+              - img [ref=e84]
+              - generic [ref=e89]: 顧客
+              - img [ref=e90]
+        - generic [ref=e92]:
+          - heading "營運管理" [level=2] [ref=e93]
+          - generic [ref=e94]:
+            - button "營運案件 5" [ref=e95] [cursor=pointer]:
+              - img [ref=e96]
+              - generic [ref=e98]: 營運案件
+              - generic [ref=e99]: "5"
+              - img [ref=e100]
+            - button "核准收件匣" [ref=e102] [cursor=pointer]:
+              - img [ref=e103]
+              - generic [ref=e106]: 核准收件匣
+              - img [ref=e107]
+        - generic [ref=e109]:
+          - heading "分析" [level=2] [ref=e110]
+          - button "報表" [ref=e112] [cursor=pointer]:
+            - img [ref=e113]
+            - generic [ref=e116]: 報表
+            - img [ref=e117]
+      - generic [ref=e119]:
+        - img [ref=e120]
+        - generic [ref=e122]:
+          - text: 商品範例資料來源：
+          - link "DummyJSON" [ref=e123] [cursor=pointer]:
+            - /url: https://dummyjson.com/products
+    - region "訂單詳細資料" [ref=e1967]:
+      - generic [ref=e1969]:
+        - generic [ref=e1970]:
+          - navigation "Breadcrumb" [ref=e1971]:
+            - list [ref=e1972]:
+              - listitem [ref=e1973]:
+                - link "訂單" [ref=e1974] [cursor=pointer]:
+                  - /url: /orders
+              - listitem [ref=e1975]: /VM-25062
+          - generic [ref=e1976]:
+            - heading "VM-25062" [level=1] [ref=e1977]
+            - generic [ref=e1979]: 已送達
+        - button "返回" [ref=e1981]:
+          - img
+          - text: 返回
+      - generic [ref=e1982]:
+        - generic [ref=e1985]:
+          - generic [ref=e1987]: 訂單總額
+          - strong [ref=e1988]: US$16,839.87
+          - generic [ref=e1989]: USD
+        - generic [ref=e1992]:
+          - generic [ref=e1994]: 商品數量
+          - strong [ref=e1995]: "3"
+          - generic [ref=e1996]: 歷史快照
+        - generic [ref=e1999]:
+          - generic [ref=e2001]: 時間軸事件
+          - strong [ref=e2002]: "2"
+          - generic [ref=e2003]: 2026年5月23日 晚上11:00
+        - generic [ref=e2006]:
+          - generic [ref=e2008]: 關聯案件
+          - strong [ref=e2009]: "2"
+          - generic [ref=e2010]: 營運案件參照
+        - generic [ref=e2012]:
+          - generic [ref=e2014]: 歷史商品項目
+          - table [ref=e2016]:
+            - rowgroup [ref=e2017]:
+              - row "商品 SKU 單價 數量 折扣 商品小計" [ref=e2018]:
+                - columnheader "商品" [ref=e2019]
+                - columnheader "SKU" [ref=e2020]
+                - columnheader "單價" [ref=e2021]
+                - columnheader "數量" [ref=e2022]
+                - columnheader "折扣" [ref=e2023]
+                - columnheader "商品小計" [ref=e2024]
+            - rowgroup [ref=e2025]:
+              - row "Tropical Earring WOM-BRD-TRO-184 US$19.99 2 US$2.00 US$37.98" [ref=e2026]:
+                - cell "Tropical Earring" [ref=e2027]:
+                  - button "Tropical Earring" [ref=e2028]
+                - cell "WOM-BRD-TRO-184" [ref=e2029]
+                - cell "US$19.99" [ref=e2030]
+                - cell "2" [ref=e2031]
+                - cell "US$2.00" [ref=e2032]
+                - cell "US$37.98" [ref=e2033]
+              - row "Rolex Cellini Moonphase WOM-ROL-ROL-191 US$15,999.99 1 US$0.00 US$15,999.99" [ref=e2034]:
+                - cell "Rolex Cellini Moonphase" [ref=e2035]:
+                  - button "Rolex Cellini Moonphase" [ref=e2036]
+                - cell "WOM-ROL-ROL-191" [ref=e2037]
+                - cell "US$15,999.99" [ref=e2038]
+                - cell "1" [ref=e2039]
+                - cell "US$0.00" [ref=e2040]
+                - cell "US$15,999.99" [ref=e2041]
+        - generic [ref=e2043]:
+          - generic [ref=e2045]: 金額明細
+          - generic [ref=e2047]:
+            - generic [ref=e2048]:
+              - term [ref=e2049]: 商品小計
+              - definition [ref=e2050]: US$16,037.97
+            - generic [ref=e2051]:
+              - term [ref=e2052]: 折扣
+              - definition [ref=e2053]: US$0.00
+            - generic [ref=e2054]:
+              - term [ref=e2055]: 運費
+              - definition [ref=e2056]: US$0.00
+            - generic [ref=e2057]:
+              - term [ref=e2058]: 稅額
+              - definition [ref=e2059]: US$801.90
+            - generic [ref=e2060]:
+              - term [ref=e2061]: 總額
+              - definition [ref=e2062]: US$16,839.87
+        - generic [ref=e2064]:
+          - generic [ref=e2066]: 遮罩客戶資料
+          - generic [ref=e2067]:
+            - paragraph [ref=e2068]:
+              - strong [ref=e2069]: 測•••
+            - paragraph [ref=e2070]: c•••@example.test
+            - paragraph [ref=e2071]: ••••••0013
+            - paragraph [ref=e2072]: 中區 · TW
+            - button "開啟客戶資料" [ref=e2073]
+        - generic [ref=e2075]:
+          - generic [ref=e2077]: 付款與履約
+          - generic [ref=e2078]:
+            - generic [ref=e2079]:
+              - generic [ref=e2080]: 付款狀態
+              - generic [ref=e2081]: 已付款
+            - generic [ref=e2082]:
+              - generic [ref=e2083]: 付款方式
+              - strong [ref=e2084]: 銀行轉帳 · 已遮罩
+            - generic [ref=e2085]:
+              - generic [ref=e2086]: 履約狀態
+              - generic [ref=e2087]: 已履約
+        - generic [ref=e2089]:
+          - generic [ref=e2091]: 關聯案件
+          - generic [ref=e2093]:
+            - button "CASE-2004 · 提出退貨" [ref=e2094]
+            - button "CASE-2005 · 提出退貨" [ref=e2095]
+        - generic [ref=e2097]:
+          - generic [ref=e2099]: 訂單時間軸
+          - list [ref=e2101]:
+            - listitem [ref=e2102]:
+              - generic [ref=e2103]: 訂單建立
+              - time [ref=e2104]: 2026年5月22日 晚上11:00
+            - listitem [ref=e2105]:
+              - generic [ref=e2106]: 已付款
+              - time [ref=e2107]: 2026年5月23日 晚上11:00

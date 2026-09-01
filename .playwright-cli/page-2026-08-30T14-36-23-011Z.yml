@@ -1,0 +1,368 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - button "V Voltage" [ref=e6] [cursor=pointer]:
+      - generic [ref=e7]: V
+      - strong [ref=e8]: Voltage
+    - generic [ref=e9]:
+      - button "搜尋商品" [ref=e10] [cursor=pointer]:
+        - img [ref=e11]
+        - generic [ref=e14]: 搜尋商品
+        - generic [ref=e15]: /
+      - button "通知" [ref=e16] [cursor=pointer]:
+        - img [ref=e17]
+      - generic [ref=e20] [cursor=pointer]:
+        - img [ref=e21]
+        - generic [ref=e25]: 切換語言
+        - combobox "切換語言" [ref=e26]:
+          - option "English"
+          - option "繁體中文" [selected]
+      - button "帳號選單" [ref=e27] [cursor=pointer]:
+        - img [ref=e28]
+  - generic [ref=e31]:
+    - complementary "主要導覽" [ref=e32]:
+      - navigation [ref=e33]:
+        - generic [ref=e34]:
+          - heading "營運總覽" [level=2] [ref=e35]
+          - button "儀表板" [ref=e37] [cursor=pointer]:
+            - img [ref=e38]
+            - generic [ref=e43]: 儀表板
+            - img [ref=e44]
+        - generic [ref=e46]:
+          - heading "商品管理" [level=2] [ref=e47]
+          - generic [ref=e48]:
+            - button "商品" [ref=e49] [cursor=pointer]:
+              - img [ref=e50]
+              - generic [ref=e56]: 商品
+              - img [ref=e57]
+            - button "庫存 29" [ref=e193] [cursor=pointer]:
+              - img [ref=e60]
+              - generic [ref=e70]: 庫存
+              - generic [ref=e194]: "29"
+              - img [ref=e71]
+        - generic [ref=e73]:
+          - heading "訂單與顧客" [level=2] [ref=e74]
+          - generic [ref=e75]:
+            - button "訂單" [ref=e76] [cursor=pointer]:
+              - img [ref=e77]
+              - generic [ref=e80]: 訂單
+              - img [ref=e81]
+            - button "顧客" [ref=e83] [cursor=pointer]:
+              - img [ref=e84]
+              - generic [ref=e89]: 顧客
+              - img [ref=e90]
+        - generic [ref=e92]:
+          - heading "營運管理" [level=2] [ref=e93]
+          - generic [ref=e94]:
+            - button "營運案件 5" [ref=e95] [cursor=pointer]:
+              - img [ref=e96]
+              - generic [ref=e98]: 營運案件
+              - generic [ref=e99]: "5"
+              - img [ref=e100]
+            - button "核准收件匣" [ref=e102] [cursor=pointer]:
+              - img [ref=e103]
+              - generic [ref=e106]: 核准收件匣
+              - img [ref=e107]
+        - generic [ref=e109]:
+          - heading "分析" [level=2] [ref=e110]
+          - button "報表" [ref=e112] [cursor=pointer]:
+            - img [ref=e113]
+            - generic [ref=e116]: 報表
+            - img [ref=e117]
+      - generic [ref=e119]:
+        - img [ref=e120]
+        - generic [ref=e122]:
+          - text: 商品範例資料來源：
+          - link "DummyJSON" [ref=e123] [cursor=pointer]:
+            - /url: https://dummyjson.com/products
+    - region "庫存" [ref=e125]:
+      - generic [ref=e128]:
+        - navigation "Breadcrumb" [ref=e129]:
+          - list [ref=e130]:
+            - listitem [ref=e131]: 儀表板
+            - listitem [ref=e132]: /庫存
+        - generic [ref=e133]:
+          - heading "庫存" [level=1] [ref=e134]
+          - generic [ref=e136]: 194 項商品
+      - generic [ref=e137]:
+        - generic [ref=e140]:
+          - generic [ref=e142]: 庫存總量
+          - strong [ref=e143]: "9779"
+          - generic [ref=e144]: 所有啟用商品合計
+        - generic [ref=e147]:
+          - generic [ref=e149]: 無庫存
+          - strong [ref=e150]: "4"
+          - generic [ref=e151]: 需要立即處理
+        - generic [ref=e154]:
+          - generic [ref=e156]: 低庫存
+          - strong [ref=e157]: "29"
+          - generic [ref=e158]: 庫存 12 件以下
+        - generic [ref=e161]:
+          - generic [ref=e163]: 補貨風險
+          - strong [ref=e164]: "0"
+          - generic [ref=e165]: 預估可售 21 天以下
+        - region "庫存清單" [ref=e167]:
+          - generic [ref=e168]:
+            - generic [ref=e170]:
+              - generic [ref=e171]:
+                - generic [ref=e172]: 搜尋庫存
+                - img
+                - searchbox "搜尋庫存" [ref=e173]
+              - generic [ref=e174]:
+                - combobox "分類" [ref=e175]:
+                  - generic [ref=e177]: "分類: 所有分類"
+                  - img: ▼
+                - textbox [ref=e178]: all
+                - combobox "風險" [ref=e179]:
+                  - generic [ref=e181]: "風險: 所有風險"
+                  - img: ▼
+                - textbox [ref=e182]: all
+                - combobox "期間" [ref=e183]:
+                  - generic [ref=e185]: "期間: 月"
+                  - img: ▼
+                - textbox [ref=e186]: month
+                - button "更多篩選" [active] [ref=e187]:
+                  - img
+                  - generic [ref=e455]: "1"
+            - generic [ref=e189]:
+              - generic [ref=e190]: 顯示 1–12／194
+              - generic [ref=e456]:
+                - generic [ref=e457]: "排序: 庫存由低至高"
+                - 'button "排序: 庫存由低至高 remove" [ref=e458]':
+                  - img [ref=e459]
+              - button "全部清除" [ref=e462]
+            - table [ref=e196]:
+              - rowgroup [ref=e197]:
+                - row "商品 庫存 期間變化 變化率 可售天數 風險 更新時間 操作" [ref=e198]:
+                  - columnheader "商品" [ref=e199]
+                  - columnheader "庫存" [ref=e200]
+                  - columnheader "期間變化" [ref=e201]
+                  - columnheader "變化率" [ref=e202]
+                  - columnheader "可售天數" [ref=e203]
+                  - columnheader "風險" [ref=e204]
+                  - columnheader "更新時間" [ref=e205]
+                  - columnheader "操作" [ref=e206]
+              - rowgroup [ref=e207]:
+                - row "Sportbike Motorcycle MOT-SPE-SPO-117 · motorcycle 0 -17 -100.0% 資料不足 無庫存 2026年8月22日 上午11:00 快速檢視 詳細資料 調整" [ref=e463]:
+                  - cell "Sportbike Motorcycle MOT-SPE-SPO-117 · motorcycle" [ref=e464]:
+                    - strong [ref=e465]: Sportbike Motorcycle
+                    - generic [ref=e466]: MOT-SPE-SPO-117 · motorcycle
+                  - cell "0" [ref=e467]
+                  - cell "-17" [ref=e468]
+                  - cell "-100.0%" [ref=e469]
+                  - cell "資料不足" [ref=e470]
+                  - cell "無庫存" [ref=e471]:
+                    - generic [ref=e473]: 無庫存
+                  - cell "2026年8月22日 上午11:00" [ref=e474]
+                  - cell "快速檢視 詳細資料 調整" [ref=e475]:
+                    - generic [ref=e476]:
+                      - button "快速檢視" [ref=e477]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e478]
+                      - button "調整" [ref=e479]
+                - row "Samsung Galaxy S8 SMA-SAM-SAM-132 · smartphones 0 -12 -100.0% 資料不足 無庫存 2026年8月17日 上午11:00 快速檢視 詳細資料 調整" [ref=e480]:
+                  - cell "Samsung Galaxy S8 SMA-SAM-SAM-132 · smartphones" [ref=e481]:
+                    - strong [ref=e482]: Samsung Galaxy S8
+                    - generic [ref=e483]: SMA-SAM-SAM-132 · smartphones
+                  - cell "0" [ref=e484]
+                  - cell "-12" [ref=e485]
+                  - cell "-100.0%" [ref=e486]
+                  - cell "資料不足" [ref=e487]
+                  - cell "無庫存" [ref=e488]:
+                    - generic [ref=e490]: 無庫存
+                  - cell "2026年8月17日 上午11:00" [ref=e491]
+                  - cell "快速檢視 詳細資料 調整" [ref=e492]:
+                    - generic [ref=e493]:
+                      - button "快速檢視" [ref=e494]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e495]
+                      - button "調整" [ref=e496]
+                - row "Volleyball SPO-BRD-VOL-153 · sports-accessories 0 -13 -100.0% 資料不足 無庫存 2026年8月18日 上午11:00 快速檢視 詳細資料 調整" [ref=e497]:
+                  - cell "Volleyball SPO-BRD-VOL-153 · sports-accessories" [ref=e498]:
+                    - strong [ref=e499]: Volleyball
+                    - generic [ref=e500]: SPO-BRD-VOL-153 · sports-accessories
+                  - cell "0" [ref=e501]
+                  - cell "-13" [ref=e502]
+                  - cell "-100.0%" [ref=e503]
+                  - cell "資料不足" [ref=e504]
+                  - cell "無庫存" [ref=e505]:
+                    - generic [ref=e507]: 無庫存
+                  - cell "2026年8月18日 上午11:00" [ref=e508]
+                  - cell "快速檢視 詳細資料 調整" [ref=e509]:
+                    - generic [ref=e510]:
+                      - button "快速檢視" [ref=e511]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e512]
+                      - button "調整" [ref=e513]
+                - row "Watch Gold for Women WOM-FAS-WAT-193 · womens-watches 0 -13 -100.0% 資料不足 無庫存 2026年8月18日 上午11:00 快速檢視 詳細資料 調整" [ref=e514]:
+                  - cell "Watch Gold for Women WOM-FAS-WAT-193 · womens-watches" [ref=e515]:
+                    - strong [ref=e516]: Watch Gold for Women
+                    - generic [ref=e517]: WOM-FAS-WAT-193 · womens-watches
+                  - cell "0" [ref=e518]
+                  - cell "-13" [ref=e519]
+                  - cell "-100.0%" [ref=e520]
+                  - cell "資料不足" [ref=e521]
+                  - cell "無庫存" [ref=e522]:
+                    - generic [ref=e524]: 無庫存
+                  - cell "2026年8月18日 上午11:00" [ref=e525]
+                  - cell "快速檢視 詳細資料 調整" [ref=e526]:
+                    - generic [ref=e527]:
+                      - button "快速檢視" [ref=e528]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e529]
+                      - button "調整" [ref=e530]
+                - row "Apple Airpower Wireless Charger MOB-APP-APP-102 · mobile-accessories 1 -12 -92.3% 資料不足 低庫存 2026年8月7日 上午11:00 快速檢視 詳細資料 調整" [ref=e531]:
+                  - cell "Apple Airpower Wireless Charger MOB-APP-APP-102 · mobile-accessories" [ref=e532]:
+                    - strong [ref=e533]: Apple Airpower Wireless Charger
+                    - generic [ref=e534]: MOB-APP-APP-102 · mobile-accessories
+                  - cell "1" [ref=e535]
+                  - cell "-12" [ref=e536]
+                  - cell "-92.3%" [ref=e537]
+                  - cell "資料不足" [ref=e538]
+                  - cell "低庫存" [ref=e539]:
+                    - generic [ref=e541]: 低庫存
+                  - cell "2026年8月7日 上午11:00" [ref=e542]
+                  - cell "快速檢視 詳細資料 調整" [ref=e543]:
+                    - generic [ref=e544]:
+                      - button "快速檢視" [ref=e545]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e546]
+                      - button "調整" [ref=e547]
+                - row "Apple MagSafe Battery Pack MOB-APP-APP-105 · mobile-accessories 1 -15 -93.8% 資料不足 低庫存 2026年8月10日 上午11:00 快速檢視 詳細資料 調整" [ref=e548]:
+                  - cell "Apple MagSafe Battery Pack MOB-APP-APP-105 · mobile-accessories" [ref=e549]:
+                    - strong [ref=e550]: Apple MagSafe Battery Pack
+                    - generic [ref=e551]: MOB-APP-APP-105 · mobile-accessories
+                  - cell "1" [ref=e552]
+                  - cell "-15" [ref=e553]
+                  - cell "-93.8%" [ref=e554]
+                  - cell "資料不足" [ref=e555]
+                  - cell "低庫存" [ref=e556]:
+                    - generic [ref=e558]: 低庫存
+                  - cell "2026年8月10日 上午11:00" [ref=e559]
+                  - cell "快速檢視 詳細資料 調整" [ref=e560]:
+                    - generic [ref=e561]:
+                      - button "快速檢視" [ref=e562]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e563]
+                      - button "調整" [ref=e564]
+                - row "Classic Sun Glasses SUN-FAS-CLA-155 · sunglasses 1 -15 -93.8% 資料不足 低庫存 2026年8月20日 上午11:00 快速檢視 詳細資料 調整" [ref=e565]:
+                  - cell "Classic Sun Glasses SUN-FAS-CLA-155 · sunglasses" [ref=e566]:
+                    - strong [ref=e567]: Classic Sun Glasses
+                    - generic [ref=e568]: SUN-FAS-CLA-155 · sunglasses
+                  - cell "1" [ref=e569]
+                  - cell "-15" [ref=e570]
+                  - cell "-93.8%" [ref=e571]
+                  - cell "資料不足" [ref=e572]
+                  - cell "低庫存" [ref=e573]:
+                    - generic [ref=e575]: 低庫存
+                  - cell "2026年8月20日 上午11:00" [ref=e576]
+                  - cell "快速檢視 詳細資料 調整" [ref=e577]:
+                    - generic [ref=e578]:
+                      - button "快速檢視" [ref=e579]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e580]
+                      - button "調整" [ref=e581]
+                - row "Tropical Earring WOM-BRD-TRO-184 · womens-jewellery 1 -14 -93.3% 資料不足 低庫存 2026年8月9日 上午11:00 快速檢視 詳細資料 調整" [ref=e582]:
+                  - cell "Tropical Earring WOM-BRD-TRO-184 · womens-jewellery" [ref=e583]:
+                    - strong [ref=e584]: Tropical Earring
+                    - generic [ref=e585]: WOM-BRD-TRO-184 · womens-jewellery
+                  - cell "1" [ref=e586]
+                  - cell "-14" [ref=e587]
+                  - cell "-93.3%" [ref=e588]
+                  - cell "資料不足" [ref=e589]
+                  - cell "低庫存" [ref=e590]:
+                    - generic [ref=e592]: 低庫存
+                  - cell "2026年8月9日 上午11:00" [ref=e593]
+                  - cell "快速檢視 詳細資料 調整" [ref=e594]:
+                    - generic [ref=e595]:
+                      - button "快速檢視" [ref=e596]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e597]
+                      - button "調整" [ref=e598]
+                - row "Man Short Sleeve Shirt MEN-CAS-SHO-086 · mens-shirts 2 -16 -88.9% 資料不足 低庫存 2026年8月11日 上午11:00 快速檢視 詳細資料 調整" [ref=e599]:
+                  - cell "Man Short Sleeve Shirt MEN-CAS-SHO-086 · mens-shirts" [ref=e600]:
+                    - strong [ref=e601]: Man Short Sleeve Shirt
+                    - generic [ref=e602]: MEN-CAS-SHO-086 · mens-shirts
+                  - cell "2" [ref=e603]
+                  - cell "-16" [ref=e604]
+                  - cell "-88.9%" [ref=e605]
+                  - cell "資料不足" [ref=e606]
+                  - cell "低庫存" [ref=e607]:
+                    - generic [ref=e609]: 低庫存
+                  - cell "2026年8月11日 上午11:00" [ref=e610]
+                  - cell "快速檢視 詳細資料 調整" [ref=e611]:
+                    - generic [ref=e612]:
+                      - button "快速檢視" [ref=e613]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e614]
+                      - button "調整" [ref=e615]
+                - row "Green Chili Pepper GRO-BRD-GRE-026 · groceries 3 -16 -84.2% 資料不足 低庫存 2026年8月11日 上午11:00 快速檢視 詳細資料 調整" [ref=e616]:
+                  - cell "Green Chili Pepper GRO-BRD-GRE-026 · groceries" [ref=e617]:
+                    - strong [ref=e618]: Green Chili Pepper
+                    - generic [ref=e619]: GRO-BRD-GRE-026 · groceries
+                  - cell "3" [ref=e620]
+                  - cell "-16" [ref=e621]
+                  - cell "-84.2%" [ref=e622]
+                  - cell "資料不足" [ref=e623]
+                  - cell "低庫存" [ref=e624]:
+                    - generic [ref=e626]: 低庫存
+                  - cell "2026年8月11日 上午11:00" [ref=e627]
+                  - cell "快速檢視 詳細資料 調整" [ref=e628]:
+                    - generic [ref=e629]:
+                      - button "快速檢視" [ref=e630]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e631]
+                      - button "調整" [ref=e632]
+                - row "Black & Brown Slipper WOM-COM-BLA-185 · womens-shoes 3 -15 -83.3% 資料不足 低庫存 2026年8月10日 上午11:00 快速檢視 詳細資料 調整" [ref=e633]:
+                  - cell "Black & Brown Slipper WOM-COM-BLA-185 · womens-shoes" [ref=e634]:
+                    - strong [ref=e635]: Black & Brown Slipper
+                    - generic [ref=e636]: WOM-COM-BLA-185 · womens-shoes
+                  - cell "3" [ref=e637]
+                  - cell "-15" [ref=e638]
+                  - cell "-83.3%" [ref=e639]
+                  - cell "資料不足" [ref=e640]
+                  - cell "低庫存" [ref=e641]:
+                    - generic [ref=e643]: 低庫存
+                  - cell "2026年8月10日 上午11:00" [ref=e644]
+                  - cell "快速檢視 詳細資料 調整" [ref=e645]:
+                    - generic [ref=e646]:
+                      - button "快速檢視" [ref=e647]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e648]
+                      - button "調整" [ref=e649]
+                - row "Dolce Shine Eau de FRA-DOL-DOL-009 · fragrances 4 -19 -82.6% 資料不足 低庫存 2026年8月14日 上午11:00 快速檢視 詳細資料 調整" [ref=e344]:
+                  - cell "Dolce Shine Eau de FRA-DOL-DOL-009 · fragrances" [ref=e345]:
+                    - strong [ref=e346]: Dolce Shine Eau de
+                    - generic [ref=e347]: FRA-DOL-DOL-009 · fragrances
+                  - cell "4" [ref=e348]
+                  - cell "-19" [ref=e349]
+                  - cell "-82.6%" [ref=e350]
+                  - cell "資料不足" [ref=e351]
+                  - cell "低庫存" [ref=e352]:
+                    - generic [ref=e354]: 低庫存
+                  - cell "2026年8月14日 上午11:00" [ref=e355]
+                  - cell "快速檢視 詳細資料 調整" [ref=e356]:
+                    - generic [ref=e357]:
+                      - button "快速檢視" [ref=e358]:
+                        - img
+                        - text: 快速檢視
+                      - button "詳細資料" [ref=e359]
+                      - button "調整" [ref=e360]
+            - navigation "庫存分頁" [ref=e413]:
+              - button "上一頁" [disabled]:
+                - img
+                - generic: 上一頁
+              - generic [ref=e414]: 1 / 17
+              - button "下一頁" [ref=e415]:
+                - generic [ref=e416]: 下一頁
+                - img

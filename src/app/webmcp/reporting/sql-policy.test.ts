@@ -14,7 +14,10 @@ describe("validateReadonlySql", () => {
     "SELECT 'UPDATE agent_products' AS harmless_text",
     'SELECT "update" FROM (SELECT 1 AS "update")',
   ])("accepts one read-only query: %s", (sql) => {
-    expect(validateReadonlySql({ sql })).toEqual({ sql: sql.trim(), parameters: [] })
+    expect(validateReadonlySql({ sql })).toEqual({
+      sql: sql.trim(),
+      parameters: [],
+    })
   })
 
   it.each([

@@ -1,0 +1,290 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "開啟導覽" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+      - button "V" [ref=e8] [cursor=pointer]:
+        - generic [ref=e9]: V
+    - generic [ref=e10]:
+      - button "搜尋商品" [ref=e11] [cursor=pointer]:
+        - img [ref=e12]
+      - button "通知" [ref=e15] [cursor=pointer]:
+        - img [ref=e16]
+      - generic [ref=e19] [cursor=pointer]:
+        - img [ref=e20]
+        - generic [ref=e24]: 切換語言
+        - combobox "切換語言" [ref=e25]:
+          - option "English"
+          - option "繁體中文" [selected]
+      - button "帳號選單" [ref=e26] [cursor=pointer]:
+        - img [ref=e27]
+  - region "庫存" [ref=e32]:
+    - generic [ref=e35]:
+      - navigation "Breadcrumb" [ref=e36]:
+        - list [ref=e37]:
+          - listitem [ref=e38]: 儀表板
+          - listitem [ref=e39]: /庫存
+      - generic [ref=e40]:
+        - heading "庫存" [level=1] [ref=e41]
+        - generic [ref=e43]: 194 項商品
+    - generic [ref=e44]:
+      - generic [ref=e47]:
+        - generic [ref=e49]: 庫存總量
+        - strong [ref=e88]: "9779"
+        - generic [ref=e89]: 所有啟用商品合計
+      - generic [ref=e54]:
+        - generic [ref=e56]: 無庫存
+        - strong [ref=e90]: "4"
+        - generic [ref=e91]: 需要立即處理
+      - generic [ref=e61]:
+        - generic [ref=e63]: 低庫存
+        - strong [ref=e92]: "29"
+        - generic [ref=e93]: 庫存 12 件以下
+      - generic [ref=e68]:
+        - generic [ref=e70]: 補貨風險
+        - strong [ref=e94]: "0"
+        - generic [ref=e95]: 預估可售 21 天以下
+      - region "庫存清單" [ref=e74]:
+        - generic [ref=e75]:
+          - generic [ref=e77]:
+            - generic [ref=e78]:
+              - generic [ref=e79]: 搜尋庫存
+              - img
+              - searchbox "搜尋庫存" [ref=e80]
+            - button "篩選庫存" [active] [ref=e82]:
+              - img
+          - generic [ref=e85]: 顯示 1–12／194
+          - table [ref=e97]:
+            - rowgroup [ref=e98]:
+              - row "商品 庫存 期間變化 變化率 可售天數 風險 更新時間 操作" [ref=e99]:
+                - columnheader "商品" [ref=e100]
+                - columnheader "庫存" [ref=e101]
+                - columnheader "期間變化" [ref=e102]
+                - columnheader "變化率" [ref=e103]
+                - columnheader "可售天數" [ref=e104]
+                - columnheader "風險" [ref=e105]
+                - columnheader "更新時間" [ref=e106]
+                - columnheader "操作" [ref=e107]
+            - rowgroup [ref=e108]:
+              - row "Essence Mascara Lash Princess BEA-ESS-ESS-001 · beauty 99 -11 -10.0% 資料不足 庫存過高 2026年8月6日 上午11:00 快速檢視 詳細資料 調整" [ref=e109]:
+                - cell "Essence Mascara Lash Princess BEA-ESS-ESS-001 · beauty" [ref=e110]:
+                  - strong [ref=e111]: Essence Mascara Lash Princess
+                  - generic [ref=e112]: BEA-ESS-ESS-001 · beauty
+                - cell "99" [ref=e113]
+                - cell "-11" [ref=e114]
+                - cell "-10.0%" [ref=e115]
+                - cell "資料不足" [ref=e116]
+                - cell "庫存過高" [ref=e117]:
+                  - generic [ref=e119]: 庫存過高
+                - cell "2026年8月6日 上午11:00" [ref=e120]
+                - cell "快速檢視 詳細資料 調整" [ref=e121]:
+                  - generic [ref=e122]:
+                    - button "快速檢視" [ref=e123]:
+                      - img
+                      - text: 快速檢視
+                    - button "詳細資料" [ref=e124]
+                    - button "調整" [ref=e125]
+              - row "Eyeshadow Palette with Mirror BEA-GLA-EYE-002 · beauty 34 -12 -26.1% 資料不足 正常 2026年8月7日 上午11:00 快速檢視 詳細資料 調整" [ref=e126]:
+                - cell "Eyeshadow Palette with Mirror BEA-GLA-EYE-002 · beauty" [ref=e127]:
+                  - strong [ref=e128]: Eyeshadow Palette with Mirror
+                  - generic [ref=e129]: BEA-GLA-EYE-002 · beauty
+                - cell "34" [ref=e130]
+                - cell "-12" [ref=e131]
+                - cell "-26.1%" [ref=e132]
+                - cell "資料不足" [ref=e133]
+                - cell "正常" [ref=e134]:
+                  - generic [ref=e136]: 正常
+                - cell "2026年8月7日 上午11:00" [ref=e137]
+                - cell "快速檢視 詳細資料 調整" [ref=e138]:
+                  - generic [ref=e139]:
+                    - button "快速檢視" [ref=e140]:
+                      - img
+                      - text: 快速檢視
+                    - button "詳細資料" [ref=e141]
+                    - button "調整" [ref=e142]
+              - row "Powder Canister BEA-VEL-POW-003 · beauty 89 -13 -12.7% 資料不足 正常 2026年8月8日 上午11:00 快速檢視 詳細資料 調整" [ref=e143]:
+                - cell "Powder Canister BEA-VEL-POW-003 · beauty" [ref=e144]:
+                  - strong [ref=e145]: Powder Canister
+                  - generic [ref=e146]: BEA-VEL-POW-003 · beauty
+                - cell "89" [ref=e147]
+                - cell "-13" [ref=e148]
+                - cell "-12.7%" [ref=e149]
+                - cell "資料不足" [ref=e150]
+                - cell "正常" [ref=e151]:
+                  - generic [ref=e153]: 正常
+                - cell "2026年8月8日 上午11:00" [ref=e154]
+                - cell "快速檢視 詳細資料 調整" [ref=e155]:
+                  - generic [ref=e156]:
+                    - button "快速檢視" [ref=e157]:
+                      - img
+                      - text: 快速檢視
+                    - button "詳細資料" [ref=e158]
+                    - button "調整" [ref=e159]
+              - row "Red Lipstick BEA-CHI-LIP-004 · beauty 91 -14 -13.3% 資料不足 庫存過高 2026年8月9日 上午11:00 快速檢視 詳細資料 調整" [ref=e160]:
+                - cell "Red Lipstick BEA-CHI-LIP-004 · beauty" [ref=e161]:
+                  - strong [ref=e162]: Red Lipstick
+                  - generic [ref=e163]: BEA-CHI-LIP-004 · beauty
+                - cell "91" [ref=e164]
+                - cell "-14" [ref=e165]
+                - cell "-13.3%" [ref=e166]
+                - cell "資料不足" [ref=e167]
+                - cell "庫存過高" [ref=e168]:
+                  - generic [ref=e170]: 庫存過高
+                - cell "2026年8月9日 上午11:00" [ref=e171]
+                - cell "快速檢視 詳細資料 調整" [ref=e172]:
+                  - generic [ref=e173]:
+                    - button "快速檢視" [ref=e174]:
+                      - img
+                      - text: 快速檢視
+                    - button "詳細資料" [ref=e175]
+                    - button "調整" [ref=e176]
+              - row "Red Nail Polish BEA-NAI-NAI-005 · beauty 79 -15 -16.0% 資料不足 正常 2026年8月10日 上午11:00 快速檢視 詳細資料 調整" [ref=e177]:
+                - cell "Red Nail Polish BEA-NAI-NAI-005 · beauty" [ref=e178]:
+                  - strong [ref=e179]: Red Nail Polish
+                  - generic [ref=e180]: BEA-NAI-NAI-005 · beauty
+                - cell "79" [ref=e181]
+                - cell "-15" [ref=e182]
+                - cell "-16.0%" [ref=e183]
+                - cell "資料不足" [ref=e184]
+                - cell "正常" [ref=e185]:
+                  - generic [ref=e187]: 正常
+                - cell "2026年8月10日 上午11:00" [ref=e188]
+                - cell "快速檢視 詳細資料 調整" [ref=e189]:
+                  - generic [ref=e190]:
+                    - button "快速檢視" [ref=e191]:
+                      - img
+                      - text: 快速檢視
+                    - button "詳細資料" [ref=e192]
+                    - button "調整" [ref=e193]
+              - row "Calvin Klein CK One FRA-CAL-CAL-006 · fragrances 29 -16 -35.6% 資料不足 正常 2026年8月11日 上午11:00 快速檢視 詳細資料 調整" [ref=e194]:
+                - cell "Calvin Klein CK One FRA-CAL-CAL-006 · fragrances" [ref=e195]:
+                  - strong [ref=e196]: Calvin Klein CK One
+                  - generic [ref=e197]: FRA-CAL-CAL-006 · fragrances
+                - cell "29" [ref=e198]
+                - cell "-16" [ref=e199]
+                - cell "-35.6%" [ref=e200]
+                - cell "資料不足" [ref=e201]
+                - cell "正常" [ref=e202]:
+                  - generic [ref=e204]: 正常
+                - cell "2026年8月11日 上午11:00" [ref=e205]
+                - cell "快速檢視 詳細資料 調整" [ref=e206]:
+                  - generic [ref=e207]:
+                    - button "快速檢視" [ref=e208]:
+                      - img
+                      - text: 快速檢視
+                    - button "詳細資料" [ref=e209]
+                    - button "調整" [ref=e210]
+              - row "Chanel Coco Noir Eau De FRA-CHA-CHA-007 · fragrances 58 -17 -22.7% 5220 天 正常 2026年8月12日 上午11:00 快速檢視 詳細資料 調整" [ref=e211]:
+                - cell "Chanel Coco Noir Eau De FRA-CHA-CHA-007 · fragrances" [ref=e212]:
+                  - strong [ref=e213]: Chanel Coco Noir Eau De
+                  - generic [ref=e214]: FRA-CHA-CHA-007 · fragrances
+                - cell "58" [ref=e215]
+                - cell "-17" [ref=e216]
+                - cell "-22.7%" [ref=e217]
+                - cell "5220 天" [ref=e218]
+                - cell "正常" [ref=e219]:
+                  - generic [ref=e221]: 正常
+                - cell "2026年8月12日 上午11:00" [ref=e222]
+                - cell "快速檢視 詳細資料 調整" [ref=e223]:
+                  - generic [ref=e224]:
+                    - button "快速檢視" [ref=e225]:
+                      - img
+                      - text: 快速檢視
+                    - button "詳細資料" [ref=e226]
+                    - button "調整" [ref=e227]
+              - row "Dior J'adore FRA-DIO-DIO-008 · fragrances 98 -18 -15.5% 資料不足 庫存過高 2026年8月13日 上午11:00 快速檢視 詳細資料 調整" [ref=e228]:
+                - cell "Dior J'adore FRA-DIO-DIO-008 · fragrances" [ref=e229]:
+                  - strong [ref=e230]: Dior J'adore
+                  - generic [ref=e231]: FRA-DIO-DIO-008 · fragrances
+                - cell "98" [ref=e232]
+                - cell "-18" [ref=e233]
+                - cell "-15.5%" [ref=e234]
+                - cell "資料不足" [ref=e235]
+                - cell "庫存過高" [ref=e236]:
+                  - generic [ref=e238]: 庫存過高
+                - cell "2026年8月13日 上午11:00" [ref=e239]
+                - cell "快速檢視 詳細資料 調整" [ref=e240]:
+                  - generic [ref=e241]:
+                    - button "快速檢視" [ref=e242]:
+                      - img
+                      - text: 快速檢視
+                    - button "詳細資料" [ref=e243]
+                    - button "調整" [ref=e244]
+              - row "Dolce Shine Eau de FRA-DOL-DOL-009 · fragrances 4 -19 -82.6% 資料不足 低庫存 2026年8月14日 上午11:00 快速檢視 詳細資料 調整" [ref=e245]:
+                - cell "Dolce Shine Eau de FRA-DOL-DOL-009 · fragrances" [ref=e246]:
+                  - strong [ref=e247]: Dolce Shine Eau de
+                  - generic [ref=e248]: FRA-DOL-DOL-009 · fragrances
+                - cell "4" [ref=e249]
+                - cell "-19" [ref=e250]
+                - cell "-82.6%" [ref=e251]
+                - cell "資料不足" [ref=e252]
+                - cell "低庫存" [ref=e253]:
+                  - generic [ref=e255]: 低庫存
+                - cell "2026年8月14日 上午11:00" [ref=e256]
+                - cell "快速檢視 詳細資料 調整" [ref=e257]:
+                  - generic [ref=e258]:
+                    - button "快速檢視" [ref=e259]:
+                      - img
+                      - text: 快速檢視
+                    - button "詳細資料" [ref=e260]
+                    - button "調整" [ref=e261]
+              - row "Gucci Bloom Eau de FRA-GUC-GUC-010 · fragrances 91 -10 -9.9% 資料不足 庫存過高 2026年8月15日 上午11:00 快速檢視 詳細資料 調整" [ref=e262]:
+                - cell "Gucci Bloom Eau de FRA-GUC-GUC-010 · fragrances" [ref=e263]:
+                  - strong [ref=e264]: Gucci Bloom Eau de
+                  - generic [ref=e265]: FRA-GUC-GUC-010 · fragrances
+                - cell "91" [ref=e266]
+                - cell "-10" [ref=e267]
+                - cell "-9.9%" [ref=e268]
+                - cell "資料不足" [ref=e269]
+                - cell "庫存過高" [ref=e270]:
+                  - generic [ref=e272]: 庫存過高
+                - cell "2026年8月15日 上午11:00" [ref=e273]
+                - cell "快速檢視 詳細資料 調整" [ref=e274]:
+                  - generic [ref=e275]:
+                    - button "快速檢視" [ref=e276]:
+                      - img
+                      - text: 快速檢視
+                    - button "詳細資料" [ref=e277]
+                    - button "調整" [ref=e278]
+              - row "Annibale Colombo Bed FUR-ANN-ANN-011 · furniture 88 -11 -11.1% 資料不足 正常 2026年8月16日 上午11:00 快速檢視 詳細資料 調整" [ref=e279]:
+                - cell "Annibale Colombo Bed FUR-ANN-ANN-011 · furniture" [ref=e280]:
+                  - strong [ref=e281]: Annibale Colombo Bed
+                  - generic [ref=e282]: FUR-ANN-ANN-011 · furniture
+                - cell "88" [ref=e283]
+                - cell "-11" [ref=e284]
+                - cell "-11.1%" [ref=e285]
+                - cell "資料不足" [ref=e286]
+                - cell "正常" [ref=e287]:
+                  - generic [ref=e289]: 正常
+                - cell "2026年8月16日 上午11:00" [ref=e290]
+                - cell "快速檢視 詳細資料 調整" [ref=e291]:
+                  - generic [ref=e292]:
+                    - button "快速檢視" [ref=e293]:
+                      - img
+                      - text: 快速檢視
+                    - button "詳細資料" [ref=e294]
+                    - button "調整" [ref=e295]
+              - row "Annibale Colombo Sofa FUR-ANN-ANN-012 · furniture 60 -12 -16.7% 資料不足 正常 2026年8月17日 上午11:00 快速檢視 詳細資料 調整" [ref=e296]:
+                - cell "Annibale Colombo Sofa FUR-ANN-ANN-012 · furniture" [ref=e297]:
+                  - strong [ref=e298]: Annibale Colombo Sofa
+                  - generic [ref=e299]: FUR-ANN-ANN-012 · furniture
+                - cell "60" [ref=e300]
+                - cell "-12" [ref=e301]
+                - cell "-16.7%" [ref=e302]
+                - cell "資料不足" [ref=e303]
+                - cell "正常" [ref=e304]:
+                  - generic [ref=e306]: 正常
+                - cell "2026年8月17日 上午11:00" [ref=e307]
+                - cell "快速檢視 詳細資料 調整" [ref=e308]:
+                  - generic [ref=e309]:
+                    - button "快速檢視" [ref=e310]:
+                      - img
+                      - text: 快速檢視
+                    - button "詳細資料" [ref=e311]
+                    - button "調整" [ref=e312]
+          - navigation "庫存分頁" [ref=e314]:
+            - button [disabled]:
+              - img
+            - generic [ref=e315]: 1 / 17
+            - button [ref=e316]:
+              - img

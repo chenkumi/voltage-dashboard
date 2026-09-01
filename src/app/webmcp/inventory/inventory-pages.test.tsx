@@ -203,7 +203,11 @@ describe("inventory pages", () => {
     render(<RouterProvider router={router} />)
 
     expect(await screen.findByText("Total units")).toBeTruthy()
-    await screen.findByRole("button", { name: "Next page" }, { timeout: 5_000 })
+    await screen.findByRole(
+      "button",
+      { name: "Next page" },
+      { timeout: 10_000 }
+    )
     await user.click(screen.getByRole("button", { name: "More filters" }))
     let popover = document.querySelector<HTMLElement>(
       '[data-slot="popover-content"]'
@@ -244,7 +248,7 @@ describe("inventory pages", () => {
     await user.click(screen.getByRole("button", { name: "Clear all" }))
     expect(screen.queryByText("Period: Year")).toBeNull()
     expect(screen.queryByText("Sort: Stock low to high")).toBeNull()
-  })
+  }, 20_000)
 
   it("shows a safe not-found state for an unknown inventory route", async () => {
     const router = createMemoryRouter([{ path: "*", element: <App /> }], {

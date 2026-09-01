@@ -105,7 +105,9 @@ describe("WebMCP tool error contract", () => {
       message: "Unsupported fields.",
     })
 
-    expect(normalizeWebMcpToolError("add_report_widget", original)).toMatchObject({
+    expect(
+      normalizeWebMcpToolError("add_report_widget", original)
+    ).toMatchObject({
       toolName: "add_report_widget",
       message:
         "[REPORT_ARGUMENT_ERROR] Report tool arguments are invalid. Inspect the tool schema and retry with only supported fields.",
@@ -123,6 +125,20 @@ describe("WebMCP tool error contract", () => {
       ).toMatchObject({ category, retryable: true })
     }
   )
+
+  it("directs SQL execution failures to discovered reporting semantics", () => {
+    expect(
+      normalizeWebMcpToolError("execute_readonly_sql", {
+        category: "SQL_EXECUTION_ERROR",
+        message: "no such column: gross_revenue",
+      })
+    ).toMatchObject({
+      category: "SQL_EXECUTION_ERROR",
+      retryable: true,
+      message:
+        "[SQL_EXECUTION_ERROR] The read-only SQL query could not be executed. Load voltage-report-authoring, query agent_dataset_status or sqlite_schema, then revise the query.",
+    })
+  })
 
   it("detects cross-realm abort-like objects structurally", () => {
     expect(isAbortError({ name: "AbortError", message: "aborted" })).toBe(true)

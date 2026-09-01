@@ -7,14 +7,26 @@ type EditorSession = {
   apply: (draft: ProductEditorState) => void
 }
 
+type DraftPersistence = {
+  saved: boolean
+  restored: boolean
+}
+
 export class ProductEditorController {
   private session: EditorSession | null = null
+  private draftPersistence: DraftPersistence = { saved: false, restored: false }
 
   attach(state: ProductEditorState, apply: EditorSession["apply"]) {
-    this.session = { state, apply }
+    const session = { state, apply }
+    this.session = session
     return () => {
-      this.session = null
+      if (this.session === session) this.session = null
     }
+  }
+
+  detach() {
+    this.session = null
+    this.draftPersistence = { saved: false, restored: false }
   }
 
   update(state: ProductEditorState) {
@@ -23,6 +35,14 @@ export class ProductEditorController {
 
   getState() {
     return this.session?.state ?? null
+  }
+
+  setDraftPersistence(next: DraftPersistence) {
+    this.draftPersistence = next
+  }
+
+  getDraftPersistence() {
+    return this.draftPersistence
   }
 
   applyDraft(patch: Partial<ProductWriteInput>) {

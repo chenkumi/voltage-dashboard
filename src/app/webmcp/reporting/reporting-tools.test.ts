@@ -27,6 +27,12 @@ describe("execute_readonly_sql WebMCP tool", () => {
       untrustedContentHint: true,
     })
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("SQLite")
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain(
+      "voltage-report-authoring"
+    )
+    expect(EXECUTE_READONLY_SQL_TOOL.description).toContain(
+      "agent_dataset_status"
+    )
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("products")
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("returns")
     expect(EXECUTE_READONLY_SQL_TOOL.description).toContain("refunds")

@@ -1,0 +1,269 @@
+- generic [ref=e206]:
+  - generic [ref=e207]:
+    - generic [ref=e208]:
+      - generic [ref=e209]:
+        - img [ref=e211]
+        - paragraph [ref=e215]: WebMCP workspace
+      - generic [ref=e216]:
+        - generic [ref=e217]: Embedded website
+        - combobox "Embedded website" [disabled] [ref=e218]:
+          - option "Cinder Studio" [selected]
+          - option "Voltage Market"
+        - button "上一頁（目前：catalog）" [disabled]:
+          - img
+        - button "下一頁（目前：catalog）" [disabled]:
+          - img
+        - generic [ref=e221]: Connected
+        - button "Refresh WebMCP tools" [ref=e223]:
+          - img
+    - iframe [ref=e226]:
+      - main [ref=f6e3]:
+        - generic [ref=f6e4]:
+          - generic [ref=f6e6]:
+            - button "前往 Cinder Store 商品目錄" [ref=f6e7] [cursor=pointer]:
+              - img [ref=f6e9]
+              - generic [ref=f6e12]:
+                - generic [ref=f6e13]: Cinder Store
+                - generic [ref=f6e14]: 日常的好設計
+            - navigation "商店導覽" [ref=f6e15]:
+              - button "商品" [ref=f6e16] [cursor=pointer]
+              - button "購物車" [ref=f6e17] [cursor=pointer]
+              - button "訂單" [ref=f6e18] [cursor=pointer]
+            - generic [ref=f6e19]: 模擬結帳環境
+          - region "商品目錄" [ref=f6e20]:
+            - generic [ref=f6e21]:
+              - generic [ref=f6e22]:
+                - paragraph [ref=f6e23]: Curated from Platzi Fake Store
+                - heading "把日常用品，選得更有意思。" [level=1] [ref=f6e24]
+                - paragraph [ref=f6e25]: 從商品探索、購物車到模擬結帳，完整體驗可由 WebMCP Agent 操作的購物流程。
+              - generic [ref=f6e26]:
+                - generic [ref=f6e27]:
+                  - generic [ref=f6e28]: "78"
+                  - generic [ref=f6e29]: 可探索商品
+                - generic [ref=f6e30]:
+                  - generic [ref=f6e31]: "13"
+                  - generic [ref=f6e32]: 可用分類
+            - generic [ref=f6e33]:
+              - generic [ref=f6e34]:
+                - text: 搜尋商品
+                - generic [ref=f6e35]:
+                  - img
+                  - textbox "搜尋商品" [ref=f6e36]:
+                    - /placeholder: 名稱、描述或分類
+              - generic [ref=f6e37]:
+                - text: 分類
+                - combobox "分類" [ref=f6e38]:
+                  - option "所有分類" [selected]
+                  - option "Clothes"
+                  - option "Electronics"
+                  - option "Furniture"
+                  - option "Shoes"
+                  - option "Miscellaneous"
+                  - option "testCategorya2877e8078f14b92b1170c5b3cd9849b"
+                  - option "Sports & Fitness_a2cc611645124768b6a31ecc538bc7e9"
+                  - option "GONDOLINE_WEST_c00bedfa"
+                  - option "GONDOLINE_VETTED_c00bedfa"
+                  - option "Enterprise Sales Regions BI Dashboard"
+                  - option "catalog-7c2f28b19480d77f"
+                  - option "Milo Vance Collection"
+                  - option "atlas4x artisan kitchen"
+              - generic [ref=f6e39]:
+                - text: 最高價格（USD）
+                - spinbutton "最高價格（USD）" [ref=f6e40]
+            - generic [ref=f6e45]:
+              - paragraph [ref=f6e46]:
+                - text: 找到
+                - strong [ref=f6e47]: "78"
+                - text: 件商品
+              - paragraph [ref=f6e48]: 資料源：Platzi Fake Store API
+            - generic [ref=f6e49]:
+              - generic [ref=f6e50]:
+                - generic [ref=f6e51]:
+                  - img "Majestic Mountain Graphic T-Shirt" [ref=f6e52]
+                  - generic [ref=f6e53]: Clothes
+                - generic [ref=f6e54]:
+                  - generic [ref=f6e55]: Majestic Mountain Graphic T-Shirt
+                  - paragraph [ref=f6e56]: Elevate your wardrobe with this stylish black t-shirt featuring a striking monochrome mountain range graphic. Perfect for those who love the outdoors or want to add a touch of nature-inspired design to their look, this tee is crafted from soft, breathable fabric ensuring all-day comfort. Ideal for casual outings or as a unique gift, this t-shirt is a versatile addition to any collection.
+                - generic [ref=f6e58]:
+                  - generic [ref=f6e59]: $44
+                  - button "加入" [ref=f6e60] [cursor=pointer]:
+                    - img
+                    - text: 加入
+              - generic [ref=f6e61]:
+                - generic [ref=f6e62]:
+                  - img "Classic Red Pullover Hoodie" [ref=f6e63]
+                  - generic [ref=f6e64]: Clothes
+                - generic [ref=f6e65]:
+                  - generic [ref=f6e66]: Classic Red Pullover Hoodie
+                  - paragraph [ref=f6e67]: Elevate your casual wardrobe with our Classic Red Pullover Hoodie. Crafted with a soft cotton blend for ultimate comfort, this vibrant red hoodie features a kangaroo pocket, adjustable drawstring hood, and ribbed cuffs for a snug fit. The timeless design ensures easy pairing with jeans or joggers for a relaxed yet stylish look, making it a versatile addition to your everyday attire.
+                - generic [ref=f6e69]:
+                  - generic [ref=f6e70]: $10
+                  - button "加入" [ref=f6e71] [cursor=pointer]:
+                    - img
+                    - text: 加入
+              - generic [ref=f6e72]:
+                - generic [ref=f6e73]:
+                  - img "Classic Heather Gray Hoodie" [ref=f6e74]
+                  - generic [ref=f6e75]: Clothes
+                - generic [ref=f6e76]:
+                  - generic [ref=f6e77]: Classic Heather Gray Hoodie
+                  - paragraph [ref=f6e78]: Stay cozy and stylish with our Classic Heather Gray Hoodie. Crafted from soft, durable fabric, it features a kangaroo pocket, adjustable drawstring hood, and ribbed cuffs. Perfect for a casual day out or a relaxing evening in, this hoodie is a versatile addition to any wardrobe.
+                - generic [ref=f6e80]:
+                  - generic [ref=f6e81]: $69
+                  - button "加入" [ref=f6e82] [cursor=pointer]:
+                    - img
+                    - text: 加入
+              - generic [ref=f6e83]:
+                - generic [ref=f6e84]:
+                  - img "Classic Grey Hooded Sweatshirt" [ref=f6e85]
+                  - generic [ref=f6e86]: Clothes
+                - generic [ref=f6e87]:
+                  - generic [ref=f6e88]: Classic Grey Hooded Sweatshirt
+                  - paragraph [ref=f6e89]: Elevate your casual wear with our Classic Grey Hooded Sweatshirt. Made from a soft cotton blend, this hoodie features a front kangaroo pocket, an adjustable drawstring hood, and ribbed cuffs for a snug fit. Perfect for those chilly evenings or lazy weekends, it pairs effortlessly with your favorite jeans or joggers.
+                - generic [ref=f6e91]:
+                  - generic [ref=f6e92]: $90
+                  - button "加入" [ref=f6e93] [cursor=pointer]:
+                    - img
+                    - text: 加入
+              - generic [ref=f6e94]:
+                - generic [ref=f6e95]:
+                  - img "Classic Black Hooded Sweatshirt" [ref=f6e96]
+                  - generic [ref=f6e97]: Clothes
+                - generic [ref=f6e98]:
+                  - generic [ref=f6e99]: Classic Black Hooded Sweatshirt
+                  - paragraph [ref=f6e100]: Elevate your casual wardrobe with our Classic Black Hooded Sweatshirt. Made from high-quality, soft fabric that ensures comfort and durability, this hoodie features a spacious kangaroo pocket and an adjustable drawstring hood. Its versatile design makes it perfect for a relaxed day at home or a casual outing.
+                - generic [ref=f6e102]:
+                  - generic [ref=f6e103]: $79
+                  - button "加入" [ref=f6e104] [cursor=pointer]:
+                    - img
+                    - text: 加入
+              - generic [ref=f6e105]:
+                - generic [ref=f6e106]:
+                  - img "Classic Comfort Fit Joggers" [ref=f6e107]
+                  - generic [ref=f6e108]: Clothes
+                - generic [ref=f6e109]:
+                  - generic [ref=f6e110]: Classic Comfort Fit Joggers
+                  - paragraph [ref=f6e111]: Discover the perfect blend of style and comfort with our Classic Comfort Fit Joggers. These versatile black joggers feature a soft elastic waistband with an adjustable drawstring, two side pockets, and ribbed ankle cuffs for a secure fit. Made from a lightweight and durable fabric, they are ideal for both active days and relaxed lounging.
+                - generic [ref=f6e113]:
+                  - generic [ref=f6e114]: $25
+                  - button "加入" [ref=f6e115] [cursor=pointer]:
+                    - img
+                    - text: 加入
+              - generic [ref=f6e116]:
+                - generic [ref=f6e117]:
+                  - img "Classic Comfort Drawstring Joggers" [ref=f6e118]
+                  - generic [ref=f6e119]: Clothes
+                - generic [ref=f6e120]:
+                  - generic [ref=f6e121]: Classic Comfort Drawstring Joggers
+                  - paragraph [ref=f6e122]: Experience the perfect blend of comfort and style with our Classic Comfort Drawstring Joggers. Designed for a relaxed fit, these joggers feature a soft, stretchable fabric, convenient side pockets, and an adjustable drawstring waist with elegant gold-tipped detailing. Ideal for lounging or running errands, these pants will quickly become your go-to for effortless, casual wear.
+                - generic [ref=f6e124]:
+                  - generic [ref=f6e125]: $79
+                  - button "加入" [ref=f6e126] [cursor=pointer]:
+                    - img
+                    - text: 加入
+              - generic [ref=f6e127]:
+                - generic [ref=f6e128]:
+                  - img "Classic Red Jogger Sweatpants" [ref=f6e129]
+                  - generic [ref=f6e130]: Clothes
+                - generic [ref=f6e131]:
+                  - generic [ref=f6e132]: Classic Red Jogger Sweatpants
+                  - paragraph [ref=f6e133]: Experience ultimate comfort with our red jogger sweatpants, perfect for both workout sessions and lounging around the house. Made with soft, durable fabric, these joggers feature a snug waistband, adjustable drawstring, and practical side pockets for functionality. Their tapered design and elastic cuffs offer a modern fit that keeps you looking stylish on the go.
+                - generic [ref=f6e135]:
+                  - generic [ref=f6e136]: $98
+                  - button "加入" [ref=f6e137] [cursor=pointer]:
+                    - img
+                    - text: 加入
+              - generic [ref=f6e138]:
+                - generic [ref=f6e139]:
+                  - img "Classic Navy Blue Baseball Cap" [ref=f6e140]
+                  - generic [ref=f6e141]: Clothes
+                - generic [ref=f6e142]:
+                  - generic [ref=f6e143]: Classic Navy Blue Baseball Cap
+                  - paragraph [ref=f6e144]: Step out in style with this sleek navy blue baseball cap. Crafted from durable material, it features a smooth, structured design and an adjustable strap for the perfect fit. Protect your eyes from the sun and complement your casual looks with this versatile and timeless accessory.
+                - generic [ref=f6e146]:
+                  - generic [ref=f6e147]: $61
+                  - button "加入" [ref=f6e148] [cursor=pointer]:
+                    - img
+                    - text: 加入
+              - generic [ref=f6e149]:
+                - generic [ref=f6e150]:
+                  - img "Classic Blue Baseball Cap" [ref=f6e151]
+                  - generic [ref=f6e152]: Clothes
+                - generic [ref=f6e153]:
+                  - generic [ref=f6e154]: Classic Blue Baseball Cap
+                  - paragraph [ref=f6e155]: Top off your casual look with our Classic Blue Baseball Cap, made from high-quality materials for lasting comfort. Featuring a timeless six-panel design with a pre-curved visor, this adjustable cap offers both style and practicality for everyday wear.
+                - generic [ref=f6e157]:
+                  - generic [ref=f6e158]: $86
+                  - button "加入" [ref=f6e159] [cursor=pointer]:
+                    - img
+                    - text: 加入
+              - generic [ref=f6e160]:
+                - generic [ref=f6e161]:
+                  - img "Classic Red Baseball Cap" [ref=f6e162]
+                  - generic [ref=f6e163]: Clothes
+                - generic [ref=f6e164]:
+                  - generic [ref=f6e165]: Classic Red Baseball Cap
+                  - paragraph [ref=f6e166]: Elevate your casual wardrobe with this timeless red baseball cap. Crafted from durable fabric, it features a comfortable fit with an adjustable strap at the back, ensuring one size fits all. Perfect for sunny days or adding a sporty touch to your outfit.
+                - generic [ref=f6e168]:
+                  - generic [ref=f6e169]: $35
+                  - button "加入" [ref=f6e170] [cursor=pointer]:
+                    - img
+                    - text: 加入
+              - generic [ref=f6e171]:
+                - generic [ref=f6e172]:
+                  - img "Classic Black Baseball Cap" [ref=f6e173]
+                  - generic [ref=f6e174]: Clothes
+                - generic [ref=f6e175]:
+                  - generic [ref=f6e176]: Classic Black Baseball Cap
+                  - paragraph [ref=f6e177]: Elevate your casual wear with this timeless black baseball cap. Made with high-quality, breathable fabric, it features an adjustable strap for the perfect fit. Whether you’re out for a jog or just running errands, this cap adds a touch of style to any outfit.
+                - generic [ref=f6e179]:
+                  - generic [ref=f6e180]: $58
+                  - button "加入" [ref=f6e181] [cursor=pointer]:
+                    - img
+                    - text: 加入
+            - generic [ref=f6e182]:
+              - button "上一頁" [disabled]:
+                - img
+                - text: 上一頁
+              - generic [ref=f6e183]: 第 1 / 7 頁
+              - button "下一頁" [ref=f6e184] [cursor=pointer]:
+                - text: 下一頁
+                - img
+  - generic [ref=e228]:
+    - generic [ref=e229]:
+      - img [ref=e231]
+      - heading "New Chat" [level=1] [ref=e234]
+      - button [ref=e235]:
+        - img
+      - button [ref=e236]:
+        - img
+    - region "Chat history" [ref=e237]:
+      - log [ref=e241]:
+        - list [ref=e242]:
+          - listitem [ref=e243]:
+            - time [ref=e244]: 2026/8/27 下午5:56:54
+            - generic [ref=e247]: 請寫一篇超過 3000 字的 WebMCP 完整技術白皮書，詳細說明每個段落。
+            - button "Copy message" [ref=e249]:
+              - img
+          - listitem [ref=e250]:
+            - generic [ref=e251]:
+              - group [ref=e252]:
+                - generic "Thinking" [ref=e253] [cursor=pointer]
+              - generic [ref=e254]:
+                - generic [ref=e255]: 抱歉，我無法直接根據您提供的工具和當前的嵌入環境來生成一篇超過 3000 字的 WebMCP 完整技術白皮書。
+                - generic [ref=e256]: 我的能力主要集中在操作和理解嵌入的網站內容（例如使用 Cinder Store 的相關工具），而不是進行廣泛的、深度學術性或長篇的技術文檔撰寫
+            - generic [ref=e257]:
+              - button "Copy message" [ref=e258]:
+                - img
+              - button "Speak message" [ref=e259]:
+                - img
+        - generic [ref=e260]:
+          - button "Jump to latest":
+            - img
+    - generic [ref=e239]:
+      - textbox "Send Message" [disabled] [ref=e240]:
+        - /placeholder: "You say: Shift+Enter for a new line"
+      - button "Cancel AI response" [ref=e261]:
+        - img
+        - generic [ref=e262]: Cancel
+  - region "Notifications alt+T"

@@ -68,9 +68,6 @@ export const Dashboard = () => {
     <PageLayout
       ariaLabel={t("Voltage Dashboard Overview")}
       pageName="Dashboard"
-      eyebrow={t("Operational snapshot")}
-      title={t("A calm read on the store.")}
-      detail={t("Built from the embedded operational dataset.")}
     >
       {[
         {
@@ -82,7 +79,7 @@ export const Dashboard = () => {
                   formatMoney(amount, currency, i18n.resolvedLanguage)
                 )
                 .join(" · "),
-          detail: "Order totals by currency",
+          detail: "Paid order totals by currency",
           loading: commerceLoading,
           tone: "positive" as const,
         },
@@ -245,15 +242,7 @@ export const Reports = () => {
   const { reportingController } = useVoltageAdmin()
 
   return (
-    <PageLayout
-      ariaLabel={t("Voltage Dashboard Reports")}
-      pageName="Reports"
-      eyebrow={t("Smart Dashboard · shared workspace")}
-      title={t("Shape the report together.")}
-      detail={t(
-        "Connected Agent tools and your direct edits update the same in-memory report. Query evidence stays inside this Dashboard page."
-      )}
-    >
+    <PageLayout ariaLabel={t("Voltage Dashboard Reports")} pageName="Reports">
       <GridBlock>
         <ReportCanvas controller={reportingController} />
       </GridBlock>

@@ -42,7 +42,10 @@ const ERROR_CONTRACTS = {
     "remove_report_widget accepts only widgetId at the root.",
     true,
   ],
-  REPORT_NOT_FOUND: ["No active report exists. Create a report and retry.", true],
+  REPORT_NOT_FOUND: [
+    "No active report exists. Create a report and retry.",
+    true,
+  ],
   REPORT_STATE_DISPOSED: ["The report state is no longer available.", false],
   REPORT_WIDGET_NOT_FOUND: [
     "The requested report widget does not exist. Read report state and retry.",
@@ -53,7 +56,7 @@ const ERROR_CONTRACTS = {
     true,
   ],
   SQL_EXECUTION_ERROR: [
-    "The read-only SQL query could not be executed. Revise the query and retry.",
+    "The read-only SQL query could not be executed. Load voltage-report-authoring, query agent_dataset_status or sqlite_schema, then revise the query.",
     true,
   ],
   SQL_IDENTIFIER_ERROR: [
@@ -89,7 +92,7 @@ const ERROR_CONTRACTS = {
     true,
   ],
   SQLITE_ERROR: [
-    "SQLite could not execute the read-only query. Revise the query and retry.",
+    "SQLite could not execute the read-only query. Inspect sqlite_schema and revise the query.",
     true,
   ],
   SQLITE_NOT_READY: ["The reporting database is not ready. Retry later.", true],
@@ -98,7 +101,10 @@ const ERROR_CONTRACTS = {
     "WebMCP provider is no longer available.",
     true,
   ],
-} as const satisfies Record<string, readonly [message: string, retryable: boolean]>
+} as const satisfies Record<
+  string,
+  readonly [message: string, retryable: boolean]
+>
 
 type ErrorLike = {
   category?: unknown

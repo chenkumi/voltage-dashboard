@@ -1,0 +1,56 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e6]:
+      - button "前往 Cinder Store 商品目錄" [ref=e7] [cursor=pointer]:
+        - generic [ref=e12]:
+          - generic [ref=e13]: Cinder Store
+          - generic [ref=e14]: 日常的好設計
+      - navigation "商店導覽" [ref=e15]:
+        - button "商品" [ref=e16] [cursor=pointer]
+        - button "購物車 1" [ref=e183] [cursor=pointer]:
+          - text: 購物車
+          - generic [ref=e184]: "1"
+        - button "訂單" [ref=e18] [cursor=pointer]
+      - generic [ref=e19]: 模擬結帳環境
+    - region "模擬結帳" [ref=e230]:
+      - generic [ref=e231]:
+        - generic [ref=e232]:
+          - paragraph [ref=e233]: Checkout · Demo only
+          - heading "確認送貨資訊" [level=1] [ref=e234]
+          - paragraph [ref=e235]: 付款欄位只用來展示畫面；系統不會保存任何卡片資料。
+        - group "收件資訊" [ref=e236]:
+          - generic [ref=e238]:
+            - text: 收件人姓名
+            - textbox "收件人姓名" [ref=e239]: 王小明
+          - generic [ref=e240]:
+            - text: Email
+            - textbox "Email" [ref=e241]: demo@example.com
+          - generic [ref=e242]:
+            - text: 送貨地址
+            - textbox "送貨地址" [active] [ref=e243]
+        - group "模擬付款資料" [ref=e244]:
+          - generic [ref=e248]:
+            - text: 卡號（不保存）
+            - textbox "卡號（不保存）" [ref=e249]:
+              - /placeholder: 4242 4242 4242 4242
+              - text: 4242 4242 4242 4242
+        - generic [ref=e250]:
+          - button "建立模擬訂單" [ref=e251] [cursor=pointer]
+          - button "返回購物車" [ref=e252] [cursor=pointer]
+      - complementary [ref=e253]:
+        - paragraph [ref=e254]: Review
+        - heading "下單前確認" [level=2] [ref=e255]
+        - generic [ref=e257]:
+          - generic [ref=e258]: Aceite Fino12 × 1
+          - generic [ref=e259]: $49
+        - generic [ref=e261]:
+          - generic [ref=e262]:
+            - generic [ref=e263]: 小計（1 件）
+            - generic [ref=e264]: $49
+          - generic [ref=e265]:
+            - generic [ref=e266]: 運費
+            - generic [ref=e267]: $12
+          - generic [ref=e268]:
+            - generic [ref=e269]: 合計
+            - generic [ref=e270]: $61
+          - paragraph [ref=e271]: 再購買 $51 即可享免運。

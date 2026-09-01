@@ -1,0 +1,157 @@
+- generic [ref=e64]:
+  - generic [ref=e65]:
+    - generic [ref=e66]:
+      - generic [ref=e67]:
+        - img [ref=e69]
+        - paragraph [ref=e73]: WebMCP workspace
+      - tablist "Demo pages" [ref=e74]:
+        - tab "Voltage Market" [ref=e75] [cursor=pointer]:
+          - img [ref=e76]
+          - text: Voltage Market
+        - tab "Voltage Market Admin" [selected] [ref=e79] [cursor=pointer]:
+          - img [ref=e80]
+          - text: Voltage Market Admin
+      - generic [ref=e85]:
+        - button "上一頁（目前：dashboard）" [ref=e86]:
+          - img
+        - button "下一頁（目前：dashboard）" [ref=e87]:
+          - img
+        - generic [ref=e88]: Connected
+        - button "Refresh WebMCP tools" [ref=e90]:
+          - img
+    - iframe [ref=e93]:
+      - main [ref=f4e3]:
+        - generic [ref=f4e4]:
+          - generic [ref=f4e5]:
+            - button "Voltage Market Merchant Console" [ref=f4e6] [cursor=pointer]:
+              - img [ref=f4e8]
+              - generic [ref=f4e11]:
+                - generic [ref=f4e12]: Voltage Market
+                - strong [ref=f4e13]: Merchant Console
+            - generic [ref=f4e14]: Demo workspace · local data
+          - generic [ref=f4e15]:
+            - navigation "Voltage Market Admin 導覽" [ref=f4e16]:
+              - generic [ref=f4e17]:
+                - button "Dashboard" [ref=f4e18] [cursor=pointer]:
+                  - img [ref=f4e19]
+                  - text: Dashboard
+                - button "Products" [ref=f4e24] [cursor=pointer]:
+                  - img [ref=f4e25]
+                  - text: Products
+                - button "Orders" [ref=f4e31] [cursor=pointer]:
+                  - img [ref=f4e32]
+                  - text: Orders
+                - button "Customers" [ref=f4e35] [cursor=pointer]:
+                  - img [ref=f4e36]
+                  - text: Customers
+                - button "Inventory 29" [ref=f4e41] [cursor=pointer]:
+                  - img [ref=f4e42]
+                  - text: Inventory
+                  - generic [ref=f4e52]: "29"
+                - button "Reports" [ref=f4e53] [cursor=pointer]:
+                  - img [ref=f4e54]
+                  - text: Reports
+            - region "Voltage Market Admin Dashboard" [ref=f4e58]:
+              - generic [ref=f4e59]:
+                - paragraph [ref=f4e60]: Overview · last 7 days
+                - heading "A calm read on the store." [level=1] [ref=f4e61]
+                - generic [ref=f4e62]: Built from the same embedded catalog as Voltage Market.
+              - generic [ref=f4e63]:
+                - article [ref=f4e64]:
+                  - generic [ref=f4e65]: Revenue
+                  - strong [ref=f4e66]: $731
+                  - generic [ref=f4e67]: +12.4% this week
+                - article [ref=f4e68]:
+                  - generic [ref=f4e69]: Orders
+                  - strong [ref=f4e70]: "5"
+                  - generic [ref=f4e71]: 2 need attention
+                - article [ref=f4e72]:
+                  - generic [ref=f4e73]: Customers
+                  - strong [ref=f4e74]: "6"
+                  - generic [ref=f4e75]: Anonymous segments
+                - article [ref=f4e76]:
+                  - generic [ref=f4e77]: Available SKUs
+                  - strong [ref=f4e78]: "190"
+                  - generic [ref=f4e79]: 29 low stock
+              - generic [ref=f4e80]:
+                - article [ref=f4e81]:
+                  - generic [ref=f4e82]:
+                    - generic [ref=f4e83]:
+                      - paragraph [ref=f4e84]: Latest activity
+                      - heading "Order queue" [level=2] [ref=f4e85]
+                    - button "All orders" [ref=f4e86] [cursor=pointer]:
+                      - text: All orders
+                      - img
+                  - generic [ref=f4e87]:
+                    - generic [ref=f4e88]:
+                      - generic [ref=f4e89]:
+                        - strong [ref=f4e90]: VM-24081
+                        - generic [ref=f4e91]: 3 items · Today, 10:32
+                      - generic [ref=f4e92]:
+                        - generic [ref=f4e93]: Processing
+                        - strong [ref=f4e94]: $184
+                    - generic [ref=f4e95]:
+                      - generic [ref=f4e96]:
+                        - strong [ref=f4e97]: VM-24080
+                        - generic [ref=f4e98]: 1 items · Today, 09:14
+                      - generic [ref=f4e99]:
+                        - generic [ref=f4e100]: Shipped
+                        - strong [ref=f4e101]: $74
+                    - generic [ref=f4e102]:
+                      - generic [ref=f4e103]:
+                        - strong [ref=f4e104]: VM-24079
+                        - generic [ref=f4e105]: 2 items · Yesterday, 16:45
+                      - generic [ref=f4e106]:
+                        - generic [ref=f4e107]: Action needed
+                        - strong [ref=f4e108]: $129
+                    - generic [ref=f4e109]:
+                      - generic [ref=f4e110]:
+                        - strong [ref=f4e111]: VM-24078
+                        - generic [ref=f4e112]: 4 items · Yesterday, 11:20
+                      - generic [ref=f4e113]:
+                        - generic [ref=f4e114]: Delivered
+                        - strong [ref=f4e115]: $246
+                - article [ref=f4e116]:
+                  - generic [ref=f4e117]:
+                    - generic [ref=f4e118]:
+                      - paragraph [ref=f4e119]: Inventory signal
+                      - heading "Low stock" [level=2] [ref=f4e120]
+                    - img [ref=f4e121]
+                  - generic [ref=f4e123]:
+                    - generic [ref=f4e124]: Dolce Shine Eau de
+                    - strong [ref=f4e125]: 4 left
+                  - generic [ref=f4e126]:
+                    - generic [ref=f4e127]: Wooden Bathroom Sink With Mirror
+                    - strong [ref=f4e128]: 7 left
+                  - generic [ref=f4e129]:
+                    - generic [ref=f4e130]: Apple
+                    - strong [ref=f4e131]: 8 left
+                  - generic [ref=f4e132]:
+                    - generic [ref=f4e133]: Cooking Oil
+                    - strong [ref=f4e134]: 10 left
+                  - button "Review inventory" [ref=f4e135] [cursor=pointer]
+  - generic [ref=e94]:
+    - generic [ref=e95]:
+      - img [ref=e97]
+      - generic [ref=e100]:
+        - paragraph [ref=e101]: Agent chat
+        - heading "New Chat" [level=1] [ref=e102]
+      - button "Start new chat" [ref=e104]:
+        - img
+    - generic [ref=e105]:
+      - region "Chat history" [ref=e106]:
+        - generic [ref=e107]:
+          - img [ref=e109]
+          - heading "Ready to explore" [level=2] [ref=e112]
+          - paragraph [ref=e113]: Ask the agent to use the tools available in the workspace.
+      - generic [ref=e115]:
+        - textbox "Send Message" [ref=e116]:
+          - /placeholder: Ask the agent to work with this page…
+        - generic [ref=e117]:
+          - generic [ref=e118]:
+            - img [ref=e119]
+            - text: Enter to send
+          - button "Send message" [disabled]:
+            - img
+            - generic: Send
+  - region "Notifications alt+T"

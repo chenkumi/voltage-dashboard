@@ -1,0 +1,113 @@
+- main [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "Operations workspace Voltage Dashboard" [ref=e6] [cursor=pointer]:
+        - img [ref=e8]
+        - generic [ref=e11]:
+          - generic [ref=e12]: Operations workspace
+          - strong [ref=e13]: Voltage Dashboard
+      - generic [ref=e14]: Demo workspace · local data
+    - generic [ref=e15]:
+      - navigation "Voltage Dashboard navigation" [ref=e16]:
+        - paragraph [ref=e17]: Workspace
+        - generic [ref=e18]:
+          - button "Dashboard" [ref=e19] [cursor=pointer]:
+            - img [ref=e20]
+            - text: Dashboard
+          - button "Products" [ref=e25] [cursor=pointer]:
+            - img [ref=e26]
+            - text: Products
+          - button "Orders" [ref=e32] [cursor=pointer]:
+            - img [ref=e33]
+            - text: Orders
+          - button "Customers" [ref=e36] [cursor=pointer]:
+            - img [ref=e37]
+            - text: Customers
+          - button "Inventory 29" [ref=e42] [cursor=pointer]:
+            - img [ref=e43]
+            - text: Inventory
+            - generic [ref=e53]: "29"
+          - button "Reports" [ref=e54] [cursor=pointer]:
+            - img [ref=e55]
+            - text: Reports
+        - complementary [ref=e58]:
+          - img [ref=e59]
+          - paragraph [ref=e61]: Data is sourced from an embedded, anonymous product catalog.
+      - region "Voltage Dashboard Overview" [ref=e63]:
+        - generic [ref=e65]:
+          - paragraph [ref=e66]: Overview · last 7 days
+          - heading "A calm read on the store." [level=1] [ref=e67]
+          - generic [ref=e68]: Built from the embedded operational dataset.
+        - generic [ref=e69]:
+          - article [ref=e71]:
+            - generic [ref=e72]: Revenue
+            - strong [ref=e73]: $731
+            - generic [ref=e74]: +12.4% this week
+          - article [ref=e76]:
+            - generic [ref=e77]: Orders
+            - strong [ref=e78]: "5"
+            - generic [ref=e79]: 2 need attention
+          - article [ref=e81]:
+            - generic [ref=e82]: Customers
+            - strong [ref=e83]: "6"
+            - generic [ref=e84]: Anonymous segments
+          - article [ref=e86]:
+            - generic [ref=e87]: Available SKUs
+            - strong [ref=e88]: "190"
+            - generic [ref=e89]: 29 low stock
+          - article [ref=e91]:
+            - generic [ref=e92]:
+              - generic [ref=e93]:
+                - paragraph [ref=e94]: Latest activity
+                - heading "Order queue" [level=2] [ref=e95]
+              - button "All orders" [ref=e96] [cursor=pointer]:
+                - text: All orders
+                - img
+            - generic [ref=e97]:
+              - generic [ref=e98]:
+                - generic [ref=e99]:
+                  - strong [ref=e100]: VM-24081
+                  - generic [ref=e101]: 3 items · Today, 10:32
+                - generic [ref=e102]:
+                  - generic [ref=e103]: Processing
+                  - strong [ref=e104]: $184
+              - generic [ref=e105]:
+                - generic [ref=e106]:
+                  - strong [ref=e107]: VM-24080
+                  - generic [ref=e108]: 1 items · Today, 09:14
+                - generic [ref=e109]:
+                  - generic [ref=e110]: Shipped
+                  - strong [ref=e111]: $74
+              - generic [ref=e112]:
+                - generic [ref=e113]:
+                  - strong [ref=e114]: VM-24079
+                  - generic [ref=e115]: 2 items · Yesterday, 16:45
+                - generic [ref=e116]:
+                  - generic [ref=e117]: Action needed
+                  - strong [ref=e118]: $129
+              - generic [ref=e119]:
+                - generic [ref=e120]:
+                  - strong [ref=e121]: VM-24078
+                  - generic [ref=e122]: 4 items · Yesterday, 11:20
+                - generic [ref=e123]:
+                  - generic [ref=e124]: Delivered
+                  - strong [ref=e125]: $246
+          - article [ref=e127]:
+            - generic [ref=e128]:
+              - generic [ref=e129]:
+                - paragraph [ref=e130]: Inventory signal
+                - heading "Low stock" [level=2] [ref=e131]
+              - img [ref=e132]
+            - generic [ref=e134]:
+              - generic [ref=e135]: Dolce Shine Eau de
+              - strong [ref=e136]: 4 left
+            - generic [ref=e137]:
+              - generic [ref=e138]: Wooden Bathroom Sink With Mirror
+              - strong [ref=e139]: 7 left
+            - generic [ref=e140]:
+              - generic [ref=e141]: Apple
+              - strong [ref=e142]: 8 left
+            - generic [ref=e143]:
+              - generic [ref=e144]: Cooking Oil
+              - strong [ref=e145]: 10 left
+            - button "Review inventory" [ref=e146] [cursor=pointer]
