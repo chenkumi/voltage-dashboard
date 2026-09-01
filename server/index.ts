@@ -5,7 +5,21 @@ interface Env {
 }
 
 export default {
-  fetch(request: Request, env: Env) {
-    return env.ASSETS.fetch(request)
+  async fetch(request: Request, env: Env) {
+    const response = await env.ASSETS.fetch(request)
+
+    if (response.status !== 404) {
+      return response
+    }
+
+    const acceptsHtml = request.headers.get("accept")?.includes("text/html")
+    const isDocumentRequest = request.method === "GET" || request.method === "HEAD"
+
+    if (!acceptsHtml || !isDocumentRequest) {
+      return response
+    }
+
+    const indexRequest = new Request(new URL("/", request.url), request)
+    return env.ASSETS.fetch(indexRequest)
   },
 }
