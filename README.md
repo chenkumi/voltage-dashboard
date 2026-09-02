@@ -1,32 +1,32 @@
 # Voltage Dashboard
 
-Voltage Dashboard 是一個純前端 Vite WebMCP Dashboard Provider，定位為電商營運自動化平台，並以 OpenAI WebMCP 挑戰賽為目前產品目標。
+Voltage Dashboard is a frontend-only Vite WebMCP dashboard provider designed as an e-commerce operations automation platform. Its current product goal is to participate in the OpenAI WebMCP Challenge.
 
-它將既有的商品、訂單、售後、庫存與報表模組以頁面與 WebMCP tools 暴露給 Agent，支援 Agent 蒐集資料、填寫內容、準備退貨審查、建立草稿與產生營運報表。高風險的發布、訂單變更、退款、付款及其他最終核准，仍由使用者在 UI 中檢查並完成。
+It exposes existing product, order, after-sales, inventory, and reporting modules to Agents through web pages and WebMCP tools. Agents can collect data, fill in content, prepare return reviews, create drafts, and generate operational reports. High-risk actions—including publishing, changing orders, issuing refunds, processing payments, and granting final approvals—must still be reviewed and completed by a user in the UI.
 
-## 功能範圍
+## Features
 
-- Dashboard：營運指標與待辦總覽
-- Products：商品資料、規格與描述編輯、分類及上架草稿
-- Orders：訂單與付款／地址異常的安全查詢
-- Returns / RMA：退貨資格、收貨、逐商品驗貨、退款核准與重新入庫流程
-- Refund Approvals：人工檢查與退款核准佇列
-- Customers、Inventory：客戶及庫存資料檢視
-- Reports：安全唯讀 SQL、查詢快取與 Report Canvas
-- WebMCP：依頁面提供查詢、導覽、資料填寫與草稿相關能力，並保留同頁 fallback provider 供測試使用
+- Dashboard: Overview of operational metrics and pending tasks
+- Products: Product data, specifications and description editing, categorization, and publishing drafts
+- Orders: Safe lookup of orders, payment failures, and address issues
+- Returns / RMA: Return eligibility, receiving, item-level inspection, refund approval, and restocking workflows
+- Refund Approvals: Human review and refund approval queue
+- Customers and Inventory: Customer and inventory data views
+- Reports: Safe read-only SQL, query caching, and Report Canvas
+- WebMCP: Route-aware tools for queries, navigation, form filling, and draft preparation, with an in-page fallback provider for testing
 
-## 開始使用
+## Getting Started
 
-需求：Node.js 與 npm。
+Requirements: Node.js and npm.
 
 ```bash
 npm install
 npm run dev
 ```
 
-開發伺服器預設位於 `http://localhost:6171`。Demo 登入帳號為 `guest`，密碼為 `123456`；這組帳號只用於本機展示，不代表正式驗證機制。
+The development server runs at `http://localhost:6171` by default. The demo credentials are username `guest` and password `123456`. These credentials are intended for local demonstrations only and do not represent a production authentication mechanism.
 
-常用檢查指令：
+Common verification commands:
 
 ```bash
 npm run typecheck
@@ -35,28 +35,28 @@ npm run build
 npm run test
 ```
 
-## WebMCP 展示
+## WebMCP Demo
 
-請使用支援 WebMCP 的 Agent／瀏覽器 host 開啟本機 Dashboard，先完成登入，再依目前頁面探索可用能力。工具的能力會隨路由切換，涵蓋商品、訂單、退貨、庫存、客戶與報表等營運情境。
+Open the local dashboard in an Agent or browser host that supports WebMCP. Sign in first, then discover the capabilities exposed by the current page. Available tools change with the active route and cover operational workflows for products, orders, returns, inventory, customers, and reports.
 
-## 資料與安全邊界
+## Data and Safety Boundaries
 
-- 本專案目前沒有後端，使用本機 seed data、瀏覽器儲存及展示用資料來源；不應放入真實客戶、付款或公司機密資料。
-- Agent 可執行低風險且可追蹤的搜尋、內容生成、資料填寫、分類、分析與草稿工作。
-- 商品發布、訂單狀態變更、退款、付款及其他高風險動作，必須由使用者在頁面中檢查與完成。
-- 不要提交 API key、token、私鑰或其他 secrets。環境變數範例請參考 [.env.example](.env.example)。
+- This project currently has no backend. It uses local seed data, browser storage, and demonstration data sources. Do not enter real customer, payment, or confidential company data.
+- Agents may perform low-risk, traceable work such as searching, generating content, filling forms, categorizing, analyzing data, and preparing drafts.
+- Product publishing, order status changes, refunds, payments, and other high-risk actions must be reviewed and completed by a user in the UI.
+- Do not commit API keys, tokens, private keys, or other secrets. See [.env.example](.env.example) for an environment variable template.
 
-更完整的產品與架構說明請參考：
+For more detailed product and architecture documentation, see:
 
 - [docs/COMMERCE-AUTOMATION.md](docs/COMMERCE-AUTOMATION.md)
 - [docs/SMART-DASHBOARD.md](docs/SMART-DASHBOARD.md)
 - [docs/RETURNS-RMA-SYSTEM-MODEL.md](docs/RETURNS-RMA-SYSTEM-MODEL.md)
 - [.agents/rules/webmcp-data-safety.md](.agents/rules/webmcp-data-safety.md)
 
-## 專案協作
+## Contributing
 
-請先閱讀 [CONTRIBUTING.md](CONTRIBUTING.md)。安全問題回報方式與不應提交的資料，請參考 [SECURITY.md](SECURITY.md)。版本變更記錄位於 [CHANGELOG.md](CHANGELOG.md)。
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing. See [SECURITY.md](SECURITY.md) for security reporting instructions and guidance on data that must not be submitted. Release history is available in [CHANGELOG.md](CHANGELOG.md).
 
-## 授權
+## License
 
-目前尚未指定公開授權。正式公開前，請由專案擁有者選擇適用授權並加入 `LICENSE` 檔案；在此之前，未授權第三方任意複製、修改或散布本專案。
+No public license has been selected yet. Before making the project publicly available, the project owner should choose an appropriate license and add a `LICENSE` file. Until then, third parties are not granted permission to copy, modify, or distribute this project.
