@@ -37,7 +37,12 @@ npm run test
 
 ## WebMCP Demo
 
-Open the local dashboard in an Agent or browser host that supports WebMCP. Sign in first, then discover the capabilities exposed by the current page. Available tools change with the active route and cover operational workflows for products, orders, returns, inventory, customers, and reports.
+Try the deployed application:
+
+- [Live Voltage Dashboard](https://voltage-webmcp-dashboard.chenkumi.chatgpt.site)
+- [Three-minute WebMCP demo video](https://youtu.be/lOO6xTRnMfw)
+
+Open the dashboard in an Agent or browser host that supports WebMCP. Sign in first, then discover the capabilities exposed by the current page. Available tools change with the active route and cover operational workflows for products, orders, returns, inventory, customers, and reports.
 
 ## Data and Safety Boundaries
 
@@ -59,4 +64,4 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) before contributing. See [SECURITY.md](S
 
 ## License
 
-No public license has been selected yet. Before making the project publicly available, the project owner should choose an appropriate license and add a `LICENSE` file. Until then, third parties are not granted permission to copy, modify, or distribute this project.
+This project is licensed under the [MIT License](LICENSE).
