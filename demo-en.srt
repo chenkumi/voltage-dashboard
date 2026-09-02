@@ -1,0 +1,68 @@
+1
+00:00:00,000 --> 00:00:06,000
+Voltage connects existing e-commerce operations to agents through WebMCP.
+
+2
+00:00:06,000 --> 00:00:14,000
+We begin with the oldest pending refund approval.
+
+3
+00:00:14,000 --> 00:00:23,000
+One business instruction asks the agent to verify the evidence
+and prepare a reversible review note.
+
+4
+00:00:23,000 --> 00:00:30,000
+The agent discovers route-aware tools exposed by the current page.
+
+5
+00:00:30,000 --> 00:00:38,000
+Agent processing condensed for time.
+
+6
+00:00:38,000 --> 00:00:49,000
+The agent identifies APR-2006 / RMA-2006
+and opens the approval workspace.
+
+7
+00:00:49,000 --> 00:01:02,000
+Eligibility, inspection, the immutable calculation,
+amount, and data versions are checked.
+
+8
+00:01:02,000 --> 00:01:14,000
+The evidence agrees: one accepted item and a USD 7.99 refund.
+
+9
+00:01:14,000 --> 00:01:28,000
+A recommendation is drafted under the signed-in user's account.
+
+10
+00:01:28,000 --> 00:01:43,000
+The agent stops here. It cannot publish the note,
+approve the request, or execute the refund.
+
+11
+00:01:43,000 --> 00:01:58,000
+The reviewer checks the evidence in the existing application.
+
+12
+00:01:58,000 --> 00:02:12,000
+The reviewer publishes the note and records the final approval manually.
+
+13
+00:02:12,000 --> 00:02:22,000
+A second agent check re-discovers the tools available on the current page.
+
+14
+00:02:22,000 --> 00:02:36,000
+The RMA now reflects the approved state across modules.
+
+15
+00:02:36,000 --> 00:02:48,000
+The workflow advances to refund execution
+with the same USD 7.99 calculation.
+
+16
+00:02:48,000 --> 00:02:55,000
+The final refund action remains a human responsibility.

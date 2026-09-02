@@ -32,12 +32,18 @@ refactor_*.diff
 .old/
 architecture_review_convergence_*.html
 
-# External skill repositories are maintained as separate repositories.
-skills/Numerologist_skills/
-skills/bazi-skill/
-skills/fengshui.skill/
-skills/tarot-skill/
-skills/yinyuan-skills/
+# Local demo media
+*.mp4
+*.mp3
+
+# Local project working documents
+/docs/
+/issues/
+/design/
+/plan/
+
+# External skill repositories are maintained separately.
+/skills/
 
 # Editor directories and files
 .vscode/*
